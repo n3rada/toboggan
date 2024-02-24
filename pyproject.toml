@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "toboggan"
+version = "1.0"
+description = "Toboggan is a python3 module wrapper for your RCEs that can be leveraged to interactive shell."
+authors = ["n3rada"]
+license = "MIT license"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.11"
+prompt-toolkit = ">=3.0.39"
+tqdm = ">=4.66.0"
+httpx = ">=0.24.1"
+pycryptodome = "^3.20.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+toboggan = "toboggan.__main__:main"
