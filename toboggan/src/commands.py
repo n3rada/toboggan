@@ -117,6 +117,9 @@ class Commands:
         if self.__interactivity is not None:
             return self.__interactivity.execute(final_command)
 
+        if final_command is None:
+            return
+
         return self.__target.executor.execute(
             command=final_command, timeout=30, retry=False
         )
