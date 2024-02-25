@@ -274,7 +274,6 @@ class UnixHandler(OSHandler):
         self.__analyse_weak_file_permissions()
         self.__analyse_readable_files_other_users()
         self.__analyse_no_owners_files()
-        self.__analyse_mail_directories()
         self.__analyse_ssh_misconfiguration()
 
     # Private methods
@@ -354,45 +353,6 @@ class UnixHandler(OSHandler):
         print(f"[Toboggan] Binary and script searching order (PATH):")
         for index, entry in enumerate(raw_path.split(":"), start=1):
             print(f"\t{index}. {entry}")
-
-    def __analyse_mail_directories(self) -> None:
-        """
-        Analyzes the /var/mail and /var/spool/mail directories to check for their existence, content, accessibility,
-        and lists the content of these directories if accessible.
-
-        This method iterates over the specified mail directories, checks for their existence and readability,
-        counts the content within, and lists the names of the files or directories contained within if they are accessible.
-        It provides detailed insights into the mail storage areas of the system, highlighting potential security and
-        configuration aspects of interest.
-        """
-        directories = ["/var/mail", "/var/spool/mail"]
-
-        print("[Toboggan] Analyzing mail directories:")
-
-        for directory in directories:
-            # Check if directory exists and is accessible
-            dir_listing = self._execute(
-                command=f"/bin/ls -A {directory} 2>/dev/null"
-            ).strip()
-            if dir_listing:
-                # Directory exists and is accessible. List content.
-                content_lines = dir_listing.split("\n")
-                content_count = len(content_lines)
-                print(f"\t• {directory} - {content_count} item(s):")
-                for item in content_lines:
-                    print(f"\t\t- {item}")
-            else:
-                # Check if the directory is inaccessible due to permission issues
-                permission_denied = (
-                    "Permission denied"
-                    in self._execute(command=f"/bin/ls {directory} 2>&1").strip()
-                )
-                if permission_denied:
-                    # Directory exists but is not accessible by the current user.
-                    print(f"\t• {directory} is not accessible by the current user.")
-                else:
-                    # Directory does not exist.
-                    print(f"\t• {directory} does not exist on this system.")
 
     def __analyse_aslr(self) -> None:
         # ASLR mapping
