@@ -12,6 +12,7 @@ prompt-toolkit = ">=3.0.39"
 tqdm = ">=4.66.0"
 httpx = ">=0.24.1"
 pycryptodome = "^3.20.0"
+pyperclip = "^1.8.2"
 
 [build-system]
 requires = ["poetry-core"]
