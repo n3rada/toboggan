@@ -94,7 +94,7 @@ Not done yet
 
 ## Contributing
 
-"Toboggan" is an open-source project, and we welcome contributions. Feel free to submit issues, feature requests, or pull requests on the GitHub repository. In order to create a Pull Request, you can follow those steps:
+`toboggan` is an open-source project, and I welcome contributions. Feel free to submit issues, feature requests, or pull requests on the GitHub repository. In order to create a Pull Request, you can follow those steps:
 - Fork the project
 - Create your feature branch (`git checkout -b my-new-feature`)
 - Commit your changes (`git commit -Sam 'Added some feature'`)
