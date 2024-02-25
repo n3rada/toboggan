@@ -424,8 +424,8 @@ class Executor:
         encoded_file = self.__os_handler.get_encoded_file(
             remote_path=remote_path, chunk_size=chunk_size or self.__chunk_size
         )
-        if encoded_file is None:
-            print(f"[Toboggan] Remote file '{remote_path}' does not exist.")
+        if not encoded_file:
+            print(f"[Toboggan] Failed to download '{remote_path}'")
             return
 
         # Write the decompressed content to the local file

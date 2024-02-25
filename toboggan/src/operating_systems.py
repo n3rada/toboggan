@@ -163,40 +163,62 @@ class UnixHandler(OSHandler):
         except Exception as error:
             raise ValueError(f"Error decoding received result: {str(error)!r}")
 
-    def get_encoded_file(self, remote_path: str, chunk_size: int = None) -> None:
-        # Testing if file remotely exists
-        test_file = self._execute(command=f"test -f {remote_path} && echo 'e'").strip()
-        if test_file != "e":
-            return
+    def get_encoded_file(self, remote_path: str, chunk_size: int = 4096) -> str:
+        """
+        Attempts to compress, encode, and retrieve a remote file in chunks after verifying its readability.
+        The method uses 'test -r' to check file permissions directly and provides feedback based on the check.
+
+        Args:
+            remote_path (str): The path to the remote file.
+            chunk_size (int, optional): The size of each chunk to be retrieved. Defaults to 4096.
+
+        Returns:
+            str: The base64 encoded content of the file if successful, an empty string otherwise.
+        """
+        # Check if the file is readable by the current user
+        can_read = self._execute(
+            command=f"test -r {remote_path} && echo 1 || echo 0"
+        ).strip()
+
+        if can_read != "1":
+            file_owner = self._execute(
+                command=f"stat -c '%U' {remote_path} 2>/dev/null"
+            ).strip()
+            print(
+                f"[Toboggan] No read permission for {remote_path}. File belongs to '{file_owner}'"
+            )
+            return ""
+
+        print(f"[Toboggan] File is accessible: {remote_path}")
 
         remote_base64_path = f"{remote_path}_b64"
 
-        # Compress and encode the remote file once
+        # Compress and encode the remote file
         self._execute(
             command=f"gzip -c {remote_path} | base64 -w0 > {remote_base64_path}"
         )
 
-        # Calculate total size directly from the base64 encoded file
+        # Calculate total size of the base64 encoded file
         total_encoded_size = int(
             self._execute(command=f"wc -c < {remote_base64_path}").strip()
         )
         total_chunks = (total_encoded_size + chunk_size - 1) // chunk_size
 
-        # Receive encoded file in chunks using dd for efficient byte-range extraction
         encoded_file_content = ""
+        print("[Toboggan] Starting to download the file in chunks...")
 
-        for idx in tqdm(
-            range(total_chunks), unit="chunk", desc="[Toboggan] Downloading"
-        ):
+        for idx in range(total_chunks):
             offset = idx * chunk_size
             chunk = self._execute(
                 command=f"dd if={remote_base64_path} bs=1 skip={offset} count={chunk_size} 2>/dev/null"
             )
             encoded_file_content += chunk
+            print(f"[Toboggan] Downloaded chunk {idx + 1}/{total_chunks}")
 
-        # Remove the remote base64 file after processing
+        # Remove the remote base64 encoded file after processing
         self._execute(command=f"rm -f {remote_base64_path}")
 
+        print("[Toboggan] File download completed.")
         return encoded_file_content
 
     def upload_file(
