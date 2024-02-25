@@ -106,7 +106,7 @@ def console() -> None:
         "--burp",
         action="store_true",
         required=False,
-        help="Pass the traffic through burp if ||BURP|| placeholder is present inside choosen module.",
+        help="Pass the traffic through burp if '# ||BURP||' placeholder is present inside choosen module.",
     )
 
     banner()

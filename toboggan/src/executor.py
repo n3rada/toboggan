@@ -1,7 +1,7 @@
 # Built-in imports
 import base64
 import gzip
-import importlib.util
+import inspect
 import random
 import time
 import types
@@ -49,81 +49,123 @@ class Module:
             TypeError: If the specified file is not a Python module (does not have .py extension).
             ValueError: If a built-in module is specified without an accompanying URL.
         """
-        if module_path is None:
-            module_path = "webshell"
+        self.__module_path = module_path or "webshell"
+        self.__url = url
+        self.__password_param = password_param
+        self.__password_content = password_content
+        self.__burp_proxy = burp_proxy
 
-        # Store the module code for reference
-        self.__module_code = ""
-
-        # Try to get the path of the built-in module
-        built_in_module_path = BUILT_IN_MODULES_DIR / (module_path + ".py")
-        if built_in_module_path.exists():
-            self.__module_name = module_path
-            print(f"[Toboggan] Using builtin method {self.__module_name}.")
-
-            module_code = built_in_module_path.read_text(encoding="utf-8")
-
-            if module_path == "webshell":
-                if url is None:
-                    raise ValueError(
-                        f"[Toboggan] No url provided. Cannot handle the webshell."
-                    )
-
-                # Extract the parameter key from the provided URL
-                parsed_url = urlparse(url)
-                query_params = parse_qs(parsed_url.query)
-                # Get the last parameter key from the URL query. Default to 'cmd' if no parameters present.
-                param_key = list(query_params.keys())[-1] if query_params else "cmd"
-
-                module_code = module_code.replace("||URL||", url).replace(
-                    "||PARAM_CMD||", param_key
-                )
-
-                if password_content is not None:
-                    if password_param is not None:
-                        password = f'"{password_param}": "{password_content}",'
-                    else:
-                        password = f'"ps": "{password_content}",'
-
-                    module_code = module_code.replace("# ||PARAM_PASSWORD||", password)
-
-            if "||BURP||" in module_code and burp_proxy:
-                print("[Toboggan] All requests will be transmitted through Burp proxy.")
-                module_code = module_code.replace(
-                    "# ||BURP||",
-                    'proxies={"http://": "http://127.0.0.1:8080", "https://": "https://127.0.0.1:8080"},',
-                )
-
-            self.__module_code = module_code
-            self.__module = types.ModuleType(name=self.__module_name)
-            exec(module_code, self.__module.__dict__)
-        else:
-            print(f"[Toboggan] Searching for provided module path: '{module_path}'.")
-            module_path = Path(module_path)
-            self.__module_name = module_path.name
-            if not module_path.exists():
-                raise FileNotFoundError(
-                    f"The specified file {self.__module_name} does not exist."
-                )
-
-            if module_path.suffix != ".py":
-                raise TypeError("The specified file is not a Python module 🐍.")
-
-            spec = importlib.util.spec_from_file_location(module_path.stem, module_path)
-            self.__module = importlib.util.module_from_spec(spec)
-            self.__module_code = Path(module_path).read_text(encoding="utf-8")
-            spec.loader.exec_module(self.__module)
-
-        if not hasattr(self.__module, "execute") or not callable(
-            getattr(self.__module, "execute")
-        ):
-            print(
-                f"The module {self.__module_name} does not contain a callable 'execute' method."
-            )
-            return
-        print(f"[Toboggan] Module {self.__module_name} loaded 💾.")
+        self.__load_module()
 
     # Public methods
+
+    # Private methods
+    def __configure_burp_proxy(self, module_code: str) -> str:
+        """
+        Configures the module code to use a Burp Suite proxy for all requests if the burp_proxy attribute is set to True.
+
+        This method searches for a specific placeholder ('# ||BURP||') in the module code and replaces it with the proxy configuration settings. If the burp_proxy attribute is not set or the placeholder is not found in the code, the original module code is returned without modification.
+
+        Args:
+            module_code (str): The original code of the module to be potentially modified to include Burp Suite proxy settings.
+
+        Returns:
+            str: The modified module code with Burp Suite proxy settings included if burp_proxy is True and the placeholder is found; otherwise, the original module code.
+        """
+
+        if "# ||BURP||" not in module_code:
+            print("[Toboggan] '# ||BURP||' placeholder not found.")
+            return module_code
+
+        print("[Toboggan] All requests will be transmitted through Burp proxy.")
+        return module_code.replace(
+            "# ||BURP||",
+            'proxies={"http://": "http://127.0.0.1:8080", "https://": "http://127.0.0.1:8080"},',
+        )
+
+    def __configure_webshell_module(self, module_code):
+        parsed_url = urlparse(self.__url)
+        query_params = parse_qs(parsed_url.query)
+        param_key = list(query_params.keys())[-1] if query_params else "cmd"
+        module_code = module_code.replace("||URL||", self.__url).replace(
+            "||PARAM_CMD||", param_key
+        )
+
+        if self.__password_content is not None:
+            password = f'"{self.__password_param if self.__password_param else "ps"}": "{self.password_content}",'
+            module_code = module_code.replace("# ||PARAM_PASSWORD||", password)
+
+        return module_code
+
+    def __load_module(self) -> None:
+        """
+        Dynamically loads a module, either a built-in or specified by the user, and verifies the 'execute' method's signature.
+
+        This method first determines whether the module is built-in or user-specified based on the provided module path.
+        If the module is built-in, it configures the module based on the provided URL for webshell modules.
+        If the module is user-specified, it validates the file and loads it.
+        Regardless of the source, it applies Burp Proxy configuration if enabled and verifies that the 'execute' method exists and contains the required parameters 'command' and 'timeout'.
+
+        Raises:
+            ValueError: If no URL is provided for a webshell module.
+            FileNotFoundError: If the specified module file does not exist.
+            TypeError: If the specified file is not a Python module, the module does not contain a callable 'execute' method, or the 'execute' method does not contain the required parameters.
+        """
+        module_code = ""
+        module_name = self.__module_path
+
+        # Check for built-in module
+        built_in_module_path = Path(BUILT_IN_MODULES_DIR) / (self.__module_path + ".py")
+        if built_in_module_path.exists():
+            print(f"[Toboggan] Using built-in method {module_name}.")
+            module_code = built_in_module_path.read_text(encoding="utf-8")
+
+            if self.__module_path == "webshell" and self.__url is None:
+                raise ValueError(
+                    "[Toboggan] No url provided. Cannot handle the webshell."
+                )
+
+            module_code = self.__configure_webshell_module(module_code)
+
+        else:
+            # Handling external module path
+            print(
+                f"[Toboggan] Searching for provided module path: '{self.__module_path}'."
+            )
+            module_path_obj = Path(self.__module_path)
+            if not module_path_obj.exists():
+                raise FileNotFoundError(
+                    f"The specified file {module_name} does not exist."
+                )
+            if module_path_obj.suffix != ".py":
+                raise TypeError("The specified file is not a Python module 🐍.")
+            module_code = module_path_obj.read_text(encoding="utf-8")
+            module_name = module_path_obj.stem
+
+        # Apply Burp Proxy configuration
+        if self.__burp_proxy:
+            module_code = self.__configure_burp_proxy(module_code)
+
+        # Load the module
+        module = types.ModuleType(name=module_name)
+        exec(module_code, module.__dict__)
+
+        if not hasattr(module, "execute") or not callable(getattr(module, "execute")):
+            raise TypeError(
+                f"The module {module_name} does not contain a callable 'execute' method."
+            )
+
+        # Check if required parameters are present in the 'execute' method
+        if not all(
+            param in inspect.signature(module.execute).parameters
+            for param in ["command", "timeout"]
+        ):
+            raise TypeError(
+                f"The 'execute' method in {module_name} does not have the expected parameters: {', '.join(required_params)}."
+            )
+
+        self.__module = module
+        print(f"[Toboggan] Module {module_name} loaded 💾.")
 
     # Properties
     @property
@@ -258,21 +300,20 @@ class Executor:
 
     def os_guessing(self) -> str:
         """
-        Guess the operating system based on the command's directory output.
+        Guesses the operating system by analyzing the output of the `PATH` command.
 
-        This method attempts to identify the operating system by executing directory-related commands
-        and checking their outputs. It uses the presence of backslashes or forward slashes in the path
-        as a heuristic to guess the OS type.
+        This method sends the `PATH` command to the target system and examines the response
+        to determine the operating system type. It uses specific output patterns to distinguish
+        between Windows and Unix-like environments. The detection relies on identifying error messages
+        specific to PowerShell (indicative of Windows) or the presence of a Windows system path in the output.
+        If neither Windows-specific condition is detected, the method defaults to identifying the system as Unix-like.
 
         Returns:
-            str: 'windows' if a Windows OS is detected, 'unix' if a Unix-like OS is detected,
-                and None if the OS cannot be determined.
+            str: A string indicating the detected operating system ('windows' or 'unix').
+                'windows' is returned if the output suggests a PowerShell or CMD environment.
+                'unix' is returned if the output does not match Windows-specific patterns.
         """
         result = self.__module.execute(command="PATH")
-
-        if not result:
-            print(f"[Tooboggan] OS not detected.")
-            return None
 
         if "not recognized as the name of a cmdlet" in result:
             print("[Toboggan] Detected PowerShell behavior; assuming Windows OS 🖥️.")

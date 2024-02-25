@@ -280,29 +280,74 @@ class UnixHandler(OSHandler):
     # Private methods
     def __analyse_readable_files_other_users(self) -> None:
         """
-        Analyzes the system for readable files that belong to other users.
-        """
+        Scans for and reports files in other users' home directories that are readable by the current user,
+        while suppressing error messages to clean up the output.
 
-        if readable_files := self._execute(
-            command='find /home -path "$HOME" -prune -o -readable -type f -print'
-        ).strip():
+        This method leverages the 'find' command to explore the '/home' directory, excluding the current user's
+        home directory to focus on others. It lists files that are marked as readable, potentially highlighting improper
+        permission settings or sensitive information exposure. Error messages, such as 'Permission denied', are
+        suppressed to ensure the output is focused on successfully found readable files.
+
+        Note:
+        - Designed for user-level permissions to identify misconfigurations or security risks from a non-privileged standpoint.
+        - Error messages are suppressed to clean up the output, focusing on readable files.
+        """
+        # Execute the command with error output suppression
+        command_result = self._execute(
+            command='find /home -path "$HOME" -prune -o -readable -type f -print 2>/dev/null'
+        ).strip()
+
+        if command_result:
             print("[Toboggan] Readable files have been found in other user land:")
-            print(readable_files)
+
+            # Organize files by their parent directories
+            directory_map = {}
+            for file_path in command_result.split("\n"):
+                directory, file_name = file_path.rsplit("/", 1)
+                if directory in directory_map:
+                    directory_map[directory].append(file_name)
+                else:
+                    directory_map[directory] = [file_name]
+
+            # Print the organized list
+            for directory, files in directory_map.items():
+                print(f"\t• {directory}")
+                for file_name in files:
+                    print(f"\t\t- {file_name}")
         else:
             print("[Toboggan] No readable files found in other user's directories.")
 
     def __analyse_ssh_misconfiguration(self) -> None:
         """
-        Analyzes SSH misconfigurations on the system.
+        Analyzes SSH misconfigurations on the system by searching for SSH keys and configurations.
+        """
+        # Streamlined and refined command
+        command = """
+        find / -type f \( -name 'ssh_host_*_key*' -o -name 'sshd_config' -o -name 'ssh_config' \) 2>/dev/null
         """
 
-        if ssh_search := self._execute(
-            command="ls -la /home /root /etc/ssh /home/*/.ssh/; locate id_rsa; locate id_dsa; find / -name id_rsa 2> /dev/null; find / -name id_dsa 2> /dev/null; find / -name authorized_keys 2> /dev/null; cat /home/*/.ssh/id_rsa; cat /home/*/.ssh/id_dsa"
-        ).strip():
-            print("[Toboggan] SSH key(s) have been found:")
-            print(ssh_search)
+        # Execute the command
+        ssh_search_result = self._execute(command=command).strip()
+
+        if ssh_search_result:
+            print("[Toboggan] SSH key(s) and configuration(s) have been found:")
+
+            # Organize files by their parent directories
+            directory_map = {}
+            for file_path in ssh_search_result.split("\n"):
+                directory, file_name = file_path.rsplit("/", 1)
+                if directory in directory_map:
+                    directory_map[directory].append(file_name)
+                else:
+                    directory_map[directory] = [file_name]
+
+            # Print the organized list
+            for directory, files in sorted(directory_map.items()):
+                print(f"\t• {directory}")
+                for file_name in sorted(files):
+                    print(f"\t\t- {file_name}")
         else:
-            print("[Toboggan] No SSH key have been found.")
+            print("[Toboggan] No SSH keys or configurations have been found.")
 
     def __analyse_path_variable(self) -> None:
         raw_path = self._execute(command="/bin/echo $PATH").strip()
@@ -312,32 +357,42 @@ class UnixHandler(OSHandler):
 
     def __analyse_mail_directories(self) -> None:
         """
-        Analyzes the /var/mail and /var/spool/mail directories to check for their existence, content, and accessibility.
+        Analyzes the /var/mail and /var/spool/mail directories to check for their existence, content, accessibility,
+        and lists the content of these directories if accessible.
+
+        This method iterates over the specified mail directories, checks for their existence and readability,
+        counts the content within, and lists the names of the files or directories contained within if they are accessible.
+        It provides detailed insights into the mail storage areas of the system, highlighting potential security and
+        configuration aspects of interest.
         """
         directories = ["/var/mail", "/var/spool/mail"]
 
         print("[Toboggan] Analyzing mail directories:")
 
         for directory in directories:
-            if self._execute(command=f"/bin/ls {directory} 2>/dev/null").strip():
-                # Directory exists and is accessible. Check for content.
-                content_count = self._execute(
-                    command=f"/bin/ls -A {directory} 2>/dev/null | wc -l"
-                ).strip()
-                if content_count.isdigit() and int(content_count) > 0:
-                    print(f"\t- {directory} ({content_count})")
-                else:
-                    print(f"\t- {directory} is empty.")
-            elif (
-                self._execute(command=f"/bin/ls {directory} 2>&1")
-                .strip()
-                .endswith("Permission denied")
-            ):
-                # Directory exists but is not accessible by the current user.
-                print(f"\t- {directory} is not accessible by the current user.")
+            # Check if directory exists and is accessible
+            dir_listing = self._execute(
+                command=f"/bin/ls -A {directory} 2>/dev/null"
+            ).strip()
+            if dir_listing:
+                # Directory exists and is accessible. List content.
+                content_lines = dir_listing.split("\n")
+                content_count = len(content_lines)
+                print(f"\t• {directory} - {content_count} item(s):")
+                for item in content_lines:
+                    print(f"\t\t- {item}")
             else:
-                # Directory does not exist.
-                print(f"\t- {directory} does not exist on this system.")
+                # Check if the directory is inaccessible due to permission issues
+                permission_denied = (
+                    "Permission denied"
+                    in self._execute(command=f"/bin/ls {directory} 2>&1").strip()
+                )
+                if permission_denied:
+                    # Directory exists but is not accessible by the current user.
+                    print(f"\t• {directory} is not accessible by the current user.")
+                else:
+                    # Directory does not exist.
+                    print(f"\t• {directory} does not exist on this system.")
 
     def __analyse_aslr(self) -> None:
         # ASLR mapping
