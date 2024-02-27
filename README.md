@@ -1,4 +1,7 @@
 # Toboggan
+
+![toboggan-coin](/media/toboggan-coin.webp)
+
 🛝 Slide into post-exploitation from RCE with ease! Toboggan is your go-to tool that wraps your remote command execution into a semi-interactive shell, making the post-exploitation phase a breeze.
 
 
