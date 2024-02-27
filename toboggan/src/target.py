@@ -40,7 +40,7 @@ class Target:
                     execute_method=command_executor.execute
                 )
             )
-            self.__remote_wd = "C:\\Users\\$env:USERNAME\\Videos"
+            self.__remote_wd = "$env:TEMP"
             self.__shell = "powershell"
 
     # Public methods
