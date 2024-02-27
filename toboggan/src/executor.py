@@ -260,18 +260,21 @@ class Executor:
 
         return result
 
-    def one_shot_execute(self, command: str) -> str:
+    def one_shot_execute(self, command: str = None) -> None:
         """Execute a command without returning nothing and with a fast timeout.
 
         Args:
             command (str): Command to be executed.
         """
+        if not command:
+            return
+
         try:
             if self.__os_handler is not None and self.__obfuscation:
                 command = self.__os_handler.prepare_command(command=command)
-            return self.__module.execute(command=command, timeout=1.5)
-        except:
-            pass
+            self.__module.execute(command=command, timeout=1.5)
+        except Exception:
+            return
 
     def is_alive(self) -> bool:
         """
