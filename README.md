@@ -1,7 +1,7 @@
 # Toboggan
 
 <p align="center">
-    <img width="400" src="/media/toboggan-coin.jpg" alt="Material Bread logo">
+    <img width="350" src="/media/toboggan-coin.jpg" alt="Material Bread logo">
 </p>
 
 
