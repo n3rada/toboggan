@@ -119,6 +119,11 @@ def console() -> None:
         parser.print_help()
         return
 
+    # Check for the presence of '-i' when '-s' or '-r' is specified
+    if (args.session or args.read_interval) and not args.interactive:
+        parser.error("[Toboggan] The -s and -r arguments require the -i (interactive) argument.")
+
+
     password_param = None
     password_content = None
 
