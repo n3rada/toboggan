@@ -658,11 +658,19 @@ class WindowsHandler(OSHandler):
         return short_system_info
 
     def _handle_os_specific_cases(self) -> None:
+
+        # Check the CLM level
+        if result := self._execute(
+            command=r"$ExecutionContext.SessionState.LanguageMode"
+        ):
+            print(f"[Toboggan] Powershell language mode: {result}")
+
         self.__check_domain_join()
         if result := self._execute(
             command=r'"$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor).$($PSVersionTable.PSVersion.Build).$($PSVersionTable.PSVersion.Revision)"'
         ).strip():
             print(f"[Toboggan] PowerShell version: {result}")
+
         # System-level security mechanisms
         self.__analyse_path_variable()
 
