@@ -296,7 +296,6 @@ class UnixHandler(OSHandler):
         self.__analyse_weak_file_permissions()
         self.__analyse_readable_files_other_users()
         self.__analyse_no_owners_files()
-        self.__analyse_ssh_misconfiguration()
 
     # Private methods
     def __analyse_readable_files_other_users(self) -> None:
@@ -337,38 +336,6 @@ class UnixHandler(OSHandler):
                     print(f"\t\t- {file_name}")
         else:
             print("[Toboggan] No readable files found in other user's directories.")
-
-    def __analyse_ssh_misconfiguration(self) -> None:
-        """
-        Analyzes SSH misconfigurations on the system by searching for SSH keys and configurations.
-        """
-        # Streamlined and refined command
-        command = """
-        find / -type f \( -name 'ssh_host_*_key*' -o -name 'sshd_config' -o -name 'ssh_config' \) 2>/dev/null
-        """
-
-        # Execute the command
-        ssh_search_result = self._execute(command=command).strip()
-
-        if ssh_search_result:
-            print("[Toboggan] SSH key(s) and configuration(s) have been found:")
-
-            # Organize files by their parent directories
-            directory_map = {}
-            for file_path in ssh_search_result.split("\n"):
-                directory, file_name = file_path.rsplit("/", 1)
-                if directory in directory_map:
-                    directory_map[directory].append(file_name)
-                else:
-                    directory_map[directory] = [file_name]
-
-            # Print the organized list
-            for directory, files in sorted(directory_map.items()):
-                print(f"\t• {directory}")
-                for file_name in sorted(files):
-                    print(f"\t\t- {file_name}")
-        else:
-            print("[Toboggan] No SSH keys or configurations have been found.")
 
     def __analyse_path_variable(self) -> None:
         raw_path = self._execute(command="/bin/echo $PATH").strip()
