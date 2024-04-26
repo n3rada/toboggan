@@ -8,12 +8,12 @@
 
 Getting started with toboggan is as smooth. You can do this by pulling directly from the repository:
 ```shell
-python3 -m pip install 'toboggan@git+https://github.com/n3rada/toboggan.git'
+pip install 'toboggan@git+https://github.com/n3rada/toboggan.git'
 ``` 
 
 Or, by using [`pipx`](https://pypa.github.io/pipx/) - and you should -, give this a whirl:
 ```shell
-python3 -m pipx install 'git+https://github.com/n3rada/toboggan.git'
+pipx install 'git+https://github.com/n3rada/toboggan.git'
 ```
 
 Thus, you can execute it with the following command:
