@@ -204,46 +204,48 @@ class UnixNamedPipe(Interactivity):
 
     def __fifo_setup(self) -> None:
         """
-        Sets up FIFOs for input and output. If the FIFOs already exist, it reuses them,
-        and ensures that the necessary background processes are correctly configured.
+        Sets up a FIFO for input and output.
+
+        Returns:
+            None
         """
-        print(
-            f"[Toboggan] Ensuring working directory exists: {self.__remote_working_directory} 📂"
-        )
         self.__target.executor.execute(
-            command=f"mkdir -p {self.__remote_working_directory}"
+            command=f"mkdir {self.__remote_working_directory}"
         )
 
-        # Perform a robust check to see if the FIFO already exists
-        fifo_exists = self.__target.executor.execute(
-            command=f"test -p {self.__stdin} && echo exists"
-        ).strip()
-        if fifo_exists != "exists":
-            print(
-                f"[Toboggan] No existing FIFO input found. Creating new FIFO: {self.__stdin}"
-            )
-            mkfifo_result = self.__target.executor.execute(
-                command=f"/usr/bin/mkfifo {self.__stdin}"
-            )
-            if mkfifo_result:
-                raise RuntimeError(
-                    f"[Toboggan] Problem occurred during mkfifo init: {mkfifo_result}"
+        # Since mkfifo isn't a command you would typically need for booting or system recovery,
+        # it's placed in /usr/bin/ in some systems.
+        if problem := self.__target.executor.execute(
+            command=f"/usr/bin/mkfifo {self.__stdin}"
+        ).strip():
+            if "File exists" in problem:
+                print(
+                    f"[Toboggan] Working directory already exist: {self.__remote_working_directory} 📂"
                 )
-            print(f"[Toboggan] FIFO input created: {self.__stdin}")
+            else:
+                raise RuntimeError(
+                    f"[Toboggan] Problem occurred during mkfifo init: {problem}"
+                )
         else:
-            print(f"[Toboggan] Using existing FIFO input: {self.__stdin}")
+            print(
+                f"[Toboggan] Working directory created: {self.__remote_working_directory} 📂"
+            )
 
         # Check if the tail process is running and start it if not already running
-        if not self.__target.executor.execute(
+        tail_process_pid = self.__target.executor.execute(
             command=f"pgrep -f 'tail -f {self.__stdin}'"
-        ).strip():
+        ).strip()
+
+        if not tail_process_pid:
             print(f"[Toboggan] Starting new tail process for FIFO input.")
-            self.__target.executor.execute(
-                command=f"/usr/bin/tail -f {self.__stdin} > {self.__stdout} 2>&1 &"
+            self.__target.executor.one_shot_execute(
+                command=f"/usr/bin/tail -f {self.__stdin}|$0 > {self.__stdout} 2>&1"
             )
             print(f"[Toboggan] Tail process started for FIFO input.")
         else:
-            print(f"[Toboggan] Tail process for FIFO input is already running.")
+            print(
+                f"[Toboggan] Tail process for FIFO input is already running with PID: {tail_process_pid}."
+            )
 
     def __start_poll_thread(self) -> None:
         """
