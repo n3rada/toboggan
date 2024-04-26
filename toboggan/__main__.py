@@ -3,5 +3,10 @@
 # Local library imports
 from toboggan import cli
 
-if __name__ == "__main__":
+
+def main() -> None:
     cli.console()
+
+
+if __name__ == "__main__":
+    main()
