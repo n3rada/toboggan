@@ -60,29 +60,6 @@ class Module:
     # Public methods
 
     # Private methods
-    def __configure_burp_proxy(self, module_code: str) -> str:
-        """
-        Configures the module code to use a Burp Suite proxy for all requests if the burp_proxy attribute is set to True.
-
-        This method searches for a specific placeholder ('# ||BURP||') in the module code and replaces it with the proxy configuration settings. If the burp_proxy attribute is not set or the placeholder is not found in the code, the original module code is returned without modification.
-
-        Args:
-            module_code (str): The original code of the module to be potentially modified to include Burp Suite proxy settings.
-
-        Returns:
-            str: The modified module code with Burp Suite proxy settings included if burp_proxy is True and the placeholder is found; otherwise, the original module code.
-        """
-
-        if "# ||BURP||" not in module_code:
-            print("[Toboggan] '# ||BURP||' placeholder not found.")
-            return module_code
-
-        print("[Toboggan] All requests will be transmitted through Burp proxy.")
-        return module_code.replace(
-            "# ||BURP||",
-            'proxies={"http://": "http://127.0.0.1:8080", "https://": "http://127.0.0.1:8080"},',
-        )
-
     def __configure_webshell_module(self, module_code):
         parsed_url = urlparse(self.__url)
         query_params = parse_qs(parsed_url.query)
@@ -120,12 +97,13 @@ class Module:
             print(f"[Toboggan] Using built-in method {module_name}.")
             module_code = built_in_module_path.read_text(encoding="utf-8")
 
-            if self.__module_path == "webshell" and self.__url is None:
-                raise ValueError(
-                    "[Toboggan] No url provided. Cannot handle the webshell."
-                )
+            if self.__module_path == "webshell":
+                if self.__url is None:
+                    raise ValueError(
+                        "[Toboggan] No url provided. Cannot handle the webshell."
+                    )
 
-            module_code = self.__configure_webshell_module(module_code)
+                module_code = self.__configure_webshell_module(module_code)
 
         else:
             # Handling external module path
@@ -144,7 +122,17 @@ class Module:
 
         # Apply Burp Proxy configuration
         if self.__burp_proxy:
-            module_code = self.__configure_burp_proxy(module_code)
+            print("[Toboggan] All requests will be transmitted through Burp proxy.")
+            if module_name == 'snippet':
+                module_code = module_code.replace('if False', 'if True')
+            else:
+                if "# ||BURP||" not in module_code:
+                    print("[Toboggan] '# ||BURP||' placeholder not found.")
+                else:
+                    module_code = module_code.replace(
+                    "# ||BURP||",
+                    'proxies={"http://": "http://127.0.0.1:8080", "https://": "http://127.0.0.1:8080"},',
+                )
 
         # Load the module
         module = types.ModuleType(name=module_name)
@@ -155,10 +143,12 @@ class Module:
                 f"The module {module_name} does not contain a callable 'execute' method."
             )
 
+        required_params = ["command", "timeout"]
+
         # Check if required parameters are present in the 'execute' method
         if not all(
             param in inspect.signature(module.execute).parameters
-            for param in ["command", "timeout"]
+            for param in required_params
         ):
             raise TypeError(
                 f"The 'execute' method in {module_name} does not have the expected parameters: {', '.join(required_params)}."
