@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 # Local library imports
-from toboggan import cli
+from toboggan import console
 
 
 def main() -> None:
-    cli.console()
+    console.run()
 
 
 if __name__ == "__main__":

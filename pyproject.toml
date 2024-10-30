@@ -19,4 +19,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-toboggan = "toboggan.cli:console"
+toboggan = "toboggan.console:run"

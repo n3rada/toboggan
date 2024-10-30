@@ -10,7 +10,7 @@ from toboggan.src import terminal, target, executor, commands
 
 
 def banner() -> None:
-    banner = rf"""
+    banner = r"""
             _____      _
            /__   \___ | |__   ___   __ _  __ _  __ _ _ __
              / /\/ _ \| '_ \ / _ \ / _` |/ _` |/ _` | '_ \
@@ -23,7 +23,7 @@ def banner() -> None:
     print(banner)
 
 
-def console() -> None:
+def run() -> None:
     parser = argparse.ArgumentParser(
         prog="toboggan",
         add_help=True,
@@ -121,8 +121,9 @@ def console() -> None:
 
     # Check for the presence of '-i' when '-s' or '-r' is specified
     if (args.session or args.read_interval) and not args.interactive:
-        parser.error("[Toboggan] The -s and -r arguments require the -i (interactive) argument.")
-
+        parser.error(
+            "[Toboggan] The -s and -r arguments require the -i (interactive) argument."
+        )
 
     password_param = None
     password_content = None
@@ -162,7 +163,7 @@ def console() -> None:
     executor_instance = executor.Executor(module=module_instance)
 
     if args.clear_commands:
-        print(f"[Toboggan] Clear text mode activated.")
+        print("[Toboggan] Clear text mode activated.")
         executor_instance.obfuscation = False
 
     # You can instanciate a target that implement the Executor
