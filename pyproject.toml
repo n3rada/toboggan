@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "toboggan"
-version = "1.0"
-description = "Toboggan is a python3 module wrapper for your RCEs that can be leveraged to interactive shell."
+version = "2.0"
+description = "CLI tool designed to wrap modules for Remote Command Execution (RCE). It enables interactive shell functionality, making it ideal for constrained environments (e.g., firewalls) where establishing a reverse shell is challenging."
 authors = ["n3rada"]
 license = "MIT license"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.11"
+python = ">=3.10"
 prompt-toolkit = ">=3.0.39"
 tqdm = ">=4.66.0"
 httpx = ">=0.24.1"

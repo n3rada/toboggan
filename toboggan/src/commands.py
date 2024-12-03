@@ -1,4 +1,5 @@
 # Built-in imports
+import sys
 from typing import TYPE_CHECKING
 from pathlib import Path
 import secrets
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 # Module variables definition
 
-DEFAULT_PREFIX = "\\"
+DEFAULT_PREFIX = "/"
 
 INTERACTIVITY_CLASSES = {
     "unix": [
@@ -166,10 +167,10 @@ class Commands:
         """
         if self.__interactivity is not None:
             keeping = utils.yes_no_query(
-                prompt=f"[Toboggan] Would you like to save the current session?",
+                prompt="[Toboggan] Would you like to save the current session?",
             )
             self.__interactivity.stop(keep_session=keeping)
-        exit(0)
+        sys.exit(0)
 
     def get_prompt(self) -> str:
         """

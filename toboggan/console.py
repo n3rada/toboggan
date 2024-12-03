@@ -10,7 +10,8 @@ from toboggan.src import terminal, target, executor, commands
 
 
 def banner() -> None:
-    banner = r"""
+    print(
+        r"""
             _____      _
            /__   \___ | |__   ___   __ _  __ _  __ _ _ __
              / /\/ _ \| '_ \ / _ \ / _` |/ _` |/ _` | '_ \
@@ -20,25 +21,39 @@ def banner() -> None:
              Remote command execution module wrapping tool.
                               @n3rada
     """
-    print(banner)
+    )
 
 
 def run() -> None:
     parser = argparse.ArgumentParser(
         prog="toboggan",
         add_help=True,
-        description="A python3 module wrapper for your RCEs that can be leveraged to an interactive shell.",
+        description="A Python module wrapper for RCEs that can be leveraged to an interactive shell.",
     )
 
-    parser.add_argument(
+    # Argument Groups
+    module_group = parser.add_argument_group(
+        "Module Configuration", "Options to configure the execution module."
+    )
+    request_group = parser.add_argument_group(
+        "Request Configuration", "Options for crafting and sending requests."
+    )
+    interactive_group = parser.add_argument_group(
+        "Interactive Settings", "Options to manage interactive sessions."
+    )
+    advanced_group = parser.add_argument_group(
+        "Advanced Options", "Additional advanced or debugging options."
+    )
+
+    # Module configuration arguments
+    module_group.add_argument(
         "-m",
         "--module",
         type=str,
         default=None,
         help="Module path to be imported and executed or built-in module name.",
     )
-
-    parser.add_argument(
+    module_group.add_argument(
         "-o",
         "--os",
         type=str,
@@ -46,30 +61,42 @@ def run() -> None:
         help="OS command with placeholder ||cmd||.",
     )
 
-    parser.add_argument(
+    # Request configuration arguments
+    request_group.add_argument(
         "-u",
         "--url",
         type=str,
         default=None,
         help="URL to use if a built-in module is specified. Replace ||URL|| placeholder.",
     )
-
-    parser.add_argument(
+    request_group.add_argument(
+        "--post",
+        action="store_true",
+        required=False,
+        help="Specify that the URL request should be a POST request (only with -u/--url).",
+    )
+    request_group.add_argument(
         "-p",
-        "--password",
+        "--params",
+        nargs="*",
+        help="Additional parameters as key=value pairs.",
+    )
+    request_group.add_argument(
+        "--cmd-param",
         type=str,
-        default=None,
-        help="Password in 'key=value' format. If only value is provided, a default key 'ps' will be used.",
+        default="cmd",
+        help="Specify the name of the command parameter (e.g., cmd, command, c).",
     )
 
-    parser.add_argument(
+    # Interactive session arguments
+    interactive_group.add_argument(
         "-i",
         "--interactive",
         action="store_true",
         required=False,
         help="Start an interactive session.",
     )
-    parser.add_argument(
+    interactive_group.add_argument(
         "-s",
         "--session",
         required=False,
@@ -77,7 +104,7 @@ def run() -> None:
         default=None,
         help="Session to connect.",
     )
-    parser.add_argument(
+    interactive_group.add_argument(
         "-r",
         "--read-interval",
         required=False,
@@ -85,7 +112,9 @@ def run() -> None:
         default=None,
         help="Reading interval for interactivity.",
     )
-    parser.add_argument(
+
+    # Advanced options
+    advanced_group.add_argument(
         "-a",
         "--alias-prefix",
         required=False,
@@ -93,66 +122,63 @@ def run() -> None:
         default=None,
         help="Desired alias prefix to use.",
     )
-    parser.add_argument(
+    advanced_group.add_argument(
         "-c",
         "--clear-commands",
         action="store_true",
         required=False,
         help="Send unobfuscated commands.",
     )
-
-    parser.add_argument(
+    advanced_group.add_argument(
         "-b",
         "--burp",
         action="store_true",
         required=False,
-        help="Pass the traffic through burp if '# ||BURP||' placeholder is present inside choosen module.",
+        help="Pass the traffic through Burp Suite if '# ||BURP||' placeholder is present in the module.",
     )
 
-    banner()
-
+    # Parse arguments
     args = parser.parse_args()
 
-    if ("-h" in sys.argv or "--help" in sys.argv) or (
-        args.module is None and args.url is None and args.os is None
-    ):
-        parser.print_help()
-        return
+    # Add validation for grouped arguments
+    if args.url:
+        if not args.params and not args.cmd_param:
+            parser.error(
+                "URL-based execution requires parameters (--params) or a command parameter (--cmd-param)."
+            )
+        if args.post and not args.url:
+            parser.error("The --post argument can only be used with --url.")
 
-    # Check for the presence of '-i' when '-s' or '-r' is specified
-    if (args.session or args.read_interval) and not args.interactive:
-        parser.error(
-            "[Toboggan] The -s and -r arguments require the -i (interactive) argument."
-        )
+    if args.session and not args.interactive:
+        parser.error("The --session argument requires --interactive.")
 
-    password_param = None
-    password_content = None
+    if args.read_interval and not args.interactive:
+        parser.error("The --read-interval argument requires --interactive.")
 
-    if args.password:
-        # Try the formats `"key"="value"` or `'key'='value'`
-        if match := re.match(r'["\']?(.*?)["\']?=["\']?(.*?)["\']?$', args.password):
-            password_param, password_content = match.groups()
-        else:
-            # Try the second format `key=value`
-            password_parts = args.password.split("=", 1)
-            if len(password_parts) == 2:
-                password_param, password_content = password_parts
+    # Parse parameters
+    request_parameters = {}
+    if args.params:
+        for param in args.params:
+            if "=" in param:
+                key, value = param.split("=", 1)
+                request_parameters[key] = value
             else:
-                password_param = "ps"
-                password_content = password_parts[0]
+                parser.error(f"Invalid parameter format: {param}. Use key=value.")
 
+    # Module handling
     module_path_or_name = args.module
     if args.os:
         module_path_or_name = "snippet"
     elif args.url:
-        module_path_or_name = "webshell"
+        module_path_or_name = "webshell__"
+        module_path_or_name += "POST" if args.post else "GET"
 
     # Load the module
     module_instance = executor.Module(
         module_path=module_path_or_name,
         url=args.url,
-        password_param=password_param,
-        password_content=password_content,
+        request_parameters=request_parameters,
+        command_parameter=args.cmd_param,
         burp_proxy=args.burp,
     )
 

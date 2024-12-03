@@ -28,31 +28,14 @@ class Module:
         self,
         module_path: str = None,
         url: str = None,
-        password_param: str = None,
-        password_content: str = None,
+        request_parameters: dict = None,
+        command_parameter: str = "cmd",
         burp_proxy: bool = False,
     ) -> None:
-        """
-        Initializes the Module class.
-
-        Args:
-            module_path (str, optional): Path to the Python module that is to be executed.
-                                        Defaults to 'webshell' if not specified.
-            url (str, optional): URL to use if a built-in module is specified.
-            password_param (str, optional): Name of the password parameter key, e.g., "pass".
-                                        If not provided but password_content is given, a default key "ps" will be used.
-            password_content (str, optional): Value of the password to be set for the module.
-                                            Will be used if a placeholder is present in the module code.
-
-        Raises:
-            FileNotFoundError: If the specified module file does not exist.
-            TypeError: If the specified file is not a Python module (does not have .py extension).
-            ValueError: If a built-in module is specified without an accompanying URL.
-        """
         self.__module_path = module_path or "webshell"
         self.__url = url
-        self.__password_param = password_param
-        self.__password_content = password_content
+        self.__request_parameters = request_parameters
+        self.__command_parameter = command_parameter
         self.__burp_proxy = burp_proxy
 
         self.__load_module()
@@ -60,17 +43,37 @@ class Module:
     # Public methods
 
     # Private methods
-    def __configure_webshell_module(self, module_code):
-        parsed_url = urlparse(self.__url)
-        query_params = parse_qs(parsed_url.query)
-        param_key = list(query_params.keys())[-1] if query_params else "cmd"
-        module_code = module_code.replace("||URL||", self.__url).replace(
-            "||PARAM_CMD||", param_key
+    def __configure_webshell_module(self, module_code: str) -> str:
+        """
+        Configures the webshell module with the provided URL and request parameters.
+
+        Args:
+            module_code (str): The module code as a string.
+
+        Returns:
+            str: The configured module code with URL and parameters substituted.
+        """
+        if not self.__url:
+            raise ValueError(
+                "[Toboggan] No URL provided. Cannot configure the webshell module."
+            )
+
+        # Replace the ||URL|| placeholder
+        module_code = module_code.replace("||URL||", self.__url)
+        module_code = module_code.replace("||PARAM_CMD||", self.__command_parameter)
+
+        # Format the parameters into a dictionary string
+        params = ", ".join(
+            [
+                f'"{key}": "{value}"'
+                for key, value in (self.__request_parameters or {}).items()
+            ]
         )
 
-        if self.__password_content is not None:
-            password = f'"{self.__password_param if self.__password_param else "ps"}": "{self.password_content}",'
-            module_code = module_code.replace("# ||PARAM_PASSWORD||", password)
+        # Replace the ||PARAMS|| placeholder
+        module_code = module_code.replace("# ||PARAMS||", params)
+
+        # print(module_code)
 
         return module_code
 
@@ -94,10 +97,10 @@ class Module:
         # Check for built-in module
         built_in_module_path = Path(BUILT_IN_MODULES_DIR) / (self.__module_path + ".py")
         if built_in_module_path.exists():
-            print(f"[Toboggan] Using built-in method {module_name}.")
+            print(f"[Toboggan] Using built-in module {module_name}.")
             module_code = built_in_module_path.read_text(encoding="utf-8")
 
-            if self.__module_path == "webshell":
+            if self.__module_path.startswith("webshell"):
                 if self.__url is None:
                     raise ValueError(
                         "[Toboggan] No url provided. Cannot handle the webshell."
@@ -123,22 +126,24 @@ class Module:
         # Apply Burp Proxy configuration
         if self.__burp_proxy:
             print("[Toboggan] All requests will be transmitted through Burp proxy.")
-            if module_name == 'snippet':
-                module_code = module_code.replace('if False', 'if True')
+            if module_name == "snippet":
+                module_code = module_code.replace("if False", "if True")
             else:
                 if "# ||BURP||" not in module_code:
                     print("[Toboggan] '# ||BURP||' placeholder not found.")
                 else:
                     module_code = module_code.replace(
-                    "# ||BURP||",
-                    'proxies={"http://": "http://127.0.0.1:8080", "https://": "http://127.0.0.1:8080"},',
-                )
+                        "# ||BURP||",
+                        'proxies={"http://": "http://127.0.0.1:8080", "https://": "http://127.0.0.1:8080"},',
+                    )
 
         # Load the module
-        module = types.ModuleType(name=module_name)
-        exec(module_code, module.__dict__)
+        current_module = types.ModuleType(name=module_name)
+        exec(module_code, current_module.__dict__)
 
-        if not hasattr(module, "execute") or not callable(getattr(module, "execute")):
+        if not hasattr(current_module, "execute") or not callable(
+            getattr(current_module, "execute")
+        ):
             raise TypeError(
                 f"The module {module_name} does not contain a callable 'execute' method."
             )
@@ -147,28 +152,20 @@ class Module:
 
         # Check if required parameters are present in the 'execute' method
         if not all(
-            param in inspect.signature(module.execute).parameters
+            param in inspect.signature(current_module.execute).parameters
             for param in required_params
         ):
             raise TypeError(
                 f"The 'execute' method in {module_name} does not have the expected parameters: {', '.join(required_params)}."
             )
 
-        self.__module = module
+        self.__module = current_module
         print(f"[Toboggan] Module {module_name} loaded 💾.")
 
     # Properties
     @property
     def module(self):
         return self.__module
-
-    @property
-    def module_name(self) -> str:
-        return self.__module_name
-
-    @property
-    def module_code(self) -> str:
-        return self.__module_code
 
 
 class Executor:
@@ -223,6 +220,9 @@ class Executor:
                 if "414 Request-URI" in str(error):
                     break
 
+                if "302" in str(error):
+                    break
+
                 if not retry:
                     return
 
@@ -245,7 +245,7 @@ class Executor:
                 result = self.__os_handler.unobfuscate_result(result)
             except ValueError as error:
                 raise ValueError(
-                    f"Unobfuscation of the received output failed.\n\t-Command: {command!r}\n\t-Result: {result!r}"
+                    f"Unobfuscation of the received output failed.\n\t• Command: {command!r}\n\t• Result: {result!r}"
                 ) from error
 
         return result

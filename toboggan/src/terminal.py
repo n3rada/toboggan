@@ -11,7 +11,7 @@ from prompt_toolkit.cursor_shapes import CursorShape
 class Shell:
     def __init__(
         self,
-        commands: "commands.Commands",
+        commands: commands.Commands,
         interactive: bool = False,
         read_interval: float = 0.4,
         session_identifier: str = None,
@@ -46,11 +46,11 @@ class Shell:
                     continue
             except KeyboardInterrupt:
                 if keyboard_interruption == 3:
-                    print(f"[Toboggan] Emergency exit received. ")
+                    print("[Toboggan] Emergency exit received. ")
                     self.__commands.terminate()
                 keyboard_interruption += 1
                 print(
-                    f"[Toboggan] Keyboard interruption received. Not exiting.",
+                    "[Toboggan] Keyboard interruption received. Not exiting.",
                     flush=True,
                 )
                 continue

