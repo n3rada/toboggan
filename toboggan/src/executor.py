@@ -280,9 +280,9 @@ class Executor:
         start_time = time.time()
 
         try:
-            self.execute(command="whoami", timeout=5)
+            self.execute(command="", timeout=5)
         except Exception as error:
-            print(f"[Toboggan] Impossible to reach the target 🎯.")
+            print("[Toboggan] Impossible to reach the target 🎯.")
             print(f"[Toboggan] Root cause: {error}")
             return False
         else:
@@ -308,11 +308,13 @@ class Executor:
         """
         result = self.__module.execute(command="PATH")
 
+        print(f"[Toboggan] Guessing OS with output: {result}")
+
         if "not recognized as the name of a cmdlet" in result:
             print("[Toboggan] Detected PowerShell behavior; assuming Windows OS 🖥️.")
             return "windows"
 
-        if "PATH=C:\Windows\system32;" in result:
+        if r"C:\Windows\system32;" in result:
             print("[Toboggan] Detected DOS behavior; assuming Windows OS 🖥️.")
             return "windows"
 

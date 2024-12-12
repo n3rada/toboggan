@@ -452,24 +452,24 @@ class WindowsHandler(OSHandler):
     AES_DECRYPT = r"function B64ToByte($b64){[Convert]::FromBase64String($b64)}$eb=B64ToByte '{ENCRYPTED}';$kb=B64ToByte '{KEY}';$iv=B64ToByte '{IV}';$aes=New-Object Security.Cryptography.AesManaged;$aes.Mode='CBC';$aes.Padding='PKCS7';$aes.BlockSize=128;$aes.KeySize=128;$aes.Key=$kb;$aes.IV=$iv;$d=$aes.CreateDecryptor().TransformFinalBlock($eb,0,$eb.Length);try{&([scriptblock]::Create([Text.Encoding]::UTF8.GetString($d)))}catch{$_}"
 
     def prepare_command(self, command: str) -> str:
-        encrypted, key, iv = utils.aes_encrypt(command=command)
+        # encrypted, key, iv = utils.aes_encrypt(command=command)
 
-        command = (
-            self.AES_DECRYPT.replace("{ENCRYPTED}", encrypted)
-            .replace("{KEY}", key)
-            .replace("{IV}", iv)
-        )
+        # command = (
+        #     self.AES_DECRYPT.replace("{ENCRYPTED}", encrypted)
+        #     .replace("{KEY}", key)
+        #     .replace("{IV}", iv)
+        # )
 
-        # Prepare last command
-        powershell_command = f"powershell -noni -nop -ep bypass -e {utils.base64_for_powershell(command=command)}"
+        # # Prepare last command
+        # powershell_command = f"powershell -noni -nop -ep bypass -e {utils.base64_for_powershell(command=command)}"
 
-        # Problem remaining is the CLIXML output
-        return powershell_command
+        # # Problem remaining is the CLIXML output
+        return command
 
     def unobfuscate_result(self, result: str) -> str:
         if "contains malicious content" in result:
             print(
-                f"[Toboggan] A malicious content has been blocked by the antivirus software."
+                "[Toboggan] A malicious content has been blocked by the antivirus software."
             )
             return
 
@@ -637,7 +637,7 @@ class WindowsHandler(OSHandler):
 
     def __analyse_path_variable(self) -> None:
         raw_path = self._execute(command="$env:PATH").strip()
-        print(f"[Toboggan] Binary and script searching order (PATH):")
+        print("[Toboggan] Binary and script searching order (PATH):")
         for index, entry in enumerate(raw_path.split(";"), start=1):
             print(f"\t{index}. {entry}")
 

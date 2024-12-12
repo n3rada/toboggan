@@ -3,7 +3,6 @@
 # Built-in imports
 import argparse
 import sys
-import re
 
 # Local library imports
 from toboggan.src import terminal, target, executor, commands
@@ -140,6 +139,11 @@ def run() -> None:
     # Parse arguments
     args = parser.parse_args()
 
+    if len(sys.argv) == 1:
+        print("[Toboggan] No arguments provided.\n")
+        parser.print_help()
+        sys.exit(0)
+
     # Add validation for grouped arguments
     if args.url:
         if not args.params and not args.cmd_param:
@@ -194,6 +198,7 @@ def run() -> None:
 
     # You can instanciate a target that implement the Executor
     target_instance = target.Target(command_executor=executor_instance)
+
     # Thus, instanciate a Command class that implement the Target one's
     commands_instance = commands.Commands(
         target=target_instance, prefix=args.alias_prefix
