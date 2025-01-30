@@ -114,14 +114,17 @@ class Aliases:
         """
         shell_path = "/bin/bash"
         # Break the `upgrade` command for UNIX into parts
-        python3_upgrade = (
-            f"""/usr/bin/python3 -c 'import pty; pty.spawn("{shell_path}")'"""
-        )
+        python3_full_upgrade = f"$(command -v python3) -c 'import os,pty,signal; [signal.signal(x, signal.SIG_DFL) for x in (signal.SIGTTOU, signal.SIGTTIN, signal.SIGTSTP)]; pty.spawn(\"{shell_path}\")'"
+
         python_upgrade = (
-            f"""/usr/bin/python -c 'import pty; pty.spawn("{shell_path}")'"""
+            f"""$(command -v python) -c 'import pty; pty.spawn("{shell_path}")'"""
         )
         script_upgrade = f"SHELL={shell_path} script -q /dev/null"
-        return f"{python3_upgrade} || {python_upgrade} || {script_upgrade}"
+        expect_upgrade = "expect -c 'spawn /bin/bash; interact'"
+
+        return " || ".join(
+            [python3_full_upgrade, python_upgrade, script_upgrade, expect_upgrade]
+        )
 
     def __windows_upgrade(self) -> str:
         """
