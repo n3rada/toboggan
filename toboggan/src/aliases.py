@@ -114,8 +114,12 @@ class Aliases:
         """
         shell_path = "/bin/bash"
         # Break the `upgrade` command for UNIX into parts
-        python3_upgrade = f"""python3 -c 'import pty; pty.spawn("{shell_path}")'"""
-        python_upgrade = f"""python -c 'import pty; pty.spawn("{shell_path}")'"""
+        python3_upgrade = (
+            f"""/usr/bin/python3 -c 'import pty; pty.spawn("{shell_path}")'"""
+        )
+        python_upgrade = (
+            f"""/usr/bin/python -c 'import pty; pty.spawn("{shell_path}")'"""
+        )
         script_upgrade = f"SHELL={shell_path} script -q /dev/null"
         return f"{python3_upgrade} || {python_upgrade} || {script_upgrade}"
 

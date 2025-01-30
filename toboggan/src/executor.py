@@ -372,7 +372,7 @@ class Executor:
         last_successful_chunk_size = min_chunk_size
 
         print(
-            f"[Toboggan] Searching for best chunk size using dichotomy between 1 KiB to 1 MiB ... 🧮"
+            "[Toboggan] Searching for best chunk size using dichotomy between 1 KiB to 1 MiB ... 🧮"
         )
 
         while min_chunk_size <= max_chunk_size and (
