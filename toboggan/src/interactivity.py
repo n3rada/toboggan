@@ -127,11 +127,11 @@ class UnixNamedPipe(Interactivity):
             print(
                 f"[Toboggan] Sending SIGTERM signal to session {self.__session} processes ✋."
             )
-            self.__target.executor.execute(
+            self.__target.executor.remote_execute(
                 command=f"/usr/bin/pkill -TERM -f '/usr/bin/tail -f {self.__stdin}'",
             )
             print("[Toboggan] Removing the stdin and stdout files 🧹.")
-            self.__target.executor.execute(
+            self.__target.executor.remote_execute(
                 command=f"/bin/rm -rf {self.__remote_working_directory}",
             )
         else:
@@ -155,7 +155,7 @@ class UnixNamedPipe(Interactivity):
         b64command = base64.b64encode(f"{command.rstrip()}\n".encode("utf-8")).decode(
             "utf-8"
         )
-        self.__target.executor.execute(
+        self.__target.executor.remote_execute(
             command=f"/bin/echo '{b64command}'|/usr/bin/base64 -d > {self.__stdin}"
         )
 
@@ -168,17 +168,17 @@ class UnixNamedPipe(Interactivity):
         Returns:
             None
         """
-        self.__target.executor.execute(
+        self.__target.executor.remote_execute(
             command=f"mkdir {self.__remote_working_directory}"
         )
 
-        self.__target.executor.execute(
+        self.__target.executor.remote_execute(
             command=f"/usr/bin/pkill -TERM -f '/usr/bin/tail -f {self.__stdin}'",
         )
 
         # Since mkfifo isn't a command you would typically need for booting or system recovery,
         # it's placed in /usr/bin/ in some systems.
-        if problem := self.__target.executor.execute(
+        if problem := self.__target.executor.remote_execute(
             command=f"/usr/bin/mkfifo {self.__stdin}"
         ).strip():
             if "File exists" in problem:
@@ -230,12 +230,14 @@ class UnixNamedPipe(Interactivity):
         This method is intended to be used as a target for threading.
         """
         while not self.__stop_thread:
-            command_output = self.__target.executor.execute(f"cat {self.__stdout}")
+            command_output = self.__target.executor.remote_execute(
+                f"cat {self.__stdout}"
+            )
 
             if command_output:
                 print(command_output, end="", flush=True)
 
-                self.__target.executor.execute(command=f"true > {self.__stdout}")
+                self.__target.executor.remote_execute(command=f"true > {self.__stdout}")
 
             time.sleep(self.__read_interval + self.__get_jitter())
 

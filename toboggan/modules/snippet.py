@@ -32,12 +32,11 @@ def execute(command: str, timeout: float = None) -> str:
     env = os.environ.copy()
 
     if False:
-        env['http_proxy'] = 'http://127.0.0.1:8080'
-        env['https_proxy'] = 'http://127.0.0.1:8080'
+        env["http_proxy"] = "http://127.0.0.1:8080"
+        env["https_proxy"] = "http://127.0.0.1:8080"
 
+    full_command = BASE_CMD.replace("||cmd||", quote(command))
 
     return subprocess.check_output(
-        BASE_CMD.replace("||cmd||", quote(command)), stderr=subprocess.STDOUT, shell=True, timeout=timeout, env=env
+        full_command, stderr=subprocess.STDOUT, shell=True, timeout=timeout, env=env
     ).decode("utf-8")
-
-

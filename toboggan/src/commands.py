@@ -121,7 +121,7 @@ class Commands:
         if final_command is None:
             return
 
-        return self.__target.executor.execute(
+        return self.__target.executor.remote_execute(
             command=final_command, timeout=30, retry=False
         )
 
@@ -225,7 +225,7 @@ class Commands:
         else:
             command = f"cat {remote_path}"
 
-        file_contents = self.__target.executor.execute(command).strip()
+        file_contents = self.__target.executor.remote_execute(command).strip()
 
         if file_contents:
             pyperclip.copy(file_contents)

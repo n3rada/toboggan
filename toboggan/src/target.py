@@ -29,7 +29,7 @@ class Target:
         if self.__os == "unix":
             self.__executor.set_os(
                 os_handler=operating_systems.UnixHandler(
-                    execute_method=command_executor.execute
+                    execute_method=command_executor.remote_execute
                 )
             )
             self.__remote_wd = "/dev/shm"
@@ -37,7 +37,7 @@ class Target:
         else:
             self.__executor.set_os(
                 os_handler=operating_systems.WindowsHandler(
-                    execute_method=command_executor.execute
+                    execute_method=command_executor.remote_execute
                 )
             )
             self.__remote_wd = "$env:TEMP"

@@ -7,7 +7,6 @@ import time
 import types
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.parse import parse_qs, urlparse
 import socket
 
 # Third party library imports
@@ -197,7 +196,9 @@ class Executor:
         )
 
     # Public methods
-    def execute(self, command: str, timeout: float = None, retry: bool = True) -> str:
+    def remote_execute(
+        self, command: str, timeout: float = None, retry: bool = True
+    ) -> str:
         """Executes the specified command within the module.
 
         Args:
@@ -210,7 +211,9 @@ class Executor:
         result = ""
 
         if self.__os_handler is not None and self.__obfuscation:
-            command = self.__os_handler.prepare_command(command=command)
+            command = self.__os_handler.prepare_command(command)
+
+            # print(f"|-> {command}")
 
         for attempt in range(5):
             try:
@@ -243,10 +246,11 @@ class Executor:
         if self.__obfuscation and self.__os_handler and result:
             try:
                 result = self.__os_handler.unobfuscate_result(result)
-            except ValueError as error:
-                raise ValueError(
-                    f"Unobfuscation of the received output failed.\n\t• Command: {command!r}\n\t• Result: {result!r}"
-                ) from error
+            except ValueError:
+                print(
+                    f"[Toboggan] Unobfuscation of the received output failed.\n\t• Command: {command!r}\n\t• Result: {result!r}"
+                )
+                raise
 
         return result
 
@@ -280,7 +284,7 @@ class Executor:
         start_time = time.time()
 
         try:
-            self.execute(command="", timeout=5)
+            self.remote_execute(command="", timeout=5)
         except Exception as error:
             print("[Toboggan] Impossible to reach the target 🎯.")
             print(f"[Toboggan] Root cause: {error}")

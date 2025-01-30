@@ -17,6 +17,10 @@ class OSHandler(ABC):
 
     def __init__(self, execute_method) -> None:
         self._execute = execute_method
+        self._user = ""
+        self._hostname = ""
+        self._pwd = ""
+        self._system_info = ""
 
     # Public methods
     def fetch_initial_details(self) -> None:
@@ -141,8 +145,7 @@ class UnixHandler(OSHandler):
         obfuscated_command = f"echo '{obfuscated_command}'|base64 -d|$0"
 
         # Replacing all the spaces with ${IFS} value, to evade most of the spaces control.
-        # Currently commented because some time it breaks
-        # obfuscated_command = obfuscated_command.replace(" ", "${IFS}")
+        obfuscated_command = obfuscated_command.replace(" ", "${IFS}")
 
         # Our command is ready
         return obfuscated_command
@@ -159,7 +162,9 @@ class UnixHandler(OSHandler):
             output = unzipped_result.decode("utf-8", errors="replace")
             return output
         except Exception as error:
-            raise ValueError(f"Error decoding received result: {str(error)!r}")
+            raise ValueError(
+                f"Error decoding received result: {str(error)!r}"
+            ) from error
 
     def get_encoded_file(self, remote_path: str, chunk_size: int = 4096) -> str:
         """
@@ -333,7 +338,7 @@ class UnixHandler(OSHandler):
 
     def __analyse_path_variable(self) -> None:
         raw_path = self._execute(command="/bin/echo $PATH").strip()
-        print(f"[Toboggan] Binary and script searching order (PATH):")
+        print("[Toboggan] Binary and script searching order (PATH):")
         for index, entry in enumerate(raw_path.split(":"), start=1):
             print(f"\t{index}. {entry}")
 
