@@ -9,7 +9,7 @@ class Aliases:
 
     def __init__(self, os: str, prefix: str = None):
         if prefix is None:
-            raise ValueError(f"A prefix must be defined for Aliases initialisation.")
+            raise ValueError("A prefix must be defined for Aliases initialisation.")
         # The prefix to call for the alias
         self.__prefix = prefix
 

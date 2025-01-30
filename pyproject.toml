@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "toboggan"
-version = "2.0"
+version = "2.1.0"
 description = "CLI tool designed to wrap modules for Remote Command Execution (RCE). It enables interactive shell functionality, making it ideal for constrained environments (e.g., firewalls) where establishing a reverse shell is challenging."
 authors = ["n3rada"]
 license = "MIT license"

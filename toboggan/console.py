@@ -118,7 +118,7 @@ def run() -> None:
         "--alias-prefix",
         required=False,
         type=str,
-        default=None,
+        default="",
         help="Desired alias prefix to use.",
     )
     advanced_group.add_argument(
