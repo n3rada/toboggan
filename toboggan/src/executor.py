@@ -284,7 +284,7 @@ class Executor:
         start_time = time.time()
 
         try:
-            self.remote_execute(command="", timeout=5)
+            self.remote_execute(command=".", timeout=5)
         except Exception as error:
             print("[Toboggan] Impossible to reach the target 🎯.")
             print(f"[Toboggan] Root cause: {error}")
