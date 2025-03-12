@@ -1,21 +1,9 @@
-"""
-snippet.py
-------------------------
-
-Module containing utilities to interact with system code.
-
-Functions:
-    - execute(command: str, timeout: float = None) -> str
-"""
-
 # Buit-in imports
 import subprocess
-import os
 from urllib.parse import quote
 
-# This will be set dynamically based on the user input
+# This will be set dynamically
 BASE_CMD = None
-
 
 def execute(command: str, timeout: float = None) -> str:
     """
@@ -29,14 +17,8 @@ def execute(command: str, timeout: float = None) -> str:
         str: Output of the command.
     """
 
-    env = os.environ.copy()
-
-    if False:
-        env["http_proxy"] = "http://127.0.0.1:8080"
-        env["https_proxy"] = "http://127.0.0.1:8080"
-
     full_command = BASE_CMD.replace("||cmd||", quote(command))
 
     return subprocess.check_output(
-        full_command, stderr=subprocess.STDOUT, shell=True, timeout=timeout, env=env
+        full_command, stderr=subprocess.STDOUT, shell=True, timeout=timeout
     ).decode("utf-8")

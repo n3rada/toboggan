@@ -2,215 +2,240 @@
 
 # Built-in imports
 import argparse
-import sys
+import traceback
+import os
+import types
+import inspect
+from pathlib import Path
 
 # Local library imports
-from toboggan.src import terminal, target, executor, commands
+from toboggan.core import logbook
+from toboggan.core import loader
+from toboggan.core import executor
+from toboggan.core import terminal
+
+from toboggan.core.utils import banner
 
 
-def banner() -> None:
-    print(
-        r"""
-            _____      _
-           /__   \___ | |__   ___   __ _  __ _  __ _ _ __
-             / /\/ _ \| '_ \ / _ \ / _` |/ _` |/ _` | '_ \
-            / / | (_) | |_) | (_) | (_| | (_| | (_| | | | |
-            \/   \___/|_.__/ \___/ \__, |\__, |\__,_|_| |_|
-                                    |___/ |___/
-             Remote command execution module wrapping tool.
-                              @n3rada
-    """
-    )
-
-
-def run() -> None:
+def run() -> int:
     parser = argparse.ArgumentParser(
         prog="toboggan",
         add_help=True,
-        description="A Python module wrapper for RCEs that can be leveraged to an interactive shell.",
+        description="Bring intelligence to any remote command execution (RCE).",
     )
 
     # Argument Groups
-    module_group = parser.add_argument_group(
-        "Module Configuration", "Options to configure the execution module."
+    execution_group = parser.add_argument_group(
+        "Execution Configuration", "Options to configure how commands are executed."
     )
-    request_group = parser.add_argument_group(
-        "Request Configuration", "Options for crafting and sending requests."
+    named_pipe_group = parser.add_argument_group(
+        "Named Pipe Settings", "Options to manage named pipe."
     )
-    interactive_group = parser.add_argument_group(
-        "Interactive Settings", "Options to manage interactive sessions."
+    system_group = parser.add_argument_group(
+        "System Configuration", "Specify the target operating system."
     )
     advanced_group = parser.add_argument_group(
         "Advanced Options", "Additional advanced or debugging options."
     )
 
-    # Module configuration arguments
-    module_group.add_argument(
+    execution_group.add_argument(
+        "--shell",
+        type=str,
+        default=None,
+        help="OS shell command with placeholder ||cmd||.",
+    )
+    execution_group.add_argument(
         "-m",
         "--module",
         type=str,
         default=None,
-        help="Module path to be imported and executed or built-in module name.",
+        help="Module path to be imported and executed.",
     )
-    module_group.add_argument(
+    execution_group.add_argument(
+        "-r",
+        "--request",
+        type=str,
+        default=None,
+        help="Burp request with placeholder ||cmd||.",
+    )
+    execution_group.add_argument(
+        "-b64",
+        "--base64",
+        action="store_true",
+        required=False,
+        help="Base64-encode every command before execution.",
+    )
+    execution_group.add_argument(
+        "--hide",
+        action="store_true",
+        required=False,
+        help="Obfuscate the command to execute using hide and unhide actions.",
+    )
+
+    # Named Pipe Settings
+    named_pipe_group.add_argument(
+        "--fifo",
+        action="store_true",
+        required=False,
+        help="Start a semi-interactive session using a FIFO (named pipe).",
+    )
+
+    named_pipe_group.add_argument(
+        "-rid",
+        "--read-interval",
+        type=float,
+        default=0.4,
+        help="Interval (in seconds) for reading output from the named pipe. Default is 0.4s.",
+    )
+
+    named_pipe_group.add_argument(
+        "-i",
+        "--stdin",
+        type=str,
+        default="tampi",
+        help="Input file name, where commands goes.",
+    )
+
+    named_pipe_group.add_argument(
         "-o",
+        "--stdout",
+        type=str,
+        default="tampo",
+        help="Output file name, where commands output goes.",
+    )
+
+    system_group.add_argument(
         "--os",
         type=str,
+        choices=["unix", "windows"],
+        required=False,
+        help="Specify the target operating system (unix or windows).",
+    )
+    system_group.add_argument(
+        "-wd",
+        "--working-directory",
+        type=str,
         default=None,
-        help="OS command with placeholder ||cmd||.",
+        required=False,
+        help="Specify the target working directory.",
     )
 
-    # Request configuration arguments
-    request_group.add_argument(
-        "-u",
-        "--url",
-        type=str,
-        default=None,
-        help="URL to use if a built-in module is specified. Replace ||URL|| placeholder.",
-    )
-    request_group.add_argument(
-        "--post",
-        action="store_true",
-        required=False,
-        help="Specify that the URL request should be a POST request (only with -u/--url).",
-    )
-    request_group.add_argument(
-        "-p",
-        "--params",
-        nargs="*",
-        help="Additional parameters as key=value pairs.",
-    )
-    request_group.add_argument(
-        "--cmd-param",
-        type=str,
-        default="cmd",
-        help="Specify the name of the command parameter (e.g., cmd, command, c).",
-    )
-
-    # Interactive session arguments
-    interactive_group.add_argument(
-        "-i",
-        "--interactive",
-        action="store_true",
-        required=False,
-        help="Start an interactive session.",
-    )
-    interactive_group.add_argument(
-        "-s",
-        "--session",
-        required=False,
-        type=str,
-        default=None,
-        help="Session to connect.",
-    )
-    interactive_group.add_argument(
-        "-r",
-        "--read-interval",
-        required=False,
-        type=float,
-        default=None,
-        help="Reading interval for interactivity.",
-    )
-
-    # Advanced options
-    advanced_group.add_argument(
-        "-a",
-        "--alias-prefix",
-        required=False,
-        type=str,
-        default="",
-        help="Desired alias prefix to use.",
-    )
-    advanced_group.add_argument(
-        "-c",
-        "--clear-commands",
-        action="store_true",
-        required=False,
-        help="Send unobfuscated commands.",
-    )
     advanced_group.add_argument(
         "-b",
         "--burp",
         action="store_true",
         required=False,
-        help="Pass the traffic through Burp Suite if '# ||BURP||' placeholder is present in the module.",
+        help="Pass the traffic through Burp Suite default proxy (i.e., 127.0.0.1:8080).",
+    )
+    advanced_group.add_argument(
+        "--debug",
+        action="store_true",
+        required=False,
+        help="Enable debug logging mode.",
     )
 
     # Parse arguments
     args = parser.parse_args()
 
-    if len(sys.argv) == 1:
-        print("[Toboggan] No arguments provided.\n")
-        parser.print_help()
-        sys.exit(0)
+    print(banner())
 
-    # Add validation for grouped arguments
-    if args.url:
-        if not args.params and not args.cmd_param:
-            parser.error(
-                "URL-based execution requires parameters (--params) or a command parameter (--cmd-param)."
+    env = os.environ
+
+    # Set log level to DEBUG if --debug is passed
+    if args.debug:
+        env["LOG_LEVEL"] = "DEBUG"
+
+    logger = logbook.get_logger()
+
+    if args.burp:
+        env["http_proxy"] = "http://127.0.0.1:8080"
+        env["https_proxy"] = "http://127.0.0.1:8080"
+
+        logger.info("HTTP proxies set to '127.0.0.1:8080'")
+
+    execution_module = None
+
+    if args.shell:
+        execution_module = loader.load_module("os_command")
+        execution_module.BASE_CMD = args.shell
+        logger.info("Use OS system command as base.")
+    elif args.request:
+        execution_module = loader.load_module("burpsuite")
+        execution_module.BURP_REQUEST_OBJECT = execution_module.BurpRequest(
+            args.request
+        )
+        logger.info("Use Burpsuite request as base.")
+    elif args.module:
+        # Handling external module path
+        logger.info(f"Searching for provided module path: '{args.module}'.")
+        module_path_obj = Path(args.module)
+
+        if not module_path_obj.exists():
+            logger.error(f"The specified file {module_name} does not exist.")
+            return 1
+
+        if module_path_obj.suffix != ".py":
+            logger.error("The specified file is not a Python module 🐍.")
+            return 1
+
+        module_code = module_path_obj.read_text(encoding="utf-8")
+        module_name = module_path_obj.stem
+
+        # Load the module
+        execution_module = types.ModuleType(name=module_name)
+        exec(module_code, execution_module.__dict__)
+
+        if not hasattr(execution_module, "execute") or not callable(
+            getattr(execution_module, "execute")
+        ):
+            logger.error(
+                f"The module {module_name} does not contain a callable 'execute' method."
             )
-        if args.post and not args.url:
-            parser.error("The --post argument can only be used with --url.")
+            return 1
 
-    if args.session and not args.interactive:
-        parser.error("The --session argument requires --interactive.")
+        required_params = ["command", "timeout"]
 
-    if args.read_interval and not args.interactive:
-        parser.error("The --read-interval argument requires --interactive.")
+        # Check if required parameters are present in the 'execute' method
+        if not all(
+            param in inspect.signature(execution_module.execute).parameters
+            for param in required_params
+        ):
+            logger.error(
+                f"The 'execute' method in {module_name} does not have the expected parameters: {', '.join(required_params)}."
+            )
+            return 1
+    else:
+        logger.error("No module provided. I cannot slide on anything.")
+        return 1
 
-    # Parse parameters
-    request_parameters = {}
-    if args.params:
-        for param in args.params:
-            if "=" in param:
-                key, value = param.split("=", 1)
-                request_parameters[key] = value
-            else:
-                parser.error(f"Invalid parameter format: {param}. Use key=value.")
+    if args.base64:
+        logger.info("🔐 Base64 encoding enabled for all commands.")
 
-    # Module handling
-    module_path_or_name = args.module
-    if args.os:
-        module_path_or_name = "snippet"
-    elif args.url:
-        module_path_or_name = "webshell__"
-        module_path_or_name += "POST" if args.post else "GET"
+    try:
+        command_executor = executor.Executor(
+            execute_method=execution_module.execute,
+            working_directory=args.working_directory,
+            target_os=args.os,
+            base64_wrapping=args.base64,
+            hide=args.hide,
+        )
 
-    # Load the module
-    module_instance = executor.Module(
-        module_path=module_path_or_name,
-        url=args.url,
-        request_parameters=request_parameters,
-        command_parameter=args.cmd_param,
-        burp_proxy=args.burp,
-    )
+        remote_terminal = terminal.Terminal(executor=command_executor)
 
-    if args.os is not None:
-        module_instance.module.BASE_CMD = args.os
+        if args.fifo and command_executor.target.os == "unix":
+            logger.info(
+                "🤏 Making your dumb shell semi-interactive using 'fifo' action."
+            )
+            remote_terminal.start_named_pipe(
+                action_class=command_executor.action_manager.get_action("fifo"),
+                read_interval=args.read_interval,
+                command_in=args.stdin,
+                command_out=args.stdout,
+            )
 
-    # Define an executor
-    executor_instance = executor.Executor(module=module_instance)
+        remote_terminal.start()
+    except Exception as exc:
+        error_trace = traceback.format_exc()
+        logger.error(f"Unhandled exception occurred: {exc}\n{error_trace}")
 
-    if args.clear_commands:
-        print("[Toboggan] Clear text mode activated.")
-        executor_instance.obfuscation = False
-
-    # You can instanciate a target that implement the Executor
-    target_instance = target.Target(command_executor=executor_instance)
-
-    # Thus, instanciate a Command class that implement the Target one's
-    commands_instance = commands.Commands(
-        target=target_instance, prefix=args.alias_prefix
-    )
-
-    # Finally, you can create a Shell object that implement the Commands instance
-    remote_shell = terminal.Shell(
-        commands=commands_instance,
-        interactive=(args.session or args.interactive),
-        read_interval=args.read_interval,
-        session_identifier=args.session,
-    )
-
-    # And start-it
-    remote_shell.start()
+    logger.success("Toboggan execution completed.")
