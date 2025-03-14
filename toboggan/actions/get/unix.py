@@ -6,8 +6,9 @@ import tarfile
 from pathlib import Path
 import tempfile
 
-# Related third party imports
+# Third party library imports
 from tqdm import tqdm
+from wonderwords import RandomWord
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
@@ -57,8 +58,8 @@ class GetAction(BaseAction):
         self._logger.info(f"💾 File will be saved to: {save_path}")
 
         # Step 2: Compress and Base64-encode the remote file
-        random_file_name = "".join(random.choices(string.hexdigits.lower(), k=8))
-        remote_archive = f"{self._executor.working_directory}/{random_file_name}.tar.gz"
+        random_file_name = RandomWord().word(word_min_length=4)
+        remote_archive = f"{self._executor.working_directory}/{random_file_name}"
         remote_base64_path = f"{remote_archive}.b64"
 
         # Tar and encode

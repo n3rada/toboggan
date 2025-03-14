@@ -4,7 +4,6 @@ import gzip
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
-from toboggan.core import utils
 
 
 class UnHideAction(BaseAction):

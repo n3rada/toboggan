@@ -195,7 +195,22 @@ files = [
     {file = "wcwidth-0.2.13.tar.gz", hash = "sha256:72ea0c06399eb286d978fdedb6923a9eb47e1c486ce63e9b4e64fc18303972b5"},
 ]
 
+[[package]]
+name = "wonderwords"
+version = "2.2.0"
+description = "A python package for random words and sentences in the english language"
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "wonderwords-2.2.0-py3-none-any.whl", hash = "sha256:65fc665f1f5590e98f6d9259414ea036bf1b6dd83e51aa6ba44473c99ca92da1"},
+    {file = "wonderwords-2.2.0.tar.gz", hash = "sha256:0b7ec6f591062afc55603bfea71463afbab06794b3064d9f7b04d0ce251a13d0"},
+]
+
+[package.extras]
+cli = ["rich (==9.10.0)"]
+
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "901d21bc00efba5f08b462203219b4b07ba8830ae52d876fe7404e9f718e05b9"
+content-hash = "bbd3ac4dd2060baa0f0bea8b137e8b15084b2cf88acd8ca95cfc2072f5b161eb"

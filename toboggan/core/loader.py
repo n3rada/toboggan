@@ -12,27 +12,31 @@ if str(BUILTIN_DIR) not in sys.path:
     sys.path.insert(0, str(BUILTIN_DIR))
 
 
-def load_module(module_name: str, module_path: Path = None) -> ModuleType:
+def load_module(module_name: str = None, module_path: Path = None) -> ModuleType:
     """
     Dynamically loads a module from either built-in handlers or a user-provided path.
 
     Args:
-        module_name (str): The name of the module.
+        module_name (str, optional): The name of the module. If None, it's derived from module_path.
         module_path (Path, optional): The path to the module. If None, it tries to load from built-in handlers.
 
     Returns:
         ModuleType: The loaded module.
-
-    Raises:
-        ImportError: If the module cannot be loaded.
-        AttributeError: If the module does not have a valid 'execute' function.
-        TypeError: If 'execute' does not have the correct function signature.
     """
     if module_path is None:
-        module_path = BUILTIN_DIR / f"{module_name}.py"
+        if module_name is None:
+            raise ValueError(
+                "❌ Either 'module_name' or 'module_path' must be provided."
+            )
+
+        module_path = BUILTIN_DIR.joinpath(f"{module_name}.py")
 
     if not module_path.exists():
-        raise ImportError(f"❌ Module '{module_name}' not found at {module_path}")
+        raise ImportError(f"❌ Module not found at {module_path}")
+
+    # If no module name, derive from the file name
+    if module_name is None:
+        module_name = module_path.stem  # Extract filename without extension
 
     spec = importlib.util.spec_from_file_location(module_name, str(module_path))
     if spec is None or spec.loader is None:
@@ -42,7 +46,7 @@ def load_module(module_name: str, module_path: Path = None) -> ModuleType:
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
 
-    # Verify the execute method presence
+    # Validate the execute method presence
     validate_execute_method(module)
 
     return module
@@ -60,7 +64,9 @@ def validate_execute_method(module: ModuleType) -> None:
         TypeError: If 'execute' does not have the correct function signature.
     """
     if not hasattr(module, "execute"):
-        raise AttributeError(f"❌ Module '{module.__name__}' does not have an 'execute' function.")
+        raise AttributeError(
+            f"❌ Module '{module.__name__}' does not have an 'execute' function."
+        )
 
     execute_func = module.execute
     signature = inspect.signature(execute_func)
@@ -68,10 +74,14 @@ def validate_execute_method(module: ModuleType) -> None:
 
     # Check if the first parameter exists and is a string
     if len(parameters) < 1 or parameters[0].annotation is not str:
-        raise TypeError(f"❌ 'execute' function in '{module.__name__}' must have a first parameter of type 'str'.")
+        raise TypeError(
+            f"❌ 'execute' function in '{module.__name__}' must have a first parameter of type 'str'."
+        )
 
     # Check if there is a second optional parameter, it must be a float
     if len(parameters) > 1:
         second_param = parameters[1]
         if second_param.default is not None and second_param.annotation is not float:
-            raise TypeError(f"❌ 'execute' function in '{module.__name__}' must have an optional second parameter of type 'float'.")
+            raise TypeError(
+                f"❌ 'execute' function in '{module.__name__}' must have an optional second parameter of type 'float'."
+            )

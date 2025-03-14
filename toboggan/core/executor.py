@@ -33,6 +33,8 @@ class Executor(metaclass=SingletonMeta):
 
         self.__base64_wrapping = base64_wrapping
 
+        self.__hide = None
+
         if target_os is None:
             self.__os = self.__guess_os()
         else:
@@ -42,10 +44,10 @@ class Executor(metaclass=SingletonMeta):
         if self.__os not in ["unix", "windows"]:
             raise ValueError("Operating System should be either unix or windows.")
 
-        self.__action_manager = action.ActionsManager(target_os=self.__os)
-
         # Cache hide/unhide action instances
         self.__hide = hide
+
+        self.__action_manager = action.ActionsManager(target_os=self.__os)
 
         if hide:
             self.__hide_action = self.__action_manager.get_action("hide")(executor=self)

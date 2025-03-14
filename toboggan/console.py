@@ -166,44 +166,18 @@ def run() -> int:
         )
         logger.info("Use Burpsuite request as base.")
     elif args.module:
-        # Handling external module path
-        logger.info(f"Searching for provided module path: '{args.module}'.")
+        logger.info(f"Use provided module: '{args.module}'.")
         module_path_obj = Path(args.module)
 
         if not module_path_obj.exists():
-            logger.error(f"The specified file {module_name} does not exist.")
+            logger.error(f"The specified file does not exist.")
             return 1
 
         if module_path_obj.suffix != ".py":
             logger.error("The specified file is not a Python module 🐍.")
             return 1
 
-        module_code = module_path_obj.read_text(encoding="utf-8")
-        module_name = module_path_obj.stem
-
-        # Load the module
-        execution_module = types.ModuleType(name=module_name)
-        exec(module_code, execution_module.__dict__)
-
-        if not hasattr(execution_module, "execute") or not callable(
-            getattr(execution_module, "execute")
-        ):
-            logger.error(
-                f"The module {module_name} does not contain a callable 'execute' method."
-            )
-            return 1
-
-        required_params = ["command", "timeout"]
-
-        # Check if required parameters are present in the 'execute' method
-        if not all(
-            param in inspect.signature(execution_module.execute).parameters
-            for param in required_params
-        ):
-            logger.error(
-                f"The 'execute' method in {module_name} does not have the expected parameters: {', '.join(required_params)}."
-            )
-            return 1
+        execution_module = loader.load_module(module_path=module_path_obj)
     else:
         logger.error("No module provided. I cannot slide on anything.")
         return 1
