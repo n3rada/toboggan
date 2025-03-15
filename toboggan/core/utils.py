@@ -9,9 +9,6 @@ import gzip
 from prompt_toolkit import shortcuts
 from prompt_toolkit.styles import Style
 
-# from Crypto.Cipher import AES
-# from Crypto.Random import get_random_bytes
-
 
 class SingletonMeta(type):
     """
@@ -76,32 +73,6 @@ def compress_with_gzip(command: str) -> bytes:
     with gzip.GzipFile(fileobj=out, mode="w") as f:
         f.write(command.encode("utf-8"))
     return out.getvalue()
-
-
-# def aes_encrypt(command: str) -> tuple:
-#     command = command.encode("utf-8")
-
-#     # Padding for the data to be AES-compatible
-#     pad = (
-#         lambda s: s
-#         + (AES.block_size - len(s) % AES.block_size)
-#         * chr(AES.block_size - len(s) % AES.block_size).encode()
-#     )
-
-#     data = pad(command)
-
-#     # AES encryption
-#     key = get_random_bytes(16)  # 128-bit AES key
-#     cipher = AES.new(key, AES.MODE_CBC)
-#     iv = cipher.iv
-#     encrypted = cipher.encrypt(data)
-
-#     # Output the encrypted data, key, and IV in base64
-#     return (
-#         base64.b64encode(encrypted).decode(),
-#         base64.b64encode(key).decode(),
-#         base64.b64encode(iv).decode(),
-#     )
 
 
 def generate_variable_length_token(min_length=3, max_length=6) -> str:

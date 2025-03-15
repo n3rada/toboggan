@@ -16,4 +16,4 @@ class UnHideAction(BaseAction):
 
         # Convert the unzipped data to a string
         output = unzipped_result.decode("utf-8", errors="replace")
-        return output
+        return output.strip()
