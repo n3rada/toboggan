@@ -25,11 +25,17 @@ class UpgradeAction(BaseAction):
 
         self._logger.info(f"🔄 Attempting to upgrade shell to: {shell_path}")
 
-        # Check for the best upgrade method
         if script_path := self._executor.remote_execute("command -v script"):
             self._logger.info(f"✅ Found script at: {script_path}")
             self._executor.os_helper.fifo_execute(
                 command=f"SHELL={shell_path} script -q /dev/null"
+            )
+            return
+
+        if expect_path := self._executor.remote_execute("command -v expect"):
+            self._logger.info(f"✅ Found expect at: {expect_path}")
+            self._executor.os_helper.fifo_execute(
+                command=f"expect -c 'spawn {shell_path}; interact'"
             )
             return
 
