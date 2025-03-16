@@ -5,11 +5,10 @@ import os
 
 # Third party library imports
 from Cryptodome.Cipher import AES
-from Cryptodome.Util.Padding import pad, unpad
+from Cryptodome.Util.Padding import pad
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
-from toboggan.core import utils
 
 
 def generate_key_iv():
@@ -48,9 +47,12 @@ class HideAction(BaseAction):
     def __init__(self, executor):
         super().__init__(executor)
 
+        self._logger.info("🔑 Generating AES key and IV for obfuscation...")
         self._AES_KEY, self._AES_IV = generate_key_iv()
+        self._logger.info(f"🔐 AES Key: {self._AES_KEY}")
+        self._logger.info(f"🔐 AES IV: {self._AES_IV}")
 
-        self._shell_path = "$(ps -p $$ -o comm=)"
+        self._shell_path = self._executor.os_helper.shell_path
 
     def run(self, command: str) -> str:
         # Verify if the user tries to control the redirection

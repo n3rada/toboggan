@@ -39,28 +39,6 @@ def banner() -> str:
     """
 
 
-def is_shell_prompt_in(command_output: str) -> bool:
-    """
-    Detects if the command output is a shell prompt.
-
-    Args:
-        command_output (str): The latest command output to analyze.
-
-    Returns:
-        bool: True if the output appears to be a shell prompt, False otherwise.
-    """
-    prompt_patterns = [
-        r"\$ $",  # Standard user bash-like prompt
-        r"# $",  # Root shell prompt
-        r"> $",  # Some interactive shells (e.g., Windows CMD)
-        r".*@.*:.*\$",  # user@host:/path$ (common for interactive shells)
-        r"┌──\((.*?)㉿(.*?)\)-\[.*\]",  # Kali-specific prompt: ┌──(user㉿hostname)-[path]
-        r"root@.*?:.*?#",  # Generic root prompt
-    ]
-
-    return any(re.search(pattern, command_output) for pattern in prompt_patterns)
-
-
 def base64_for_powershell(command: str) -> str:
     # Encode the command as UTF-16LE, PowerShell's default encoding
     encoded_command = base64.b64encode(command.encode("utf-16le")).decode("ascii")

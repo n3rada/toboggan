@@ -91,13 +91,13 @@ class ActionsManager:
 
         self.__os = target_os
 
-        self.__logger = logbook.get_logger()
+        self._logger = logbook.get_logger()
 
         self.__system_actions_path = Path(__file__).parent.parent / "actions"
-        self.__logger.debug(f"System actions path: {self.__system_actions_path}")
+        self._logger.debug(f"System actions path: {self.__system_actions_path}")
 
         self.__user_actions_path = self.__get_user_module_dir()
-        self.__logger.debug(f"User actions path: {self.__user_actions_path}")
+        self._logger.debug(f"User actions path: {self.__user_actions_path}")
 
     def get_actions(self) -> dict:
 
@@ -153,7 +153,7 @@ class ActionsManager:
         Returns:
             BaseAction instance if found, else None.
         """
-        self.__logger.info(f"Loading action named '{name}'")
+        self._logger.info(f"Loading action named '{name}'")
 
         name = f"{name}/{self.__os}"
         system_module_path = self.__system_actions_path / f"{name}.py"
@@ -161,7 +161,7 @@ class ActionsManager:
 
         # Step 1: Try loading the system action
         if action := self.load_action_from_path(system_module_path):
-            self.__logger.info(f"✅ Loaded system action")
+            self._logger.info(f"✅ Loaded system action")
             return action
 
         # Step 2: Check if a user-defined action exists
@@ -170,15 +170,13 @@ class ActionsManager:
             formatted_time = datetime.fromtimestamp(last_modified).strftime(
                 "%Y-%m-%d %H:%M:%S"
             )
-            self.__logger.info(
-                f"📝 Found user action (Last modified: {formatted_time})"
-            )
+            self._logger.info(f"📝 Found user action (Last modified: {formatted_time})")
 
             if action := self.load_action_from_path(user_module_path):
                 return action
 
         # Step 3: If no action was loaded, log an error
-        self.__logger.error(f"❌ No valid action found for '{name}'.")
+        self._logger.error(f"❌ No valid action found for '{name}'.")
         return None
 
     def load_action_from_path(self, file_path: Path) -> BaseAction:
@@ -243,18 +241,18 @@ class ActionsManager:
         Extracts function parameters from either the `run` method (for standard actions)
         or the `__init__` method (for NamedPipe-based actions).
         """
-        self.__logger.debug(f"Extracting parameters from: {file_path}")
+        self._logger.debug(f"Extracting parameters from: {file_path}")
         file_content = file_path.read_text()
 
         if re.search(r"class\s+\w+\(.*?NamedPipe.*?\):", file_content):
-            self.__logger.debug("NamedPipe class detected.")
+            self._logger.debug("NamedPipe class detected.")
             match = re.search(
                 pattern=r"def __init__\s*\(\s*self\s*,?(.*?)\):",
                 string=file_content,
                 flags=re.MULTILINE | re.DOTALL,
             )
         else:
-            self.__logger.debug("Common action detected.")
+            self._logger.debug("Common action detected.")
             match = re.search(
                 pattern=r"def run\((.*?)\):",
                 string=file_content,
@@ -265,7 +263,7 @@ class ActionsManager:
             # Extract parameter list (excluding `self`)
             params = match.group(1).split(",")[1:]
 
-            self.__logger.debug(f"Params: {params}")
+            self._logger.debug(f"Params: {params}")
 
             # Format parameters with default values
             formatted_params = []

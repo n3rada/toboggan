@@ -4,7 +4,6 @@ import time
 
 # Local application/library specific imports
 from toboggan.core.action import NamedPipe
-from toboggan.core import utils
 
 
 class FifoAction(NamedPipe):
@@ -22,14 +21,16 @@ class FifoAction(NamedPipe):
         self.tty = False
 
     def setup(self):
-        altered_mknod = self._executor.create_alterated_copy_of(
+        altered_mknod = self._executor.os_helper.create_alterated_copy_of(
             "mknod", copy_name="man"
         )
         self._executor.remote_execute(f"{altered_mknod} {self._stdin} p")
 
-        altered_tail = self._executor.create_alterated_copy_of("tail", copy_name="ls")
+        altered_tail = self._executor.os_helper.create_alterated_copy_of(
+            "tail", copy_name="ls"
+        )
 
-        altrered_shell = self._executor.create_alterated_copy_of("$0", copy_name="cat")
+        altrered_shell = self._executor.os_helper.shell_path
 
         self._executor.remote_execute(
             f"{altered_tail} -f {self._stdin}|{altrered_shell} > {self._stdout} 2>&1 &"
@@ -62,13 +63,14 @@ class FifoAction(NamedPipe):
             time.sleep(self._read_interval)
 
             if command_output := self._executor.remote_execute(
-                f"cat {self._stdout} && true > {self._stdout}", debug=False
+                f"cat {self._stdout} && true > {self._stdout}",
+                debug=False,
             ):
                 if self.tty:
                     print(command_output, end="", flush=True)
                     continue
 
-                if utils.is_shell_prompt_in(command_output):
+                if self._executor.os_helper.is_shell_prompt_in(command_output):
                     self.tty = True
                     print(command_output, end="", flush=True)
                 else:

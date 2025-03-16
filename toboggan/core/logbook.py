@@ -73,7 +73,9 @@ def get_logger():
     ch.setFormatter(ToboLogger())
     logger.addHandler(ch)
 
-    fh = logging.FileHandler(get_log_directory() / "toboggan.log")
+    log_file = get_log_directory() / "toboggan.log"
+
+    fh = logging.FileHandler(log_file)
     fh.setLevel(logger.level)
     fh.setFormatter(
         logging.Formatter(

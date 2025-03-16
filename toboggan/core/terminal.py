@@ -12,7 +12,7 @@ from prompt_toolkit.cursor_shapes import CursorShape
 
 class Terminal:
     def __init__(self, executor: Executor, prefix="!"):
-        self.__logger = logbook.get_logger()
+        self._logger = logbook.get_logger()
 
         self.__prompt_session = PromptSession(
             cursor=CursorShape.BLINKING_BLOCK,
@@ -27,67 +27,13 @@ class Terminal:
         self.__executor = executor
         self.__prefix = prefix
 
-        # For named pipe
-        self.__named_pipe_instance = None
-        self.tty = False
-
     # Public methods
-    def start_named_pipe(
-        self,
-        action_class,
-        read_interval: float = 0.4,
-        command_in: str = None,
-        command_out: str = None,
-    ):
-        """
-        Initializes and starts a named pipe (FIFO) action.
-
-        Args:
-            action_class (type): The class representing the named pipe action.
-            read_interval (float, optional): Interval for reading output. Defaults to 0.4s.
-            session_identifier (str, optional): Unique identifier for the session.
-            command_in (str, optional): Path for input pipe.
-            command_out (str, optional): Path for output pipe.
-        """
-
-        if not issubclass(action_class, NamedPipe):
-            self.__logger.error(
-                f"❌ {action_class.__name__} is not a valid NamedPipe action."
-            )
-            return
-
-        self.__logger.info(
-            f"🎭 Initializing named pipe action: {action_class.__name__}"
-        )
-
-        try:
-            # Create an instance of the NamedPipe action with the provided parameters
-            self.__named_pipe_instance = action_class(
-                executor=self.__executor,
-                read_interval=float(read_interval),
-                command_in=command_in,
-                command_out=command_out,
-            )
-
-            # Setup and start the named pipe
-            self.__named_pipe_instance.setup()
-            self.__named_pipe_instance.run()
-
-            self.__logger.success(
-                f"✅ Named pipe {action_class.__name__} started successfully!"
-            )
-
-        except Exception as e:
-            self.__logger.error(
-                f"⚠️ Failed to start named pipe action '{action_class.__name__}': {e}"
-            )
-            self.__named_pipe_instance = None  # Ensure cleanup in case of failure
 
     def start(self) -> None:
         result = None
         user_input = ""
 
-        self.__logger.info(f"Terminal prefix is: {self.__prefix}")
+        self._logger.info(f"Terminal prefix is: {self.__prefix}")
 
         while True:
             try:
@@ -95,31 +41,37 @@ class Terminal:
                 if not user_input:
                     continue
             except KeyboardInterrupt:
-                self.__logger.warning("Keyboard interruption received.")
-                if self.__named_pipe_instance:
-                    self.__named_pipe_instance.stop()
+                self._logger.warning("Keyboard interruption received.")
 
-                self.__logger.info(
+                if (
+                    self.__target.os == "unix"
+                    and self.__executor.os_helper.is_fifo_active()
+                ):
+                    self.__executor.os_helper.stop_named_pipe()
+
+                self._logger.info(
                     f"🗑️ Deleting remote working directory: {self.__executor.working_directory}"
                 )
                 try:
                     self.__executor.remote_execute(
-                        f"rm -rf {self.__executor.working_directory}"
+                        f"rm -r {self.__executor.working_directory}"
                     )
                 except Exception as exc:
-                    self.__logger.warning(
+                    self._logger.warning(
                         f"⚠️ Failed to delete remote working directory: {exc}"
                     )
 
                 break
             except Exception as exc:
-                self.__logger.warning(f"Exception occured: {exc}")
+                self._logger.warning(f"Exception occured: {exc}")
                 continue
             else:
                 if not user_input.startswith(self.__prefix):
-
-                    if self.__named_pipe_instance is not None:
-                        self.__named_pipe_instance.execute(user_input)
+                    if (
+                        self.__target.os == "unix"
+                        and self.__executor.os_helper.is_fifo_active()
+                    ):
+                        self.__executor.os_helper.fifo_execute(user_input)
                         continue
 
                     if result := self.__executor.remote_execute(command=user_input):
@@ -136,10 +88,8 @@ class Terminal:
                 args = command_parts[1:]  # Remaining parts as arguments
 
                 if command in ["e", "ex", "exit"]:
-                    self.__logger.info("🛝 Sliding back up the toboggan.")
-
-                    if self.__named_pipe_instance is not None:
-                        self.__named_pipe_instance.stop()
+                    self._logger.info("🛝 Sliding back up the toboggan.")
+                    self.__executor.stop_named_pipe()
                     break
 
                 if command in ["help", "h"]:
@@ -154,18 +104,20 @@ class Terminal:
                     ):
 
                         if issubclass(action_class, NamedPipe):
-                            self.start_named_pipe(action_class, *args)
+                            self.__executor.os_helper.start_named_pipe(
+                                action_class, *args
+                            )
                             continue
 
                         try:
                             action_output = action_class(self.__executor).run(*args)
                         except TypeError as exc:
-                            self.__logger.warning(
+                            self._logger.warning(
                                 f"⚠️ Incorrect arguments for '{command}': {exc}"
                             )
                             continue
                         except Exception as exc:
-                            self.__logger.error(f"Action failed: {exc}")
+                            self._logger.error(f"Action failed: {exc}")
                             continue
 
                         if action_output is not None:
@@ -173,7 +125,7 @@ class Terminal:
 
                         continue
 
-                    self.__logger.error(f"❌ Failed to load action '{command}'.")
+                    self._logger.error(f"❌ Failed to load action '{command}'.")
 
     # Private methods
 
@@ -219,7 +171,7 @@ class Terminal:
     def __prompt(self) -> str:
         """Generates a dynamic shell prompt based on available target information."""
 
-        if self.__named_pipe_instance:
+        if self.__target.os == "unix" and self.__executor.os_helper.is_fifo_active():
             return ""
 
         # Add user if available, otherwise use only hostname

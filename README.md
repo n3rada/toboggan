@@ -23,6 +23,13 @@ Once installed, you can execute it using:
 toboggan -m ~/phpexploit.py
 ```
 
+When you are knowing what you are doing, you can also do:
+```shell
+toboggan -m ~/phpexploit.py --hide --fifo --os "unix" -wd /dev/shm/apache-tmp
+```
+
+It will start a FiFo named-pipe inside the remote directory `/dev/shm/apache-tmp` and obfuscating all commands using `unix` (`--os`) [hide.py](./toboggan/actions/hide/unix.py).
+
 ### BurpSuite
 
 To route traffic through Burp Suite:

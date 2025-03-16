@@ -1,7 +1,5 @@
 # Standard library imports
 import base64
-import random
-import string
 import tarfile
 from pathlib import Path
 import tempfile

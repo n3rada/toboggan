@@ -170,7 +170,7 @@ def run() -> int:
         module_path_obj = Path(args.module)
 
         if not module_path_obj.exists():
-            logger.error(f"The specified file does not exist.")
+            logger.error("The specified file does not exist.")
             return 1
 
         if module_path_obj.suffix != ".py":
@@ -200,7 +200,7 @@ def run() -> int:
             logger.info(
                 "🤏 Making your dumb shell semi-interactive using 'fifo' action."
             )
-            remote_terminal.start_named_pipe(
+            command_executor.os_helper.start_named_pipe(
                 action_class=command_executor.action_manager.get_action("fifo"),
                 read_interval=args.read_interval,
                 command_in=args.stdin,
