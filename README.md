@@ -47,12 +47,12 @@ toboggan -r brequest
 A Remote Code Execution (RCE) module is a Python script designed to handle remote command execution. To be compatible with Toboggan, the module must include an execute function with the following signature:
 
 ```python
-def execute(command: str, timeout: float) -> str:
+def execute(cmd: str, timeout: float) -> str:
     """
     Execute a command remotely and return the output.
     
     Args:
-        command (str): The command to execute.
+        cmd (str): The command to execute.
         timeout (float): Execution timeout.
 
     Returns:
