@@ -8,6 +8,9 @@ import types
 import inspect
 from pathlib import Path
 
+# External library imports
+import httpx
+
 # Local library imports
 from toboggan.core import logbook
 from toboggan.core import loader
@@ -15,7 +18,6 @@ from toboggan.core import executor
 from toboggan.core import terminal
 
 from toboggan.core.utils import banner
-
 
 def run() -> int:
     parser = argparse.ArgumentParser(
@@ -120,13 +122,14 @@ def run() -> int:
         help="Specify the target working directory.",
     )
 
-    advanced_group.add_argument(
-        "-b",
-        "--burp",
-        action="store_true",
-        required=False,
-        help="Pass the traffic through Burp Suite default proxy (i.e., 127.0.0.1:8080).",
+    parser.add_argument(
+        "--proxy",
+        type=str,
+        nargs="?",
+        const="http://127.0.0.1:8080",
+        help="Set HTTP(S) proxy, e.g. 'http://127.0.0.1:8080'. Default is Burp Suite proxy.",
     )
+    
     advanced_group.add_argument(
         "--debug",
         action="store_true",
@@ -147,11 +150,26 @@ def run() -> int:
 
     logger = logbook.get_logger()
 
-    if args.burp:
-        env["http_proxy"] = "http://127.0.0.1:8080"
-        env["https_proxy"] = "http://127.0.0.1:8080"
+    if args.proxy:
+        os.environ["http_proxy"] = args.proxy
+        os.environ["https_proxy"] = args.proxy
+        logger.info(f"🌐 Proxy set to {args.proxy}")
+        
+    public_ip=None
+    try:
+        with httpx.Client(verify=False, http1=True, http2=False) as client:
+            response = await client.get("https://api.ipify.org?format=json", timeout=2)
+            if response.status_code == 200:
+                public_ip=response.json().get("ip", None)
+    except httpx.TimeoutException:
+        logger.error("Request timed-out.")
+    except Exception as e:
+        logger.warning(f"⚠️ Error retrieving public IP: {e}")
 
-        logger.info("HTTP proxies set to '127.0.0.1:8080'")
+    if public_ip is None:
+        return 1
+
+    logger.info(f"🌍 Public IP: {public_ip}")
 
     execution_module = None
 
