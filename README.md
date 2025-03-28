@@ -34,7 +34,7 @@ It will start a FiFo named-pipe inside the remote directory `/dev/shm/apache-tmp
 
 To route traffic through Burp Suite:
 ```shell
-toboggan -m ~/phpexploit.py --burp
+toboggan -m ~/phpexploit.py --proxy
 ```
 
 You can also directly import a Burp saved request that contains the `||cmd||` placeholder:
