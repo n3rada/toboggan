@@ -30,6 +30,13 @@ toboggan -m ~/phpexploit.py --hide --fifo --os "unix" -wd /dev/shm/apache-tmp
 
 It will start a FiFo named-pipe inside the remote directory `/dev/shm/apache-tmp` and obfuscating all commands using `unix` (`--os`) [hide.py](./toboggan/actions/hide/unix.py).
 
+### Proxy
+You can forward to your favorite proxifier such as your favorite [`Squid`](https://www.squid-cache.org/) server using the `--proxy` parameter:
+
+```shell
+toboggan -m ~/phpexploit.py --proxy http://squidrandom.<something>.io:3128
+```
+
 ### BurpSuite
 
 To route traffic through Burp Suite:
