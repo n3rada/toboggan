@@ -158,7 +158,7 @@ def run() -> int:
     public_ip=None
     try:
         with httpx.Client(verify=False, http1=True, http2=False) as client:
-            response = await client.get("https://api.ipify.org?format=json", timeout=2)
+            response = client.get("https://api.ipify.org?format=json", timeout=2)
             if response.status_code == 200:
                 public_ip=response.json().get("ip", None)
     except httpx.TimeoutException:
