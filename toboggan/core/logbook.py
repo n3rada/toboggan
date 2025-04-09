@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -18,11 +18,11 @@ class ToboLogger(logging.Formatter):
     RESET = "\033[0m"
 
     def format(self, record):
-        local_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        utc_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         levelname = record.levelname
         color = self.COLORS.get(levelname, self.RESET)
 
-        return f"[{local_time}] [{color}{levelname}{self.RESET}] {record.getMessage()}"
+        return f"[{utc_time} (UTC)] [{color}{levelname}{self.RESET}] {record.getMessage()}"
 
 
 def get_log_directory():
