@@ -77,11 +77,6 @@ def get_logger():
 
     fh = logging.FileHandler(log_file)
     fh.setLevel(logger.level)
-    fh.setFormatter(
-        logging.Formatter(
-            "[%(asctime)s] [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S"
-        )
-    )
     logger.addHandler(fh)
 
     # Extend the logger with a `success` method
