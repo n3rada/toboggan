@@ -85,11 +85,11 @@ class Terminal:
                     continue
 
                 command = command_parts[0].lower()
-                args = command_parts[1:]  # Remaining parts as arguments
+                # Remaining parts as arguments
+                args = command_parts[1:]
 
                 if command in ["e", "ex", "exit"]:
                     self._logger.info("🛝 Sliding back up the toboggan.")
-                    self.__executor.stop_named_pipe()
                     break
 
                 if command in ["help", "h"]:
