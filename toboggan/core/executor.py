@@ -49,13 +49,8 @@ class Executor(metaclass=SingletonMeta):
 
         self.__action_manager = action.ActionsManager(target_os=self.__os)
 
-        # Set working directory
-        self._working_directory = (
-            working_directory or self._os_helper.create_working_directory_string()
-        )
-        self.remote_execute(command=f"mkdir -p {self._working_directory}")
-
-        self._logger.info(f"📂 Remote working directory: {self._working_directory}")
+        self._provided_working_directory = working_directory
+        self._working_directory = None
 
         if hide:
             self.__hide_action = self.__action_manager.get_action("hide")(executor=self)
@@ -179,6 +174,20 @@ class Executor(metaclass=SingletonMeta):
 
         return result
 
+    def delete_working_directory(self) -> None:
+        """
+        Deletes the remote working directory if it has been created.
+
+        Args:
+            debug (bool): Whether to log deletion info.
+        """
+        if not self.has_working_directory:
+            return
+        try:
+            self.remote_execute(f"rm -r {self._working_directory}")
+        except Exception as exc:
+            self._logger.warning(f"⚠️ Failed to delete remote working directory: {exc}")
+
     # Private methods
 
     def __guess_os(self) -> str:
@@ -201,7 +210,32 @@ class Executor(metaclass=SingletonMeta):
         return self.__action_manager
 
     @property
+    def has_working_directory(self) -> bool:
+        return (
+            hasattr(self, "_working_directory") and self._working_directory is not None
+        )
+
+    @property
     def working_directory(self) -> str:
+        """
+        Lazily initializes and returns the working directory.
+        Creates the remote directory only when accessed the first time.
+        """
+        if not self.has_working_directory:
+            self._working_directory = (
+                self._provided_working_directory
+                if (
+                    hasattr(self, "_provided_working_directory")
+                    and self._provided_working_directory is not None
+                )
+                else self._os_helper.create_working_directory_string()
+            )
+
+            self.remote_execute(command=f"mkdir -p {self._working_directory}")
+            self._logger.info(
+                f"📂 Remote working directory initialized: {self._working_directory}"
+            )
+
         return self._working_directory
 
     @property

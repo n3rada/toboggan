@@ -49,17 +49,7 @@ class Terminal:
                 ):
                     self.__executor.os_helper.stop_named_pipe()
 
-                self._logger.info(
-                    f"🗑️ Deleting remote working directory: {self.__executor.working_directory}"
-                )
-                try:
-                    self.__executor.remote_execute(
-                        f"rm -r {self.__executor.working_directory}"
-                    )
-                except Exception as exc:
-                    self._logger.warning(
-                        f"⚠️ Failed to delete remote working directory: {exc}"
-                    )
+                self.__executor.delete_working_directory()
 
                 break
             except Exception as exc:
