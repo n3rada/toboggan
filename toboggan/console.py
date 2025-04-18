@@ -4,20 +4,23 @@
 import argparse
 import traceback
 import os
-import types
-import inspect
 from pathlib import Path
 
 # External library imports
+from modwrap import ModuleWrapper
 import httpx
 
 # Local library imports
 from toboggan.core import logbook
-from toboggan.core import loader
 from toboggan.core import executor
 from toboggan.core import terminal
 
 from toboggan.core.utils import banner
+
+
+# Directory where built-in handlers are stored
+BUILTIN_DIR = Path(__file__).parent / "core/handlers"
+
 
 def run() -> int:
     parser = argparse.ArgumentParser(
@@ -129,7 +132,7 @@ def run() -> int:
         const="http://127.0.0.1:8080",
         help="Set HTTP(S) proxy, e.g. 'http://127.0.0.1:8080'. Default is Burp Suite proxy.",
     )
-    
+
     advanced_group.add_argument(
         "--debug",
         action="store_true",
@@ -154,13 +157,13 @@ def run() -> int:
         os.environ["http_proxy"] = args.proxy
         os.environ["https_proxy"] = args.proxy
         logger.info(f"🌐 Proxy set to {args.proxy}")
-        
-    public_ip=None
+
+    public_ip = None
     try:
         with httpx.Client(verify=False, http1=True, http2=False) as client:
             response = client.get("https://api.ipify.org?format=json", timeout=2)
             if response.status_code == 200:
-                public_ip=response.json().get("ip", None)
+                public_ip = response.json().get("ip", None)
     except httpx.TimeoutException:
         logger.error("Request timed-out.")
     except Exception as e:
@@ -174,28 +177,27 @@ def run() -> int:
     execution_module = None
 
     if args.shell:
-        execution_module = loader.load_module("os_command")
+        wrapper = ModuleWrapper(BUILTIN_DIR / "os_command")
+        execution_module = wrapper.module
         execution_module.BASE_CMD = args.shell
         logger.info("Use OS system command as base.")
     elif args.request:
-        execution_module = loader.load_module("burpsuite")
+        wrapper = ModuleWrapper(BUILTIN_DIR / "burpsuite")
+        execution_module = wrapper.module
         execution_module.BURP_REQUEST_OBJECT = execution_module.BurpRequest(
             args.request
         )
         logger.info("Use Burpsuite request as base.")
     elif args.module:
         logger.info(f"Use provided module: '{args.module}'.")
-        module_path_obj = Path(args.module)
 
-        if not module_path_obj.exists():
-            logger.error("The specified file does not exist.")
-            return 1
+        wrapper = ModuleWrapper(args.module)
 
-        if module_path_obj.suffix != ".py":
-            logger.error("The specified file is not a Python module 🐍.")
-            return 1
+        wrapper.validate_signature(
+            func_name="execute", expected_args=[("command", str), ("timeout", float)]
+        )
 
-        execution_module = loader.load_module(module_path=module_path_obj)
+        execution_module = wrapper.module
     else:
         logger.error("No module provided. I cannot slide on anything.")
         return 1
