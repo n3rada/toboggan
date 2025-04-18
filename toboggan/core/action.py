@@ -1,12 +1,14 @@
 # Standard library imports
 from abc import ABC, abstractmethod
-import importlib
 import os
-import sys
 import re
 import inspect
 from datetime import datetime
 from pathlib import Path
+
+# Third party library imports
+from modwrap import ModuleWrapper
+
 
 # Local application/library specific imports
 from toboggan.core import logbook
@@ -181,32 +183,26 @@ class ActionsManager:
 
     def load_action_from_path(self, file_path: Path) -> BaseAction:
         """
-        Dynamically loads an action from a Python file.
+        Dynamically loads an action class from a Python file using modwrap.
 
         Args:
             file_path (Path): The full path to the action file.
 
         Returns:
-            BaseAction class if successful, None otherwise.
+            BaseAction class if found, else None.
         """
-        if not file_path.exists() or not file_path.suffix == ".py":
-            return None
-
-        module_name = (
-            f"toboggan_action_{file_path.stem}"  # Unique module name for dynamic import
-        )
-        spec = importlib.util.spec_from_file_location(module_name, str(file_path))
-
-        if spec and spec.loader:
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[module_name] = module
-            spec.loader.exec_module(module)
-
-            # Find a class that inherits from BaseAction
-            for _, cls in inspect.getmembers(module, inspect.isclass):
-                if issubclass(cls, BaseAction) and cls is not BaseAction:
-                    return cls
-
+        try:
+            wrapper = ModuleWrapper(file_path)
+            for name in dir(wrapper.module):
+                obj = getattr(wrapper.module, name)
+                if (
+                    inspect.isclass(obj)
+                    and issubclass(obj, BaseAction)
+                    and obj is not BaseAction
+                ):
+                    return obj
+        except Exception as exc:
+            self._logger.error(f"❌ Failed to load module: {file_path.name} ({exc})")
         return None
 
     def __get_user_module_dir(self) -> Path:
@@ -238,41 +234,43 @@ class ActionsManager:
 
     def __extract_parameters(self, file_path: Path) -> list:
         """
-        Extracts function parameters from either the `run` method (for standard actions)
-        or the `__init__` method (for NamedPipe-based actions).
+        Extracts parameters of the action's entry point using modwrap.
+        Prioritizes __init__ for NamedPipe-based actions, else uses run().
         """
-        self._logger.debug(f"Extracting parameters from: {file_path}")
-        file_content = file_path.read_text()
+        try:
+            wrapper = ModuleWrapper(file_path)
 
-        if re.search(r"class\s+\w+\(.*?NamedPipe.*?\):", file_content):
-            self._logger.debug("NamedPipe class detected.")
-            match = re.search(
-                pattern=r"def __init__\s*\(\s*self\s*,?(.*?)\):",
-                string=file_content,
-                flags=re.MULTILINE | re.DOTALL,
+            # NamedPipe-based actions → use __init__ signature
+            for name in dir(wrapper.module):
+                obj = getattr(wrapper.module, name)
+                if inspect.isclass(obj) and issubclass(obj, NamedPipe):
+                    sig = wrapper.get_signature(f"{name}.__init__")
+                    break
+            else:
+                # Standard actions → use run() method of the first BaseAction
+                for name in dir(wrapper.module):
+                    obj = getattr(wrapper.module, name)
+                    if (
+                        inspect.isclass(obj)
+                        and issubclass(obj, BaseAction)
+                        and obj is not BaseAction
+                    ):
+                        sig = wrapper.get_signature(f"{name}.run")
+                        break
+                else:
+                    return []
+
+            return [
+                (
+                    f"{param} ({value['default']})"
+                    if value["default"] is not None
+                    else param
+                )
+                for param, value in sig.items()
+            ]
+
+        except Exception as e:
+            self._logger.warning(
+                f"⚠ Failed to extract parameters from {file_path.name}: {e}"
             )
-        else:
-            self._logger.debug("Common action detected.")
-            match = re.search(
-                pattern=r"def run\((.*?)\):",
-                string=file_content,
-                flags=re.MULTILINE | re.DOTALL,
-            )
-
-        if match:
-            # Extract parameter list (excluding `self`)
-            params = match.group(1).split(",")[1:]
-
-            self._logger.debug(f"Params: {params}")
-
-            # Format parameters with default values
-            formatted_params = []
-            for param in params:
-                parts = param.split("=")
-                param_name = parts[0].split(":")[0].strip()
-                default_value = f" ({parts[1].strip()})" if len(parts) > 1 else ""
-                formatted_params.append(f"{param_name}{default_value}")
-
-            return formatted_params
-
-        return None
+            return []
