@@ -67,7 +67,7 @@ def execute(command: str, timeout: float) -> str:
     """
 ```
 
-This function will be called internally by Toboggan to execute commands remotely.
+This function will be called internally by Toboggan to execute commands remotely. It uses [`modwrap`](https://pypi.org/project/modwrap/) under the hood.
 
 ## 🏗️ Making Dumb Shells Smarter
 
