@@ -86,11 +86,11 @@ def run() -> int:
     )
 
     named_pipe_group.add_argument(
-        "-rid",
+        "-ri",
         "--read-interval",
         type=float,
         default=0.4,
-        help="Interval (in seconds) for reading output from the named pipe. Default is 0.4s.",
+        help="Interval (in seconds) for reading output from the named pipe.",
     )
 
     named_pipe_group.add_argument(
