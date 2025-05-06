@@ -97,7 +97,7 @@ def run() -> int:
         "-i",
         "--stdin",
         type=str,
-        default="tampi",
+        default="tomato",
         help="Input file name, where commands goes.",
     )
 
@@ -105,7 +105,7 @@ def run() -> int:
         "-o",
         "--stdout",
         type=str,
-        default="tampo",
+        default="pineapple",
         help="Output file name, where commands output goes.",
     )
 
@@ -229,6 +229,6 @@ def run() -> int:
 
         remote_terminal.start()
     except Exception:
-        logger.exception("Unhandled exception occurred:")
+        logger.exception("Unhandled exception occurred")
 
     logger.success("Toboggan execution completed.")
