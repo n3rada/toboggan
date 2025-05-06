@@ -228,8 +228,7 @@ def run() -> int:
             )
 
         remote_terminal.start()
-    except Exception as exc:
-        error_trace = traceback.format_exc()
-        logger.error(f"Unhandled exception occurred: {exc}\n{error_trace}")
+    except Exception:
+        logger.exception("Unhandled exception occurred:")
 
     logger.success("Toboggan execution completed.")
