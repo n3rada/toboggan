@@ -122,14 +122,14 @@ all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2
 
 [[package]]
 name = "modwrap"
-version = "1.0.4"
+version = "1.0.5"
 description = "Python module wrapper for dynamic loading and callable signature validation."
 optional = false
 python-versions = "<4.0,>=3.13"
 groups = ["main"]
 files = [
-    {file = "modwrap-1.0.4-py3-none-any.whl", hash = "sha256:a77701a8d3fa377b221bbbf1fb8382dd5c53caaf2901b3aa6a2a716698ce4962"},
-    {file = "modwrap-1.0.4.tar.gz", hash = "sha256:da20ba3a47fa0beae0f5d32a579181a5fa2e817716e91cce520bb8d203db9f31"},
+    {file = "modwrap-1.0.5-py3-none-any.whl", hash = "sha256:b91b0a1c7381de07c4aa78f3c2e16873a08f562ef62ff881a7008d350e94dab3"},
+    {file = "modwrap-1.0.5.tar.gz", hash = "sha256:9922bb317d7ea815f17dc986e83f629dbf902b3853aa3c48443d45f4ea6748d3"},
 ]
 
 [[package]]
