@@ -15,7 +15,7 @@ class UnixHelper(base.OSHelperBase):
 
     def __init__(self, executor):
         super().__init__(executor)
-        self.__shell_path = None
+        self.__shell_path = "/bin/bash"
 
         self.__named_pipe_instance = None
 
@@ -78,67 +78,9 @@ class UnixHelper(base.OSHelperBase):
 
         return any(re.search(pattern, command_output) for pattern in prompt_patterns)
 
-    def create_alterated_copy_of(
-        self, target_binary_name: str, copy_name: str = None
-    ) -> str:
-        """
-        Creates an altered copy of a binary by appending random gibberish characters to avoid detection.
-
-        Args:
-            target_binary_name (str): The name of the binary to copy.
-            copy_name (str, optional): The name or full path of the copied binary.
-                                    If None, generates a random name in the working directory.
-
-        Returns:
-            str: The full path of the altered binary.
-        """
-
-        # If no copy name is given, generate a random one in the working directory
-        if copy_name is None:
-            copy_name = utils.generate_fixed_length_token(length=5)
-            copied_binary = f"{self._executor.working_directory}/{copy_name}"
-        else:
-            # If copy_name is a full path, use it directly
-            copy_name_path = Path(copy_name)
-            if copy_name_path.is_absolute():
-                copied_binary = str(copy_name_path)
-            else:
-                copied_binary = f"{self._executor.working_directory}/{copy_name}"
-
-        # Copy the original binary
-        self._executor.remote_execute(
-            f"$(command -v cp) $(command -v {target_binary_name}) {copied_binary}"
-        )
-
-        allowed_chars = string.ascii_letters + string.digits
-
-        # Generate random gibberish using only allowed characters
-        gibberish_length = random.randint(8, 32)
-        gibberish = "".join(random.choices(allowed_chars, k=gibberish_length))
-
-        # Append the gibberish to our copy
-        self._executor.remote_execute(
-            f"$(command -v echo) -n '{gibberish}' >> {copied_binary}"
-        )
-
-        self._logger.info(
-            f"📀 Created altered binary for '{target_binary_name}': {copied_binary} "
-            f"(with {gibberish_length} bytes of gibberish)"
-        )
-
-        return copied_binary
-
     # Properties
     @property
     def shell_path(self) -> str:
-        if self.__shell_path is not None:
-            return self.__shell_path
-
-        self.__shell_path = self.create_alterated_copy_of(
-            "$(ps -p $$ -o comm=)", ".null"
-        )
-        self._logger.info(f"🐧 Linux shell copied to {self.__shell_path}")
-
         return self.__shell_path
 
     @property

