@@ -6,17 +6,23 @@
     <img width="350" src="/media/toboggan-coin-nobg.png" alt="Toboggan Logo">
 </p>
 
-## Getting Started
+## Installation
 
 Installing Toboggan is simple. You can install it directly from the repository:
+
 ```shell
 pip install 'toboggan@git+https://github.com/n3rada/toboggan.git'
 ```
 
-Or, by using [`pipx`](https://pypa.github.io/pipx/) (and you should):
+### Using [`pipx`](https://pypa.github.io/pipx/)
+Be careful, it installs Python applications in isolated virtual environments, which means they do not have access to system-wide packages by default (like `psycopg2`).
 ```shell
 pipx install 'git+https://github.com/n3rada/toboggan.git'
 ```
+
+If you want-it to use system site packages, pass `--system-site-packages` when installing via `pipx`.
+
+## Execution
 
 Once installed, you can execute it using:
 ```shell
