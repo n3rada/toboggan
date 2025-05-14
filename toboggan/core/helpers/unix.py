@@ -1,5 +1,4 @@
-from pathlib import Path
-import string
+import secrets
 import random
 import re
 
@@ -54,6 +53,97 @@ class UnixHelper(base.OSHelperBase):
         random_hex = utils.generate_fixed_length_token(length=32)
         random_suffix = utils.generate_fixed_length_token(length=6).upper()
         return f"/tmp/systemd-private-{random_hex}-upower.service-{random_suffix}"
+
+    def stealthy_name(
+        self,
+        prefix_pool: list = None,
+        suffix_pool: list = None,
+        path_pool: list = None,
+        hex_suffix_length: int = 4,
+        add_dot_prefix: bool = True,
+    ) -> str:
+
+        if prefix_pool is None:
+            prefix_pool = [
+                "audit",
+                "dbus",
+                "user",
+                "cache",
+                "lightdm",
+                "gnome",
+                "cups",
+                "pulse",
+                "upower",
+                "systemd",
+                "snapd",
+                "udisksd",
+                "at-spi",
+                "tracker",
+                "gdm",
+                "colord",
+                "seahorse",
+                "ibus",
+                "xsession",
+                "pam",
+                "nm-dispatcher",
+                "x11",
+                "env",
+                "console",
+                "mime",
+                "session",
+                "proc",
+            ]
+
+        if suffix_pool is None:
+            suffix_pool = [
+                "log",
+                "out",
+                "err",
+                "msg",
+                "sock",
+                "pid",
+                "ipc",
+                "shm",
+                "cache",
+                "data",
+                "map",
+                "tmp",
+                "journal",
+                "conf",
+                "status",
+                "dump",
+                "db",
+                "auth",
+                "token",
+                "bus",
+            ]
+
+        if path_pool is None:
+            path_pool = [
+                "/dev/shm",
+                "/tmp",
+                "/var/tmp",
+                "/run/lock",
+            ]
+
+        # Pick a stealthy directory
+        directory = random.choice(path_pool)
+        if not directory.endswith("/"):
+            directory += "/"
+
+        # Build the name
+        prefix = random.choice(prefix_pool)
+        suffix = random.choice(suffix_pool)
+        hex_id = secrets.token_hex(hex_suffix_length // 2)  # hex digits, so 2 per byte
+
+        name = f"{prefix}-{suffix}-{hex_id}"
+        if add_dot_prefix:
+            name = f".{name}"
+
+        stealthy_name = f"{directory}{name}"
+        self._logger.debug(f"Generated stealthy name: {stealthy_name}")
+
+        return stealthy_name
 
     def get_current_path(self) -> str:
         return self._executor.remote_execute(command="/bin/pwd").strip()

@@ -41,16 +41,17 @@ class NamedPipe(BaseAction):
         super().__init__(executor)
 
         if command_out is None:
-            command_out = utils.generate_fixed_length_token(length=8)
+            self._stdout = self._executor.os_helper.stealthy_name()
+        else:
+            self._stdout = command_out
 
         if command_in is None:
-            command_in = utils.generate_fixed_length_token(length=8)
+            self._stdin = self._executor.os_helper.stealthy_name()
+        else:
+            self._stdin = command_in
 
-        self._logger.info(f"Using stdin: {command_in}")
-        self._logger.info(f"Using stdout: {command_out}")
-
-        self._stdin = f"{self._executor.working_directory}/{command_in}"
-        self._stdout = f"{self._executor.working_directory}/{command_out}"
+        self._logger.info(f"Using stdin: {self._stdin}")
+        self._logger.info(f"Using stdout: {self._stdout}")
 
         self._read_interval = read_interval
         self._logger.info(f"Reading interval: {read_interval} seconds")

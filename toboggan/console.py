@@ -2,7 +2,6 @@
 
 # Built-in imports
 import argparse
-import traceback
 import os
 from pathlib import Path
 
@@ -15,7 +14,7 @@ from toboggan.core import logbook
 from toboggan.core import executor
 from toboggan.core import terminal
 
-from toboggan.core.utils import banner
+from toboggan.core import utils
 
 
 # Directory where built-in handlers are stored
@@ -97,16 +96,16 @@ def run() -> int:
         "-i",
         "--stdin",
         type=str,
-        default="tomato",
-        help="Input file name, where commands goes.",
+        default=None,
+        help="Input file name (FIFO) where commands go.",
     )
 
     named_pipe_group.add_argument(
         "-o",
         "--stdout",
         type=str,
-        default="pineapple",
-        help="Output file name, where commands output goes.",
+        default=None,
+        help="Output file name where command output appears.",
     )
 
     system_group.add_argument(
@@ -143,7 +142,7 @@ def run() -> int:
     # Parse arguments
     args = parser.parse_args()
 
-    print(banner())
+    print(utils.banner())
 
     env = os.environ
 

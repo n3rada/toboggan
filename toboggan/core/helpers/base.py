@@ -14,6 +14,10 @@ class OSHelperBase(ABC):
         self._logger = logbook.get_logger()
 
     @abstractmethod
+    def start_named_pipe(self, action_class, **kwargs) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_current_path(self) -> str:
         raise NotImplementedError()
 
