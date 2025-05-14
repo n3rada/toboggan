@@ -22,7 +22,15 @@ class ToboLogger(logging.Formatter):
         levelname = record.levelname
         color = self.COLORS.get(levelname, self.RESET)
 
-        return f"[{utc_time} (UTC)] [{color}{levelname}{self.RESET}] {record.getMessage()}"
+        formatted = (
+            f"[{utc_time} (UTC)] [{color}{levelname}{self.RESET}] {record.getMessage()}"
+        )
+
+        if record.exc_info:
+            # Append formatted traceback if present
+            formatted += "\n" + self.formatException(record.exc_info)
+
+        return formatted
 
 
 def get_log_directory():
