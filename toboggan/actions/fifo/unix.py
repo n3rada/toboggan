@@ -74,7 +74,7 @@ class FifoAction(NamedPipe):
 
                 if self._executor.os_helper.is_shell_prompt_in(command_output):
                     self.tty = True
-                    print(command_output, end="", flush=True)
+                    print(command_output, end=" ", flush=True)
                 else:
                     self.tty = False
                     print(command_output)
