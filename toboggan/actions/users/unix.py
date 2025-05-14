@@ -1,4 +1,3 @@
-import re
 import shutil
 
 # Local application/library specific imports
@@ -11,79 +10,120 @@ class GetUsersAction(BaseAction):
     )
 
     def run(self) -> str:
-        """
-        Fetches all system users and displays their primary and additional groups in a table,
-        while ensuring output stays within terminal width.
-
-        Returns:
-            str: Formatted list of users with their groups.
-        """
-        # Get terminal width
         terminal_width = shutil.get_terminal_size((80, 20)).columns
 
-        # Fetch all users and their group info
-        raw_output = self._executor.remote_execute(
-            "getent passwd | cut -d: -f1 | xargs -I{} id {} 2>/dev/null"
-        )
+        passwd_data = self._executor.remote_execute("cat /etc/passwd")
+        group_data = self._executor.remote_execute("cat /etc/group")
 
-        if not raw_output:
-            return "⚠️ No users found or access denied."
+        if not passwd_data or not group_data:
+            return "⚠️ Could not read /etc/passwd or /etc/group."
 
-        users_data = []
+        # Parse /etc/group
+        gid_to_group = {}
+        user_to_groups = {}
 
-        for line in raw_output.splitlines():
-            match = re.match(r"uid=(\d+)\((\w+)\) gid=(\d+)\((\w+)\) groups=(.+)", line)
-            if match:
-                user_id, username = match.group(1), match.group(2)
-                group_id, primary_group = match.group(3), match.group(4)
+        for line in group_data.strip().splitlines():
+            parts = line.split(":")
+            if len(parts) >= 4:
+                group_name, _, gid, users = parts
+                gid_to_group[gid] = group_name
+                for user in users.split(","):
+                    if user:
+                        user_to_groups.setdefault(user, []).append(group_name)
 
-                # Extract additional groups (with their IDs)
-                other_groups = [
-                    g.replace("(", " (").replace(")", ")")
-                    for g in match.group(5).split(", ")
-                ]
+        non_system_users = []
+        system_users = []
 
-                users_data.append(
-                    (
-                        f"{username} ({user_id})",
-                        f"{primary_group} ({group_id})",
-                        ", ".join(other_groups),
-                    )
-                )
+        for line in passwd_data.strip().splitlines():
+            parts = line.strip().split(":")
+            if len(parts) < 7:
+                continue
+            username, _, uid, gid, _, _, shell = parts
+            try:
+                uid = int(uid)
+                gid = int(gid)
+            except ValueError:
+                continue
 
-        # Sort users alphabetically
-        users_data.sort(key=lambda x: x[0])
+            primary_group = gid_to_group.get(str(gid), f"GID:{gid}")
+            additional_groups = user_to_groups.get(username, [])
+            other_groups = (
+                ", ".join(sorted(additional_groups)) if additional_groups else "-"
+            )
 
-        # Determine column sizes dynamically
-        max_user_len = max(len(row[0]) for row in users_data) + 2
-        max_group_len = max(len(row[1]) for row in users_data) + 2
+            user_info = (
+                f"{username} ({uid})",
+                f"{primary_group} ({gid})",
+                other_groups,
+                shell,
+            )
 
-        # Calculate space left for "Other Groups" column
-        max_other_groups_len = terminal_width - (max_user_len + max_group_len + 10)
-        max_other_groups_len = max(20, max_other_groups_len)  # Ensure minimum width
-
-        total_width = max_user_len + max_group_len + max_other_groups_len + 10
-
-        # Format table output
-        formatted_output = "\n📜 System Users & Groups:\n"
-        formatted_output += "-" * min(terminal_width, total_width) + "\n"
-        formatted_output += f"{'🆔 User':<{max_user_len}}| {'👥 Primary Group':<{max_group_len}}| 📂 Other Groups\n"
-        formatted_output += "-" * min(terminal_width, total_width) + "\n"
-
-        for user, primary_group, other_groups in users_data:
-            if len(other_groups) > max_other_groups_len:
-                wrapped_groups = [
-                    other_groups[i : i + max_other_groups_len]
-                    for i in range(0, len(other_groups), max_other_groups_len)
-                ]
-                formatted_output += f"{user:<{max_user_len}} | {primary_group:<{max_group_len}} | {wrapped_groups[0]}\n"
-                for group_line in wrapped_groups[1:]:
-                    formatted_output += (
-                        f"{' ' * max_user_len} | {' ' * max_group_len} | {group_line}\n"
-                    )
+            if uid >= 1000 or username == "nobody":
+                non_system_users.append(user_info)
             else:
-                formatted_output += f"{user:<{max_user_len}} | {primary_group:<{max_group_len}} | {other_groups}\n"
+                system_users.append(user_info)
 
-        formatted_output += "-" * min(terminal_width, total_width) + "\n"
+        def format_table(title, data):
+            if not data:
+                return f"⚠️ No {title.lower()} found.\n"
 
-        return formatted_output
+            data.sort(key=lambda x: x[0])
+            max_user_len = max(len(u[0]) for u in data) + 2
+            max_group_len = max(len(u[1]) for u in data) + 2
+            max_shell_len = max(len(u[3]) for u in data) + 2
+
+            # Find actual max content length for other_groups
+            actual_other_len = max(len(u[2]) for u in data)
+            max_other_len = min(
+                terminal_width - (max_user_len + max_group_len + max_shell_len + 10),
+                actual_other_len + 2,
+            )
+
+            total_width = (
+                max_user_len + max_group_len + max_other_len + max_shell_len + 10
+            )
+
+            section = f"\n{title}:\n"
+            section += "-" * min(terminal_width, total_width) + "\n"
+            section += (
+                f"{'User':<{max_user_len}}| "
+                f"{'Primary Group':<{max_group_len}}| "
+                f"Groups{' ' * (max_other_len - 6)}| "
+                f"Shell\n"
+            )
+            section += "-" * min(terminal_width, total_width) + "\n"
+
+            for user, primary_group, other_groups, shell in data:
+                if len(other_groups) > max_other_len:
+                    wrapped = [
+                        other_groups[i : i + max_other_len]
+                        for i in range(0, len(other_groups), max_other_len)
+                    ]
+                    section += (
+                        f"{user:<{max_user_len}}| "
+                        f"{primary_group:<{max_group_len}}| "
+                        f"{wrapped[0]:<{max_other_len}}| "
+                        f"{shell:<{max_shell_len}}\n"
+                    )
+                    for line in wrapped[1:]:
+                        section += (
+                            f"{' ' * max_user_len}| "
+                            f"{' ' * max_group_len}| "
+                            f"{line:<{max_other_len}}| "
+                            f"{' ' * max_shell_len}\n"
+                        )
+                else:
+                    section += (
+                        f"{user:<{max_user_len}}| "
+                        f"{primary_group:<{max_group_len}}| "
+                        f"{other_groups:<{max_other_len}}| "
+                        f"{shell:<{max_shell_len}}\n"
+                    )
+
+            section += "-" * min(terminal_width, total_width) + "\n"
+            return section
+
+        output = format_table("📦 System users", system_users)
+        output += format_table("📜 Non-system users", non_system_users)
+
+        return output
