@@ -52,14 +52,22 @@ class FifoAction(NamedPipe):
 
     def __poll_output(self) -> None:
 
+        poll_commands = [
+            f"/usr/bin/sed -n p {self._stdout}; : > {self._stdout}",
+            f"/usr/bin/tail -n +1 {self._stdout}; : > {self._stdout}",
+            f"/usr/bin/dd if={self._stdout} bs=4096 2>/dev/null; : > {self._stdout}",
+        ]
+
         while not self.__stop_thread:
 
             time.sleep(random.uniform(self._read_interval, self._read_interval * 1.5))
 
-            if command_output := self._executor.remote_execute(
-                f"/usr/bin/sed -n p {self._stdout}; : > {self._stdout}",
+            command_output = self._executor.remote_execute(
+                random.choice(poll_commands),
                 debug=False,
-            ):
+            )
+
+            if command_output:
                 if self.tty:
                     print(command_output, end="", flush=True)
                     continue
