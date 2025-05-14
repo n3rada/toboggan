@@ -1,10 +1,10 @@
 # Standard library imports
 from abc import ABC, abstractmethod
 import os
-import re
 import inspect
 from datetime import datetime
 from pathlib import Path
+
 
 # Third party library imports
 from modwrap import ModuleWrapper
@@ -12,7 +12,6 @@ from modwrap import ModuleWrapper
 
 # Local application/library specific imports
 from toboggan.core import logbook
-from toboggan.core import utils
 
 
 class BaseAction(ABC):
@@ -219,17 +218,12 @@ class ActionsManager:
         )
         return Path(xdg_data_home) / "toboggan" / "actions"
 
-    def __extract_description(self, file_path: Path) -> str:
-        """Extracts the DESCRIPTION from an action file."""
+    def __extract_description(self, file_path: Path) -> str | None:
+        wrapper = ModuleWrapper(file_path)
+        cls = wrapper.get_class(must_inherit=BaseAction)
 
-        match = re.search(
-            pattern=r'DESCRIPTION\s*=\s*["\'](.+?)["\']',
-            string=file_path.read_text(),
-            flags=re.MULTILINE,
-        )
-
-        if match:
-            return match.group(1)
+        if cls and hasattr(cls, "DESCRIPTION"):
+            return cls.DESCRIPTION
 
         return None
 
