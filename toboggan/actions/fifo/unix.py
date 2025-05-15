@@ -24,7 +24,7 @@ class FifoAction(NamedPipe):
     def setup(self):
         self._executor.remote_execute(f"/bin/mkfifo {self._stdin}")
 
-        shell = "/bin/sh"
+        shell = "$(command -v $0)"
 
         self._executor.remote_execute(
             f"/bin/tail -f {self._stdin}|{shell} > {self._stdout} 2>&1 &"
