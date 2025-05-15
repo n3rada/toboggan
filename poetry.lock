@@ -15,6 +15,7 @@ files = [
 [package.dependencies]
 idna = ">=2.8"
 sniffio = ">=1.1"
+typing_extensions = {version = ">=4.5", markers = "python_version < \"3.13\""}
 
 [package.extras]
 doc = ["Sphinx (>=8.2,<9.0)", "packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx_rtd_theme"]
@@ -122,14 +123,14 @@ all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2
 
 [[package]]
 name = "modwrap"
-version = "1.0.7"
+version = "1.0.8"
 description = "Python module wrapper for dynamic loading and callable signature validation."
 optional = false
-python-versions = "<4.0,>=3.13"
+python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "modwrap-1.0.7-py3-none-any.whl", hash = "sha256:47c6d907527b775aeef76592b869b59432c0483df292bdee8f5edd83ccdf8cd8"},
-    {file = "modwrap-1.0.7.tar.gz", hash = "sha256:21571d2463060cb52c080e2ace6c5a23c13e9cfd42c108697d445d0fe8c367a1"},
+    {file = "modwrap-1.0.8-py3-none-any.whl", hash = "sha256:c8bf0fabe51bc729bf804a722f097b1b9559f084fe4da44328ce91f27e0a3f54"},
+    {file = "modwrap-1.0.8.tar.gz", hash = "sha256:da7ddd7ae565890f7ed2c30b938da6ac2d6c4949df41e1fc4086013f800830f9"},
 ]
 
 [[package]]
@@ -221,6 +222,19 @@ slack = ["slack-sdk"]
 telegram = ["requests"]
 
 [[package]]
+name = "typing-extensions"
+version = "4.13.2"
+description = "Backported and Experimental Type Hints for Python 3.8+"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+markers = "python_version < \"3.13\""
+files = [
+    {file = "typing_extensions-4.13.2-py3-none-any.whl", hash = "sha256:a439e7c04b49fec3e5d3e2beaa21755cadbbdc391694e28ccdd36ca4a1408f8c"},
+    {file = "typing_extensions-4.13.2.tar.gz", hash = "sha256:e6c81219bd689f51865d9e372991c540bda33a0379d5573cddb9a3a23f7caaef"},
+]
+
+[[package]]
 name = "wcwidth"
 version = "0.2.13"
 description = "Measures the displayed width of unicode strings in a terminal"
@@ -249,5 +263,5 @@ cli = ["rich (==9.10.0)"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.13,<4.0"
-content-hash = "16ae52cacdeff145a5c392c8e19fc67a7354e3c22c423b85baae6fdebef250b3"
+python-versions = ">=3.12,<4.0"
+content-hash = "aa3d364c10d59501b88d805b7e26e6ad30380cdee02068930b051f1859787f1a"

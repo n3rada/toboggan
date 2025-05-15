@@ -7,14 +7,14 @@ authors = [
 ]
 license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
-requires-python = ">=3.13,<4.0"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "prompt-toolkit (>=3.0.50,<4.0.0)",
     "tqdm (>=4.67.1,<5.0.0)",
     "httpx (>=0.28.1)",
     "wonderwords (>=2.2.0,<3.0.0)",
     "pycryptodomex (>=3.21.0,<4.0.0)",
-    "modwrap (>=1.0.7,<2.0.0)",
+    "modwrap (>=1.0.8,<2.0.0)",
 ]
 
 [project.urls]
