@@ -176,12 +176,12 @@ def run() -> int:
     execution_module = None
 
     if args.shell:
-        wrapper = ModuleWrapper(BUILTIN_DIR / "os_command")
+        wrapper = ModuleWrapper(BUILTIN_DIR / "os_command.py")
         execution_module = wrapper.module
         execution_module.BASE_CMD = args.shell
         logger.info("Use OS system command as base.")
     elif args.request:
-        wrapper = ModuleWrapper(BUILTIN_DIR / "burpsuite")
+        wrapper = ModuleWrapper(BUILTIN_DIR / "burpsuite.py")
         execution_module = wrapper.module
         execution_module.BURP_REQUEST_OBJECT = execution_module.BurpRequest(
             args.request
