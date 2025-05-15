@@ -34,7 +34,7 @@ When you are knowing what you are doing, you can also do:
 toboggan -m ~/phpexploit.py --hide --fifo --os "unix" -wd /dev/shm/apache-tmp
 ```
 
-It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) inside the remote directory `/dev/shm/apache-tmp` and obfuscating all commands using `unix` (`--os`) [hide.py](./toboggan/actions/hide/unix.py).
+It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `unix` (`--os`) remote system and obfuscating all commands using the [hide.py](./toboggan/actions/hide/unix.py) actions.
 
 ### Proxy
 You can forward to your favorite proxifier such as your favorite [`Squid`](https://www.squid-cache.org/) server using the `--proxy` parameter:
