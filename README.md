@@ -34,9 +34,10 @@ When you are knowing what you are doing, you can also do:
 toboggan -m ~/phpexploit.py --hide --fifo --os "unix" -wd /dev/shm/apache-tmp
 ```
 
-It will start a FiFo named-pipe inside the remote directory `/dev/shm/apache-tmp` and obfuscating all commands using `unix` (`--os`) [hide.py](./toboggan/actions/hide/unix.py).
+It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `unix` (`--os`) remote system and obfuscating all commands using the [hide.py](./toboggan/actions/hide/unix.py) actions.
 
 ### Proxy
+
 You can forward to your favorite proxifier such as your favorite [`Squid`](https://www.squid-cache.org/) server using the `--proxy` parameter:
 
 ```shell
@@ -57,7 +58,9 @@ toboggan -r brequest
 
 ## 🔍 What is an RCE Python Module?
 
-A Remote Code Execution (RCE) module is a Python script designed to handle remote command execution. To be compatible with Toboggan, the module must include an execute function with the following signature:
+A Remote Code Execution (RCE) module is a Python script that defines how commands are sent to and executed on a remote system. Toboggan uses this module to wrap and streamline post-exploitation command execution.
+
+To be compatible with Toboggan, your module must define a function with the following exact signature:
 
 ```python
 def execute(command: str, timeout: float) -> str:
@@ -74,6 +77,20 @@ def execute(command: str, timeout: float) -> str:
 ```
 
 This function will be called internally by Toboggan to execute commands remotely. It uses [`modwrap`](https://pypi.org/project/modwrap/) under the hood.
+
+### Considerations
+
+Your `execute()` function must handle all quirks of the target system.
+
+If space characters need to be replaced (e.g., with `${IFS}`), handle that inside the function.
+
+If special encoding is required (e.g., base64, hex), apply it before sending.
+
+If the system echoes extra characters or wraps the output, sanitize it.
+
+If the remote interface is slow or unreliable, tune the timeout.
+
+The goal is for Toboggan to call your `execute()` function with any arbitrary command and get the correct output, as if you typed it in a shell.
 
 ## 🏗️ Making Dumb Shells Smarter
 
