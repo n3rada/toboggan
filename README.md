@@ -1,6 +1,6 @@
 # Toboggan
 
-🛝 Slide into post-exploitation from RCE with ease. Toboggan wraps your remote command execution into a upgradable dumb shell, making the post-exploitation phase better.
+🛝 Slide into post-exploitation from RCE with ease. Toboggan wraps your remote command execution into a upgradable dumb shell, sliding directly into post-exploitation phase. It allows you to fastly launch a `mkfifo` forward-shell inside a targeted Linux environment.
 
 <p align="center">
     <img width="350" src="/media/toboggan-coin-nobg.png" alt="Toboggan Logo">
@@ -92,6 +92,7 @@ The goal is for Toboggan to call your `execute()` function with any arbitrary co
 ## 🏗️ Making Dumb Shells Smarter
 
 ### Named Pipes for Semi-Interactive Shells
+
 Toboggan uses named pipes (FIFO - First In, First Out) for inter-process communication (IPC). Named pipes are particularly useful when working with RCE over limited channels like HTTP requests or restricted command execution interfaces. It uses a `mkfifo` command under the hood. Also known as forward-shell style.
 
 This allows Toboggan to simulate pseudo-TTY behavior, even in restricted environments behind firewalls. To enable named pipe mode, use the `--fifo` flag:
