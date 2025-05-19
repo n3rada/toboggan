@@ -82,13 +82,10 @@ This function will be called internally by Toboggan to execute commands remotely
 
 Your `execute()` function must handle all quirks of the target system.
 
-If space characters need to be replaced (e.g., with `${IFS}`), handle that inside the function.
-
-If special encoding is required (e.g., base64, hex), apply it before sending.
-
-If the system echoes extra characters or wraps the output, sanitize it.
-
-If the remote interface is slow or unreliable, tune the timeout.
+- If space characters need to be replaced (e.g., with `${IFS}`), handle that inside the function.
+- If special encoding is required (e.g., base64, hex), apply it before sending.
+- If the system echoes extra characters or wraps the output, sanitize it.
+- If the remote interface is slow or unreliable, tune the timeout.
 
 The goal is for Toboggan to call your `execute()` function with any arbitrary command and get the correct output, as if you typed it in a shell.
 
