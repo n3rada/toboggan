@@ -1,4 +1,16 @@
-#!/usr/bin/env python3
+"""
+Toboggan Console Entry Point
+
+This module serves as the main entry point for the Toboggan framework,
+responsible for parsing CLI arguments, loading execution modules, and
+launching the interactive remote terminal environment.
+
+Features:
+- Supports command execution via wrappers, HTTP requests, or modules.
+- Enables FIFO-based semi-interactive remote shells.
+- Configures proxy settings for module compatibility.
+- Provides user-friendly logging and help output.
+"""
 
 # Built-in imports
 import argparse
