@@ -21,7 +21,7 @@ class Executor(metaclass=SingletonMeta):
         working_directory: str = None,
         target_os: str = None,
         base64_wrapping: bool = False,
-        hide: bool = False,
+        camouflage: bool = False,
     ):
         self._logger = logbook.get_logger()
 
@@ -30,7 +30,7 @@ class Executor(metaclass=SingletonMeta):
 
         self.__execute = execute_method
         self.__base64_wrapping = base64_wrapping
-        self.__hide = False
+        self.__camouflage = False
 
         if target_os is None:
             self.__os = self.__guess_os()
@@ -52,12 +52,12 @@ class Executor(metaclass=SingletonMeta):
         self._provided_working_directory = working_directory
         self._working_directory = None
 
-        if hide:
-            self.__hide_action = self.__action_manager.get_action("hide")(executor=self)
-            self.__unhide_action = self.__action_manager.get_action("unhide")(
+        if camouflage:
+            self.__camouflage_action = self.__action_manager.get_action("camouflage")(executor=self)
+            self.__uncamouflage_action = self.__action_manager.get_action("uncamouflage")(
                 executor=self
             )
-            self.__hide = True
+            self.__camouflage = True
 
         self.__target = target.Target(
             os=self.__os,
@@ -114,8 +114,8 @@ class Executor(metaclass=SingletonMeta):
             self._logger.debug(f"Executing: {command}")
 
         # Apply obfuscation if enabled
-        if self.__hide:
-            command = self.__hide_action.run(command)
+        if self.__camouflage:
+            command = self.__camouflage_action.run(command)
             if debug:
                 self._logger.debug(f"🔒 Obfuscated command for execution: {command}")
 
@@ -158,9 +158,9 @@ class Executor(metaclass=SingletonMeta):
             self._logger.debug(f"📩 Received raw output: {result!r}")
 
         # Attempt to de-obfuscate the result if obfuscation was used
-        if self.__hide:
+        if self.__camouflage:
             try:
-                result = self.__unhide_action.run(result)
+                result = self.__uncamouflage_action.run(result)
                 if debug:
                     self._logger.debug(f"🔓 De-obfuscated output: {result!r}")
             except ValueError:
