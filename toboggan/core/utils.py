@@ -1,5 +1,4 @@
 import secrets
-import random
 import base64
 import io
 import gzip
@@ -8,6 +7,9 @@ from urllib.parse import urlparse
 # Third party library imports
 from prompt_toolkit import shortcuts
 from prompt_toolkit.styles import Style
+
+# Local library imports
+from toboggan.version import get_version
 
 
 class SingletonMeta(type):
@@ -26,8 +28,11 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
+
 def banner() -> str:
-    return r"""
+    version = get_version()
+
+    return fr"""
     _____      _
    /__   \___ | |__   ___   __ _  __ _  __ _ _ __
      / /\/ _ \| '_ \ / _ \ / _` |/ _` |/ _` | '_ \
@@ -36,7 +41,10 @@ def banner() -> str:
                             |___/ |___/
          Slides onto remote system with ease
                     @n3rada
+
+                Version: {version}
     """
+
 
 
 def is_valid_proxy(url):

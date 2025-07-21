@@ -26,7 +26,7 @@ from toboggan.core import logbook
 from toboggan.core import executor
 from toboggan.core import terminal
 from toboggan.core import utils
-
+from toboggan.version import get_version
 
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"
@@ -38,6 +38,13 @@ def run() -> int:
         add_help=True,
         description="Bring intelligence to any remote command execution (RCE).",
         formatter_class=argparse.RawTextHelpFormatter,
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {get_version()}",
+        help="Show Toboggan version and exit.",
     )
 
     # Argument Groups
