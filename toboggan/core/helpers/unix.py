@@ -18,6 +18,9 @@ class UnixHelper(base.OSHelperBase):
 
         self.__named_pipe_instance = None
 
+        self.__is_busybox_present = None
+        self.__busybox_commands = set()
+
     def fifo_execute(self, command: str) -> None:
         self.__named_pipe_instance.execute(command)
 
@@ -123,7 +126,6 @@ class UnixHelper(base.OSHelperBase):
                 "/dev/shm",
                 "/tmp",
                 "/var/tmp",
-                "/run/lock",
             ]
 
         # Pick a stealthy directory
@@ -168,6 +170,74 @@ class UnixHelper(base.OSHelperBase):
 
         return any(re.search(pattern, command_output) for pattern in prompt_patterns)
 
+    def check_busybox(self) -> bool:
+        """
+        Checks if BusyBox is present and loads its available commands into a set.
+        Returns:
+            bool: True if BusyBox is found, False otherwise.
+        """
+        try:
+            result = self._executor.remote_execute(command="/bin/busybox", debug=False)
+
+            if result and "Currently defined functions:" in result:
+                self.__is_busybox_present = True
+                self.__busybox_commands = self.__parse_busybox_commands(result)
+                self._logger.info("✅ BusyBox detected and commands parsed.")
+                return True
+
+            self._logger.warning("❌ BusyBox not detected.")
+            self.__is_busybox_present = False
+            return False
+        except Exception as exc:
+            self._logger.error(f"Error checking BusyBox: {exc}")
+            return False
+
+    def __parse_busybox_commands(self, output: str) -> set[str]:
+        """
+        Parses the output of `busybox --help` to extract available command names.
+
+        Args:
+            output (str): The stdout string from BusyBox.
+
+        Returns:
+            set[str]: Set of supported BusyBox function names.
+        """
+        collecting = False
+        commands = set()
+
+        for line in output.strip().splitlines():
+            if "Currently defined functions:" in line:
+                collecting = True
+                continue
+
+            if collecting:
+                words = line.strip().split()
+                for word in words:
+                    commands.add(word.rstrip(","))
+
+        return commands
+
+    def busybox_wrap(self, full_command: str) -> str:
+        """
+        Wrap a full command with /bin/busybox if its base command is supported.
+        Args:
+            full_command (str): A complete shell command, e.g., "ls -la /tmp"
+        Returns:
+            str: Wrapped command using busybox or fallback with command -v
+        """
+        if not self.__is_busybox_present:
+            return full_command
+
+        parts = full_command.strip().split()
+        if not parts:
+            return full_command
+
+        base_cmd = parts[0]
+        if base_cmd in self.__busybox_commands:
+            return f"/bin/busybox {full_command}"
+
+        return f"$(command -v {base_cmd}) {' '.join(parts[1:])}"
+
     # Properties
     @property
     def shell_path(self) -> str:
@@ -176,3 +246,14 @@ class UnixHelper(base.OSHelperBase):
     @property
     def named_pipe_instance(self) -> NamedPipe:
         return self.__named_pipe_instance
+
+    @property
+    def busybox_commands(self) -> set:
+        return self.__busybox_commands
+
+    @property
+    def is_busybox_present(self) -> bool:
+        if self.__is_busybox_present is None:
+            self.__is_busybox_present = self.check_busybox()
+
+        return self.__is_busybox_present

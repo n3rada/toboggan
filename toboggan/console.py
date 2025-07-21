@@ -43,7 +43,7 @@ def run() -> int:
     )
 
     execution_group.add_argument(
-        "--shell",
+        "--exec-wrapper",
         type=str,
         default=None,
         help="OS shell command with placeholder ||cmd||.",
@@ -106,6 +106,15 @@ def run() -> int:
         type=str,
         default=None,
         help="Output file name where command output appears.",
+    )
+
+    named_pipe_group.add_argument(
+        "--shell",
+        type=str,
+        default=None,
+        help=(
+            "Specify the shell binary to be used for named pipe execution (e.g., /bin/sh, /bin/bash)"
+        ),
     )
 
     system_group.add_argument(
@@ -175,10 +184,11 @@ def run() -> int:
 
     execution_module = None
 
-    if args.shell:
+    if args.exec_wrapper:
+        logger.info(f"Using OS command wrapper: '{args.exec_wrapper}'.")
         wrapper = ModuleWrapper(BUILTIN_DIR / "os_command.py")
         execution_module = wrapper.module
-        execution_module.BASE_CMD = args.shell
+        execution_module.BASE_CMD = args.exec_wrapper
         logger.info("Use OS system command as base.")
     elif args.request:
         wrapper = ModuleWrapper(BUILTIN_DIR / "burpsuite.py")
@@ -215,16 +225,18 @@ def run() -> int:
 
         remote_terminal = terminal.Terminal(executor=command_executor)
 
-        if args.fifo and command_executor.target.os == "unix":
-            logger.info(
-                "🤏 Making your dumb shell semi-interactive using 'fifo' action."
-            )
-            command_executor.os_helper.start_named_pipe(
-                action_class=command_executor.action_manager.get_action("fifo"),
-                read_interval=args.read_interval,
-                command_in=args.stdin,
-                command_out=args.stdout,
-            )
+        if command_executor.target.os == "unix":
+            if args.fifo:
+                logger.info(
+                    "🤏 Making your dumb shell semi-interactive using 'fifo' action."
+                )
+                command_executor.os_helper.start_named_pipe(
+                    action_class=command_executor.action_manager.get_action("fifo"),
+                    read_interval=args.read_interval,
+                    command_in=args.stdin,
+                    command_out=args.stdout,
+                    shell=args.shell,
+                )
 
         remote_terminal.start()
     except Exception:

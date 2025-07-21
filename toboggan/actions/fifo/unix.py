@@ -1,9 +1,7 @@
-# Built-in imports
 import threading
 import time
 import random
 
-# Local application/library specific imports
 from toboggan.core.action import NamedPipe
 
 
@@ -17,20 +15,31 @@ class FifoAction(NamedPipe):
         read_interval=0.4,
         command_in=None,
         command_out=None,
+        shell=None,
     ):
         super().__init__(executor, read_interval, command_in, command_out)
+
+        self.__os_helper = executor.os_helper
+        self.__os_helper.is_busybox_present  # Force BusyBox detection
+
+        if shell is None:
+            self.__shell = "$(command -v $0)"
+        else:
+            self.__shell = shell.strip()
+
+        self._logger.info(f"Using shell: {self.__shell}")
         self.tty = False
 
     def setup(self):
-        self._executor.remote_execute(f"/bin/mkfifo {self._stdin}")
+        # Use busybox-wrapped mkfifo
+        mkfifo_cmd = self.__os_helper.busybox_wrap(f"mkfifo {self._stdin}")
+        self._executor.remote_execute(mkfifo_cmd)
 
-        shell = "$(command -v $0)"
+        # Use busybox-wrapped tail
+        tail_cmd = self.__os_helper.busybox_wrap(f"tail -f {self._stdin}")
+        full_cmd = f"{tail_cmd}|{self.__shell} > {self._stdout} 2>&1 &"
+        self._executor.remote_execute(full_cmd)
 
-        self._executor.remote_execute(
-            f"/bin/tail -f {self._stdin}|{shell} > {self._stdout} 2>&1 &"
-        )
-
-        # Initialize stop flag
         self.__stop_thread = False
 
     def run(self):
@@ -48,18 +57,24 @@ class FifoAction(NamedPipe):
             self.__read_thread.join()
 
     def execute(self, command: str):
-        self._executor.remote_execute(command=f"/bin/echo '{command}' > {self._stdin}")
+        echo_cmd = self.__os_helper.busybox_wrap(f"echo '{command}' > {self._stdin}")
+        self._executor.remote_execute(echo_cmd)
 
     def __poll_output(self) -> None:
-
+        # BusyBox-friendly polling commands
         poll_commands = [
-            f"/usr/bin/sed -n p {self._stdout}; : > {self._stdout}",
-            f"/usr/bin/tail -n +1 {self._stdout}; : > {self._stdout}",
-            f"/usr/bin/dd if={self._stdout} bs=4096 2>/dev/null; : > {self._stdout}",
+            self.__os_helper.busybox_wrap(
+                f"sed -n p {self._stdout}; : > {self._stdout}"
+            ),
+            self.__os_helper.busybox_wrap(
+                f"tail -n +1 {self._stdout}; : > {self._stdout}"
+            ),
+            self.__os_helper.busybox_wrap(
+                f"dd if={self._stdout} bs=4096 2>/dev/null; : > {self._stdout}"
+            ),
         ]
 
         while not self.__stop_thread:
-
             time.sleep(random.uniform(self._read_interval, self._read_interval * 1.5))
 
             command_output = self._executor.remote_execute(
