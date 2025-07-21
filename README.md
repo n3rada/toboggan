@@ -1,6 +1,6 @@
 # Toboggan
 
-🛝 Slide into post-exploitation from RCE with ease. Toboggan wraps your remote command execution into a upgradable dumb shell, making the post-exploitation phase better.
+🛝 Slide into post-exploitation from RCE with ease. Toboggan wraps your remote command execution into a upgradable dumb shell, sliding directly into post-exploitation phase. It allows you to fastly launch a `mkfifo` forward-shell inside a targeted Linux environment.
 
 <p align="center">
     <img width="350" src="/media/toboggan-coin-nobg.png" alt="Toboggan Logo">
@@ -82,20 +82,18 @@ This function will be called internally by Toboggan to execute commands remotely
 
 Your `execute()` function must handle all quirks of the target system.
 
-If space characters need to be replaced (e.g., with `${IFS}`), handle that inside the function.
-
-If special encoding is required (e.g., base64, hex), apply it before sending.
-
-If the system echoes extra characters or wraps the output, sanitize it.
-
-If the remote interface is slow or unreliable, tune the timeout.
+- If space characters need to be replaced (e.g., with `${IFS}`), handle that inside the function.
+- If special encoding is required (e.g., base64, hex), apply it before sending.
+- If the system echoes extra characters or wraps the output, sanitize it.
+- If the remote interface is slow or unreliable, tune the timeout.
 
 The goal is for Toboggan to call your `execute()` function with any arbitrary command and get the correct output, as if you typed it in a shell.
 
 ## 🏗️ Making Dumb Shells Smarter
 
 ### Named Pipes for Semi-Interactive Shells
-Toboggan uses named pipes (FIFO - First In, First Out) for inter-process communication (IPC). Named pipes are particularly useful when working with RCE over limited channels like HTTP requests or restricted command execution interfaces.
+
+Toboggan uses named pipes (FIFO - First In, First Out) for inter-process communication (IPC). Named pipes are particularly useful when working with RCE over limited channels like HTTP requests or restricted command execution interfaces. It uses a `mkfifo` command under the hood. Also known as forward-shell style.
 
 This allows Toboggan to simulate pseudo-TTY behavior, even in restricted environments behind firewalls. To enable named pipe mode, use the `--fifo` flag:
 ```shell
@@ -104,12 +102,10 @@ toboggan -m ~/phpexploit.py --fifo
 
 Toboggan will create a FIFO-based communication channel, allowing you to interact with the remote system in a more dynamic way (e.g., using `sudo -l`).
 
-## 🛠️ Actions: Customizable Remote Interactions
+## 🛠️ Bring Your Own Actions (BYOA)
 
-Actions in Toboggan are modular plugins that allow you to extend its functionality. Actions can automate common post-exploitation tasks, such as downloading files, executing scripts, or setting up persistent access.
-
-### Custom Actions
-Custom actions allow you to define your own automation workflows. Actions should be placed in `~/.local/share/toboggan/actions` (Linux) or `%APPDATA%\toboggan\actions` (Windows).
+Actions in Toboggan are modular plugins that allow you to extend its functionality. Actions can automate common post-exploitation tasks, such as downloading files, executing scripts, or setting up persistent access. Custom actions should be placed in `~/.local/share/toboggan/actions` (Linux) or `%APPDATA%\toboggan\actions` (Windows).
 
 ## Disclaimer
+
 Toboggan is intended for use in legal penetration testing, Capture The Flag (CTF) competitions, or other authorized and ethical security assessments. Unauthorized use of this tool on systems you do not own or without proper authorization may be illegal. Please use "Toboggan" responsibly and in compliance with applicable laws and regulations.
