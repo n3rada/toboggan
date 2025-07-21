@@ -3,7 +3,7 @@ import random
 import base64
 import io
 import gzip
-
+from urllib.parse import urlparse
 
 # Third party library imports
 from prompt_toolkit import shortcuts
@@ -38,6 +38,10 @@ def banner() -> str:
                     @n3rada
     """
 
+
+def is_valid_proxy(url):
+    parsed = urlparse(url)
+    return parsed.scheme in {"http", "https", "socks4", "socks5"} and parsed.hostname
 
 def base64_for_powershell(command: str) -> str:
     # Encode the command as UTF-16LE, PowerShell's default encoding
