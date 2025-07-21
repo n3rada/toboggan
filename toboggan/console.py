@@ -37,6 +37,7 @@ def run() -> int:
         prog="toboggan",
         add_help=True,
         description="Bring intelligence to any remote command execution (RCE).",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     # Argument Groups
@@ -54,37 +55,36 @@ def run() -> int:
     )
 
     execution_group.add_argument(
-        "--exec-wrapper",
-        type=str,
-        default=None,
-        help="OS shell command with placeholder ||cmd||.",
-    )
-    execution_group.add_argument(
-        "-m",
-        "--module",
-        type=str,
-        default=None,
-        help="Module path to be imported and executed.",
-    )
-    execution_group.add_argument(
-        "-r",
-        "--request",
-        type=str,
-        default=None,
-        help="Burp request with placeholder ||cmd||.",
-    )
-    execution_group.add_argument(
         "-b64",
         "--base64",
         action="store_true",
         required=False,
         help="Base64-encode every command before execution.",
     )
+    
     execution_group.add_argument(
-        "--hide",
+        "--camouflage",
         action="store_true",
         required=False,
-        help="Obfuscate the command to execute using hide and unhide actions.",
+        help="Wrap the command using a hide/unhide action to evade detection.",
+    )
+
+    source_group = execution_group.add_mutually_exclusive_group(required=True)
+    
+    source_group.add_argument(
+        "--exec-wrapper",
+        type=str,
+        help="Shell command template with placeholder ||cmd|| (e.g., 'sh -c \"||cmd||\"')."
+    )
+    source_group.add_argument(
+        "-r", "--request",
+        type=str,
+        help="Burp request template file with placeholder ||cmd||."
+    )
+    source_group.add_argument(
+        "-m", "--module",
+        type=str,
+        help="Python module implementing the 'execute(command, timeout)' function."
     )
 
     # Named Pipe Settings
@@ -240,7 +240,7 @@ def run() -> int:
             working_directory=args.working_directory,
             target_os=args.os,
             base64_wrapping=args.base64,
-            hide=args.hide,
+            camouflage=args.camouflage,
         )
 
         remote_terminal = terminal.Terminal(executor=command_executor)
