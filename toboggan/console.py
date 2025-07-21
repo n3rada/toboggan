@@ -13,7 +13,6 @@ import httpx
 from toboggan.core import logbook
 from toboggan.core import executor
 from toboggan.core import terminal
-
 from toboggan.core import utils
 
 
@@ -162,8 +161,17 @@ def run() -> int:
     logger = logbook.get_logger()
 
     if args.proxy:
+        if not is_valid_proxy(args.proxy):
+            logger.warning("⚠️ Provided proxy may be malformed or unsupported.")
+            return 1
+        
         os.environ["http_proxy"] = args.proxy
         os.environ["https_proxy"] = args.proxy
+        os.environ["HTTP_PROXY"] = args.proxy
+        os.environ["HTTPS_PROXY"] = args.proxy
+        os.environ["ALL_PROXY"] = args.proxy
+        os.environ["all_proxy"] = args.proxy
+
         logger.info(f"🌐 Proxy set to {args.proxy}")
 
     public_ip = None
