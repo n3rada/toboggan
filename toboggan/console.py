@@ -61,7 +61,7 @@ def run() -> int:
         required=False,
         help="Base64-encode every command before execution.",
     )
-    
+
     execution_group.add_argument(
         "--camouflage",
         action="store_true",
@@ -70,7 +70,7 @@ def run() -> int:
     )
 
     source_group = execution_group.add_mutually_exclusive_group(required=True)
-    
+
     source_group.add_argument(
         "--exec-wrapper",
         type=str,
@@ -173,10 +173,10 @@ def run() -> int:
     logger = logbook.get_logger()
 
     if args.proxy:
-        if not is_valid_proxy(args.proxy):
+        if not utils.is_valid_proxy(args.proxy):
             logger.warning("⚠️ Provided proxy may be malformed or unsupported.")
             return 1
-        
+
         os.environ["http_proxy"] = args.proxy
         os.environ["https_proxy"] = args.proxy
         os.environ["HTTP_PROXY"] = args.proxy

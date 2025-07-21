@@ -1,6 +1,6 @@
 # Buit-in imports
 import subprocess
-from urllib.parse import quote
+import shlex
 
 # This will be set dynamically
 BASE_CMD = None
@@ -17,7 +17,7 @@ def execute(command: str, timeout: float = None) -> str:
         str: Output of the command.
     """
 
-    full_command = BASE_CMD.replace("||cmd||", quote(command))
+    full_command = BASE_CMD.replace("||cmd||", shlex.quote(command))
 
     return subprocess.check_output(
         full_command, stderr=subprocess.STDOUT, shell=True, timeout=timeout
