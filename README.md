@@ -15,12 +15,16 @@ pip install 'toboggan@git+https://github.com/n3rada/toboggan.git'
 ```
 
 ### Using [`pipx`](https://pypa.github.io/pipx/)
+
 Be careful, it installs Python applications in isolated virtual environments, which means they do not have access to system-wide packages by default (like `psycopg2`).
 ```shell
 pipx install 'git+https://github.com/n3rada/toboggan.git'
 ```
 
-If you want-it to use system site packages, pass `--system-site-packages` when installing via `pipx`.
+If you want-it to use system site packages, pass `--system-site-packages` when installing via `pipx`:
+```shell
+pipx install --system-site-packages 'git+https://github.com/n3rada/toboggan.git'
+```
 
 ## Execution
 
