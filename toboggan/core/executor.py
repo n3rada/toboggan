@@ -261,3 +261,7 @@ class Executor(metaclass=SingletonMeta):
     @property
     def os_helper(self) -> OSHelperBase:
         return self._os_helper
+
+    @property
+    def is_ready(self) -> bool:
+        return self._initial_execution_successful
