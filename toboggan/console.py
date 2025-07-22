@@ -15,6 +15,7 @@ Features:
 # Built-in imports
 import argparse
 import os
+import time
 from pathlib import Path
 
 # External library imports
@@ -198,9 +199,15 @@ def run() -> int:
     public_ip = None
     try:
         with httpx.Client(verify=False, http1=True, http2=False) as client:
+            start_time = time.perf_counter()
             response = client.get("https://api.ipify.org?format=json", timeout=15)
+            end_time = time.perf_counter()
+
+            rtt = end_time - start_time
+
             if response.status_code == 200:
                 public_ip = response.json().get("ip", None)
+
     except httpx.TimeoutException:
         logger.error("Request timed-out.")
     except Exception as e:
@@ -209,7 +216,7 @@ def run() -> int:
     if public_ip is None:
         return 1
 
-    logger.info(f"🌍 Public IP: {public_ip}")
+    logger.info(f"🌍 Public IP: {public_ip} (⏱️ RTT: {rtt:.2f}s)")
 
     execution_module = None
 
@@ -250,6 +257,11 @@ def run() -> int:
             target_os=args.os,
             base64_wrapping=args.base64,
             camouflage=args.camouflage,
+        )
+
+        logger.info(
+            f"🛝 It takes about {command_executor.avg_response_time:.2f}s for a command "
+            f"to slide down the toboggan 🎯"
         )
 
         remote_terminal = terminal.Terminal(executor=command_executor)

@@ -56,6 +56,9 @@ class Executor(metaclass=SingletonMeta):
             False  # Will become True only if remote is reachable
         )
 
+        self._avg_response_time = None  # Exponential moving average
+        self._response_alpha = 0.4  # Weight of most recent observation (adjustable)
+
         if camouflage:
             self.__camouflage_action = self.__action_manager.get_action("camouflage")(
                 executor=self
@@ -133,7 +136,19 @@ class Executor(metaclass=SingletonMeta):
 
         for attempt in range(3):
             try:
+                start_time = time.time()
                 result = self.__execute(command=command, timeout=timeout)
+                end_time = time.time()
+
+                # Update response time average
+                elapsed = end_time - start_time
+                if self._avg_response_time is None:
+                    self._avg_response_time = elapsed
+                else:
+                    self._avg_response_time = (
+                        self._response_alpha * elapsed
+                        + (1 - self._response_alpha) * self._avg_response_time
+                    )
 
                 if self._initial_execution_successful is False:
                     self._initial_execution_successful = True
@@ -265,3 +280,8 @@ class Executor(metaclass=SingletonMeta):
     @property
     def is_ready(self) -> bool:
         return self._initial_execution_successful
+
+    @property
+    def avg_response_time(self) -> float | None:
+        """Rolling average of response time for remote commands."""
+        return self._avg_response_time

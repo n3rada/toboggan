@@ -53,10 +53,24 @@ class NamedPipe(BaseAction):
         self._logger.info(f"Using stdout: {self._stdout}")
 
         self._read_interval = read_interval
-        self._logger.info(f"Reading interval: {read_interval} seconds")
-        req_per_minute = 60 / read_interval
 
-        self._logger.info(f"Requests per minute: {req_per_minute}")
+        # If server is slow, override with actual RTT
+        avg_rtt = self._executor.avg_response_time
+        if avg_rtt and avg_rtt > self._read_interval:
+            self._read_interval = (
+                avg_rtt  # Don't poll faster than the target can respond
+            )
+
+            self._logger.info(f"⏱️ Adjusted reading interval based on average RTT.")
+
+        self._logger.info(f"🔁 Reading interval: {self._read_interval:.2f} seconds")
+
+        req_per_sec = 1 / self._read_interval
+        req_per_min = req_per_sec * 60
+
+        self._logger.info(
+            f"📡 Approx. requests: {req_per_sec:.2f}/sec | {req_per_min:.0f}/min"
+        )
 
     @abstractmethod
     def setup(self, read_interval: float = 0.4, session_identifier: str = None):

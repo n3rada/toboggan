@@ -75,6 +75,8 @@ class FifoAction(NamedPipe):
         ]
 
         while not self.__stop_thread:
+
+            # Apply jitter to avoid burst collisions
             time.sleep(random.uniform(self._read_interval, self._read_interval * 1.5))
 
             command_output = self._executor.remote_execute(
