@@ -60,12 +60,12 @@ class Executor(metaclass=SingletonMeta):
         self._response_alpha = 0.4  # Weight of most recent observation (adjustable)
 
         if camouflage:
-            self.__camouflage_action = self.__action_manager.get_action("camouflage")(
+            self.__camouflage_action = self.__action_manager.get_action("hide")(
                 executor=self
             )
-            self.__uncamouflage_action = self.__action_manager.get_action(
-                "uncamouflage"
-            )(executor=self)
+            self.__uncamouflage_action = self.__action_manager.get_action("unhide")(
+                executor=self
+            )
             self.__camouflage = True
 
         self.__target = target.Target(
@@ -160,9 +160,7 @@ class Executor(metaclass=SingletonMeta):
 
                 if self._initial_execution_successful is False:
                     self._initial_execution_successful = True
-                    self._logger.success(
-                        "✅ Initial command execution successful. Remote target is reachable."
-                    )
+                    self._logger.success("✅ Remote target is reachable.")
 
                 break  # Exit retry loop on success
 
