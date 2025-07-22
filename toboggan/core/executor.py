@@ -117,6 +117,14 @@ class Executor(metaclass=SingletonMeta):
                 )
             return ""
 
+        # Adjust timeout based on avg response time, even if passed explicitly
+        if self._avg_response_time is not None and timeout is not None:
+            timeout = max(timeout, self._avg_response_time * 1.5)
+            if debug:
+                self._logger.debug(
+                    f"⏱️ Timeout adjusted to {timeout:.2f}s based on avg RTT"
+                )
+
         result = ""
 
         if debug:
