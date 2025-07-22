@@ -40,7 +40,7 @@ def banner() -> str:
                         |___/ |___/
     Slides onto remote system with ease
                 @n3rada
-                v{version}
+                 {version}
 """
 
 
