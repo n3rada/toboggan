@@ -176,20 +176,21 @@ class UnixHelper(base.OSHelperBase):
         Returns:
             bool: True if BusyBox is found, False otherwise.
         """
+        self._logger.info("🔍 Checking for BusyBox presence on the target system.")
         try:
             result = self._executor.remote_execute(command="/bin/busybox", debug=False)
 
             if result and "Currently defined functions:" in result:
                 self.__is_busybox_present = True
                 self.__busybox_commands = self.__parse_busybox_commands(result)
-                self._logger.info("✅ BusyBox detected and commands parsed.")
+                self._logger.success("📦 BusyBox detected and command list parsed.")
                 return True
 
-            self._logger.warning("❌ BusyBox not detected.")
+            self._logger.warning("⚠️ BusyBox not found or output not recognized.")
             self.__is_busybox_present = False
             return False
         except Exception as exc:
-            self._logger.error(f"Error checking BusyBox: {exc}")
+            self._logger.error(f"❌ Error while checking BusyBox: {exc}")
             return False
 
     def __parse_busybox_commands(self, output: str) -> set[str]:
