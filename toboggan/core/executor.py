@@ -52,11 +52,17 @@ class Executor(metaclass=SingletonMeta):
         self._provided_working_directory = working_directory
         self._working_directory = None
 
+        self._initial_execution_successful = (
+            False  # Will become True only if remote is reachable
+        )
+
         if camouflage:
-            self.__camouflage_action = self.__action_manager.get_action("camouflage")(executor=self)
-            self.__uncamouflage_action = self.__action_manager.get_action("uncamouflage")(
+            self.__camouflage_action = self.__action_manager.get_action("camouflage")(
                 executor=self
             )
+            self.__uncamouflage_action = self.__action_manager.get_action(
+                "uncamouflage"
+            )(executor=self)
             self.__camouflage = True
 
         self.__target = target.Target(
@@ -77,7 +83,7 @@ class Executor(metaclass=SingletonMeta):
             command (str): Command to be executed.
         """
         try:
-            self.remote_execute(command=command, timeout=1, retry=False, debug=debug)
+            self.remote_execute(command=command, timeout=3, retry=False, debug=debug)
         except Exception:
             return
 
@@ -128,9 +134,23 @@ class Executor(metaclass=SingletonMeta):
         for attempt in range(3):
             try:
                 result = self.__execute(command=command, timeout=timeout)
+
+                if self._initial_execution_successful is False:
+                    self._initial_execution_successful = True
+                    self._logger.success(
+                        "✅ Initial command execution successful. Remote target is reachable."
+                    )
+
                 break  # Exit retry loop on success
 
             except Exception as exc:
+
+                if self._initial_execution_successful is False:
+                    self._logger.error(f"❌ Failed initial execution check: {exc}")
+                    raise RuntimeError(
+                        "Unable to communicate with remote target. Aborting."
+                    )
+
                 if debug:
                     self._logger.warning(
                         f"❌ Execution failed (Attempt {attempt+1}/3): {exc}"

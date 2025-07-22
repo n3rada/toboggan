@@ -81,17 +81,19 @@ def run() -> int:
     source_group.add_argument(
         "--exec-wrapper",
         type=str,
-        help="Shell command template with placeholder ||cmd|| (e.g., 'sh -c \"||cmd||\"')."
+        help="Shell command template with placeholder ||cmd|| (e.g., 'sh -c \"||cmd||\"').",
     )
     source_group.add_argument(
-        "-r", "--request",
+        "-r",
+        "--request",
         type=str,
-        help="Burp request template file with placeholder ||cmd||."
+        help="Burp request template file with placeholder ||cmd||.",
     )
     source_group.add_argument(
-        "-m", "--module",
+        "-m",
+        "--module",
         type=str,
-        help="Python module implementing the 'execute(command, timeout)' function."
+        help="Python module implementing the 'execute(command, timeout)' function.",
     )
 
     # Named Pipe Settings
@@ -266,7 +268,11 @@ def run() -> int:
                 )
 
         remote_terminal.start()
+    except RuntimeError:
+        return 1
     except Exception:
         logger.exception("Unhandled exception occurred")
+        return 1
 
     logger.success("Toboggan execution completed.")
+    return 0
