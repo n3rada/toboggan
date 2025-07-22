@@ -32,6 +32,13 @@ class Executor(metaclass=SingletonMeta):
         self.__base64_wrapping = base64_wrapping
         self.__camouflage = False
 
+        self._initial_execution_successful = (
+            False  # Will become True only if remote is reachable
+        )
+
+        self._avg_response_time = None  # Exponential moving average
+        self._response_alpha = 0.4  # Weight of most recent observation (adjustable)
+
         if target_os is None:
             self.__os = self.__guess_os()
         else:
@@ -51,13 +58,6 @@ class Executor(metaclass=SingletonMeta):
 
         self._provided_working_directory = working_directory
         self._working_directory = None
-
-        self._initial_execution_successful = (
-            False  # Will become True only if remote is reachable
-        )
-
-        self._avg_response_time = None  # Exponential moving average
-        self._response_alpha = 0.4  # Weight of most recent observation (adjustable)
 
         if camouflage:
             self.__camouflage_action = self.__action_manager.get_action("hide")(
