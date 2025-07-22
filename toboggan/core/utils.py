@@ -28,28 +28,26 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-
 def banner() -> str:
     version = get_version()
 
-    return fr"""
-    _____      _
-   /__   \___ | |__   ___   __ _  __ _  __ _ _ __
-     / /\/ _ \| '_ \ / _ \ / _` |/ _` |/ _` | '_ \
-    / / | (_) | |_) | (_) | (_| | (_| | (_| | | | |
-    \/   \___/|_.__/ \___/ \__, |\__, |\__,_|_| |_|
-                            |___/ |___/
-         Slides onto remote system with ease
-                    @n3rada
-
-                Version: {version}
-    """
-
+    return rf"""
+ _____      _
+/__   \___ | |__   ___   __ _  __ _  __ _ _ __
+ / /\/ _ \| '_ \ / _ \ / _` |/ _` |/ _` | '_ \
+/ / | (_) | |_) | (_) | (_| | (_| | (_| | | | |
+\/   \___/|_.__/ \___/ \__, |\__, |\__,_|_| |_|
+                        |___/ |___/
+    Slides onto remote system with ease
+                @n3rada
+               {version}
+"""
 
 
 def is_valid_proxy(url):
     parsed = urlparse(url)
     return parsed.scheme in {"http", "https", "socks4", "socks5"} and parsed.hostname
+
 
 def base64_for_powershell(command: str) -> str:
     # Encode the command as UTF-16LE, PowerShell's default encoding
