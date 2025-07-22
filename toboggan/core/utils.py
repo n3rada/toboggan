@@ -38,9 +38,9 @@ def banner() -> str:
  / / | (_) | |_) | (_) | (_| | (_| | (_| | | | |
  \/   \___/|_.__/ \___/ \__, |\__, |\__,_|_| |_|
                         |___/ |___/
-    Slides onto remote system with ease
-                @n3rada
-                 {version}
+      Slides onto remote system with ease
+                 @n3rada
+                  {version}
 """
 
 
