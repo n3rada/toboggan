@@ -68,7 +68,7 @@ class InternetCheckAction(BaseAction):
             self._logger.warning("⚠️ No usable DNS utility found.")
 
         # Step 3: HTTP/HTTPS
-        self._logger.info("📦 Checking outbound TCP HTTP/HTTPS access")
+        self._logger.info("📦 Checking outbound TCP HTTP(S) access")
 
         tool = None
         use_flags = ""
