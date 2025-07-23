@@ -64,6 +64,10 @@ class PutAction(BaseAction):
         )
 
         # Step 2: Upload in chunks
+
+        self._logger.info(
+            f"📤 Uploading {local_file.name} in chunks inside: {self._executor.working_directory}"
+        )
         remote_encoded_path = (
             f"{self._executor.working_directory}/{local_file.name}.gz.b64"
         )
@@ -78,11 +82,26 @@ class PutAction(BaseAction):
                 )
                 progress_bar.update(len(chunk))
 
+        self._logger.success(f"📂 Remote encoded file path: {remote_encoded_path}")
+
         # Step 3: Decode and decompress remotely
-        self._logger.info(f"📂 Decoding and extracting remotely: {remote_path}")
+        self._logger.info(f"📂 Decoding and extracting remotely to {remote_path}")
         self._executor.remote_execute(
-            f"base64 -d {remote_encoded_path} | gunzip -c | dd of={remote_path} bs=1"
+            f"base64 -d {remote_encoded_path} | gunzip -c | dd of={remote_path} bs=4094 conv=sync",
+            retry=False,
+            timeout=60,
+            debug=False,
         )
+
+        # Check if the file was created successfully
+        if (
+            not self._executor.remote_execute(
+                f"test -f {remote_path} && echo 'O' || echo 'F'"
+            )
+            == "O"
+        ):
+            self._logger.error(f"❌ Failed to create the file at {remote_path}.")
+            return
 
         # Step 4: Cleanup
         self._executor.remote_execute(f"rm -f {remote_encoded_path}")
