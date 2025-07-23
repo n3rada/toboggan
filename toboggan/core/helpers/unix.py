@@ -14,12 +14,28 @@ class UnixHelper(base.OSHelperBase):
 
     def __init__(self, executor):
         super().__init__(executor)
-        self.__shell_path = "/bin/bash"
-
         self.__named_pipe_instance = None
 
         self.__is_busybox_present = None
         self.__busybox_commands = set()
+
+        if self._executor.shell is None:
+            self._executor.shell = "$(command -v $0)"
+
+        # Ensure shell is present
+        shell_test = (
+            self._executor.remote_execute(f"{self._executor.shell} --help")
+            .strip()
+            .lower()
+        )
+
+        if (
+            shell_test is None
+            or "no such file or directory" in shell_test
+            or "not found" in shell_test
+        ):
+            self._logger.error("❌ Shell binary not found or invalid.")
+            raise RuntimeError("Shell binary is invalid.")
 
     def fifo_execute(self, command: str) -> None:
         self.__named_pipe_instance.execute(command)
@@ -240,9 +256,6 @@ class UnixHelper(base.OSHelperBase):
         return f"$(command -v {base_cmd}) {' '.join(parts[1:])}"
 
     # Properties
-    @property
-    def shell_path(self) -> str:
-        return self.__shell_path
 
     @property
     def named_pipe_instance(self) -> NamedPipe:

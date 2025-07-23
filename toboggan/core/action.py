@@ -177,7 +177,7 @@ class ActionsManager:
 
         # Step 1: Try loading the system action
         if action := self.load_action_from_path(system_module_path):
-            self._logger.info(f"✅ Loaded system action")
+            self._logger.debug(f"✅ Loaded system action")
             return action
 
         # Step 2: Check if a user-defined action exists

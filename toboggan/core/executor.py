@@ -18,6 +18,7 @@ class Executor(metaclass=SingletonMeta):
     def __init__(
         self,
         execute_method: callable = None,
+        shell: str = None,
         working_directory: str = None,
         target_os: str = None,
         base64_wrapping: bool = False,
@@ -45,14 +46,19 @@ class Executor(metaclass=SingletonMeta):
             self.__os = target_os
             self._logger.info(f"🖥️ OS set to {target_os}")
 
+        self._shell = shell
+
         if self.__os not in ["unix", "windows"]:
             raise ValueError("Operating System should be either unix or windows.")
 
         # Attach the appropriate OS Helper
         if self.__os == "unix":
             self._os_helper = UnixHelper(self)
+
         elif self.__os == "windows":
             self._os_helper = WindowsHelper(self)
+
+        self._logger.info(f"💾 Using remote shell: {self._shell}")
 
         self.__action_manager = action.ActionsManager(target_os=self.__os)
 
@@ -282,6 +288,14 @@ class Executor(metaclass=SingletonMeta):
     @property
     def os_helper(self) -> OSHelperBase:
         return self._os_helper
+
+    @property
+    def shell(self) -> str:
+        return self._shell
+
+    @shell.setter
+    def shell(self, shell: str) -> None:
+        self._shell = shell
 
     @property
     def is_ready(self) -> bool:

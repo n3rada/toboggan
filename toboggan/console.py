@@ -63,6 +63,15 @@ def run() -> int:
     )
 
     execution_group.add_argument(
+        "--shell",
+        type=str,
+        default=None,
+        help=(
+            "Specify the shell binary to be used for named pipe execution (e.g., /bin/sh, /bin/bash)"
+        ),
+    )
+
+    execution_group.add_argument(
         "-b64",
         "--base64",
         action="store_true",
@@ -127,15 +136,6 @@ def run() -> int:
         type=str,
         default=None,
         help="Output file name where command output appears.",
-    )
-
-    named_pipe_group.add_argument(
-        "--shell",
-        type=str,
-        default=None,
-        help=(
-            "Specify the shell binary to be used for named pipe execution (e.g., /bin/sh, /bin/bash)"
-        ),
     )
 
     system_group.add_argument(
@@ -254,16 +254,20 @@ def run() -> int:
         command_executor = executor.Executor(
             execute_method=execution_module.execute,
             working_directory=args.working_directory,
+            shell=args.shell,
             target_os=args.os,
             base64_wrapping=args.base64,
             camouflage=args.camouflage,
         )
+    except RuntimeError:
+        return 1
 
-        logger.info(
-            f"🛝 It takes about {command_executor.avg_response_time:.2f}s for a command "
-            f"to slide down the toboggan 🎯"
-        )
+    logger.info(
+        f"🛝 It takes about {command_executor.avg_response_time:.2f}s for a command "
+        f"to slide down the toboggan 🎯"
+    )
 
+    try:
         remote_terminal = terminal.Terminal(executor=command_executor)
 
         if command_executor.target.os == "unix":
@@ -276,12 +280,9 @@ def run() -> int:
                     read_interval=args.read_interval,
                     command_in=args.stdin,
                     command_out=args.stdout,
-                    shell=args.shell,
                 )
 
         remote_terminal.start()
-    except RuntimeError:
-        return 1
     except Exception:
         logger.exception("Unhandled exception occurred")
         return 1

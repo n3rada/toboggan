@@ -40,8 +40,6 @@ class HideAction(BaseAction):
 
     def __init__(self, executor):
         super().__init__(executor)
-        self._shell_path = self._executor.os_helper.shell_path
-
         self.__openssl_path = self._executor.remote_execute("command -v openssl")
         if self.__openssl_path:
             self.__openssl_path = self.__openssl_path.strip()
@@ -63,18 +61,18 @@ class HideAction(BaseAction):
             encrypted = encrypt_command(command, self._AES_KEY, self._AES_IV)
             decrypt_pipeline = (
                 f"echo '{encrypted}'|base64 -d|"
-                f"{self.__openssl_path} enc -aes-256-cbc -d -K {self._AES_KEY} -iv {self._AES_IV}|{self._shell_path}"
+                f"{self.__openssl_path} enc -aes-256-cbc -d -K {self._AES_KEY} -iv {self._AES_IV}|{self._executor.shell}"
             )
         else:
             # fallback: just base64 + decode
             encoded = base64.b64encode(command.encode()).decode()
-            decrypt_pipeline = f"echo '{encoded}'|base64 -d|{self._shell_path}"
+            decrypt_pipeline = f"echo '{encoded}'|base64 -d|{self._executor.shell}"
 
         # Obfuscate further: gzip + base64 + reverse + base64 encode all
         obfuscated = base64.urlsafe_b64encode(
             f"{decrypt_pipeline}|gzip|base64 -w0|rev".encode()
         ).decode()
 
-        final_cmd = f"echo '{obfuscated}'|base64 -d|{self._shell_path}"
+        final_cmd = f"echo '{obfuscated}'|base64 -d|{self._executor.shell}"
 
         return final_cmd
