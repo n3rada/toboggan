@@ -52,6 +52,10 @@ class TokenReader:
         return self._payload.get("scp", "")
 
     @property
+    def sub(self) -> str:
+        return self._payload.get("sub", "")
+
+    @property
     def access_token(self) -> str:
         return self._access_token
 
