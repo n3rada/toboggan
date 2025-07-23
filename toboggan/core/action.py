@@ -197,7 +197,7 @@ class ActionsManager:
 
     def load_action_from_path(self, file_path: Path) -> BaseAction:
         """
-        Dynamically loads an action class from a Python file using modwrap.
+        Dynamically loads an action class from a Python file using ModuleWrapper.
 
         Args:
             file_path (Path): The full path to the action file.
@@ -207,16 +207,13 @@ class ActionsManager:
         """
         try:
             wrapper = ModuleWrapper(file_path)
-            for name in dir(wrapper.module):
-                obj = getattr(wrapper.module, name)
-                if (
-                    inspect.isclass(obj)
-                    and issubclass(obj, BaseAction)
-                    and obj is not BaseAction
-                ):
-                    return obj
+            action_class = wrapper.get_class(must_inherit=BaseAction)
+            if action_class:
+                self._logger.debug(f"👀 Loaded action class: {action_class.__name__}")
+                return action_class
         except Exception as exc:
             self._logger.error(f"❌ Failed to load module: {file_path.name} ({exc})")
+
         return None
 
     def __get_user_module_dir(self) -> Path:
@@ -250,7 +247,6 @@ class ActionsManager:
             self._logger.warning(f"⚠️ File '{file_path}' does not exist.")
             return []
 
-        self._logger.debug(f"Extracting parameters from {file_path}")
         try:
             wrapper = ModuleWrapper(file_path)
 
@@ -263,9 +259,6 @@ class ActionsManager:
             class_name = action_cls.__name__
             method_name = "__init__" if issubclass(action_cls, NamedPipe) else "run"
             signature = wrapper.get_signature(f"{class_name}.{method_name}")
-
-            self._logger.debug(f"👀 Found class: {class_name}, method: {method_name}")
-            self._logger.debug(f"Extracted signature: {signature}")
 
             return [
                 (

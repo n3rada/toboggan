@@ -86,11 +86,21 @@ class Terminal:
                     print(self.__get_help())
                     continue
 
-                if action_details := self.__executor.action_manager.get_actions().get(
-                    command
-                ):
+                if command == "max-size":
+                    if args:
+                        self.__executor.chunk_max_size = int(args[0])
+                    else:
+                        self.__executor.chunk_max_size = (
+                            self.__executor.calculate_max_chunk_size()
+                        )
+
+                    continue
+
+                actions_dict = self.__executor.action_manager.get_actions()
+
+                if targeted_action := actions_dict.get(command):
                     if action_class := self.__executor.action_manager.load_action_from_path(
-                        action_details["path"]
+                        targeted_action["path"]
                     ):
 
                         if issubclass(action_class, NamedPipe):
@@ -99,15 +109,27 @@ class Terminal:
                             )
                             continue
 
+                        if args:
+                            self._logger.info(
+                                f"▶️ Running '{command}' with args: {args}"
+                            )
+                        else:
+                            self._logger.info(f"▶️ Running '{command}'")
+
                         try:
-                            action_output = action_class(self.__executor).run(*args)
+                            action = action_class(self.__executor)
+
+                            if args:
+                                action_output = action.run(*args)
+                            else:
+                                action_output = action.run()
                         except TypeError as exc:
                             self._logger.warning(
                                 f"⚠️ Incorrect arguments for '{command}': {exc}"
                             )
                             continue
                         except Exception as exc:
-                            self._logger.error(f"Action failed: {exc}")
+                            self._logger.error(f"❌ Action '{command}' failed: {exc}")
                             continue
 
                         if action_output is not None:
@@ -115,7 +137,9 @@ class Terminal:
 
                         continue
 
-                    self._logger.error(f"❌ Failed to load action '{command}'.")
+                self._logger.error(
+                    f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
+                )
 
     # Private methods
 
@@ -136,7 +160,7 @@ class Terminal:
         max_action_length = max(len(action) for action in actions.keys()) + 2
 
         # Create header
-        help_message = f"\n📌{BOLD}Available Actions:{RESET}\n"
+        help_message = f"\n{BOLD}Available Actions:{RESET}\n"
         help_message += "-" * (max_action_length + 50) + "\n"
 
         # Sort actions alphabetically and format output
@@ -154,7 +178,16 @@ class Terminal:
                 help_message += f"    ⚙️ Parameters: {param_list}\n"
 
         help_message += "-" * (max_action_length + 50) + "\n"
-        help_message += f"{BOLD}Usage:{RESET} Type '!action_name' followed by parameters if required.\n"
+        help_message += f"{BOLD}Usage:{RESET} Type '!action_name' followed by parameters if required.\n\n"
+
+        # Add built-in commands
+        help_message += f"{BOLD}Built-in Commands:{RESET}\n"
+        help_message += "-" * (max_action_length + 50) + "\n"
+        help_message += f"🔹 {GREEN}max-size [bytes]{RESET} → {CYAN}Probe or manually set the max command size (must be multiple of 1024).{RESET}\n"
+
+        help_message += f"🔹 {GREEN}exit{RESET}    → {CYAN}Exit the toboggan shell session.{RESET}\n"
+
+        return help_message
 
         return help_message
 

@@ -14,8 +14,7 @@ dependencies = [
     "httpx (>=0.28.1)",
     "wonderwords (>=2.2.0,<3.0.0)",
     "pycryptodomex (>=3.21.0,<4.0.0)",
-    "modwrap (>=1.0.8,<2.0.0)",
-]
+    "modwrap (>=1.1.4,<2.0.0)",]
 
 [project.urls]
 repository = "https://github.com/n3rada/toboggan"

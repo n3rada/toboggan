@@ -60,6 +60,8 @@ class Executor(metaclass=SingletonMeta):
 
         self._logger.info(f"💾 Using remote shell: {self._shell}")
 
+        self._chunk_max_size = 4096  # Default chunk size for remote commands
+
         self.__action_manager = action.ActionsManager(target_os=self.__os)
 
         self._provided_working_directory = working_directory
@@ -101,6 +103,7 @@ class Executor(metaclass=SingletonMeta):
         command: str,
         timeout: float = None,
         retry: bool = True,
+        raise_on_failure: bool = False,
         debug: bool = True,
     ) -> str:
         """
@@ -188,6 +191,9 @@ class Executor(metaclass=SingletonMeta):
                         self._logger.error(
                             "⏹ Retrying is disabled. Returning empty result."
                         )
+                    if raise_on_failure:
+                        raise exc
+
                     return ""
 
                 # Apply exponential backoff with jitter
@@ -234,6 +240,58 @@ class Executor(metaclass=SingletonMeta):
             self.remote_execute(f"rm -r {self._working_directory}")
         except Exception as exc:
             self._logger.warning(f"⚠️ Failed to delete remote working directory: {exc}")
+
+    def calculate_max_chunk_size(self, min_size=1024, max_size=262144) -> int:
+        """
+        Determines the maximum shell command size accepted by the remote shell,
+        using reverse binary search and ensuring results are multiples of 1024.
+
+        Returns:
+            int: Maximum command size in bytes (rounded to nearest 1024) that succeeded.
+        """
+        self._logger.info(
+            "🧪 Starting reverse binary search to determine max command size"
+        )
+        self._logger.info(
+            f"🔢 Search range: {min_size} to {max_size} bytes (1024-aligned)"
+        )
+
+        low = (min_size // 1024) * 1024
+        high = (max_size // 1024) * 1024
+        best = 0
+
+        while low <= high:
+            mid = (
+                ((low + high) // 2) // 1024 * 1024
+            )  # Round mid down to multiple of 1024
+            junk_size = mid - len("echo") - 1  # -1 for space
+            junk = "A" * junk_size
+            cmd = f"echo {junk}"
+
+            self._logger.info(f"📏 Trying command of size: {mid} bytes")
+
+            try:
+                self.remote_execute(
+                    cmd,
+                    timeout=5,
+                    retry=False,
+                    raise_on_failure=True,
+                    debug=False,
+                )
+                self._logger.info(f"✅ Success at {mid} bytes")
+                best = mid
+                low = mid + 1024
+            except Exception:
+                self._logger.info(f"❌ Failure at {mid} bytes")
+                high = mid - 1024
+
+            self._logger.debug(
+                f"🔁 Updated search range: low={low}, high={high}, best={best}"
+            )
+
+        self._logger.success(f"📏 Final max remote command size: {best} bytes")
+
+        return best
 
     # Private methods
 
@@ -305,3 +363,38 @@ class Executor(metaclass=SingletonMeta):
     def avg_response_time(self) -> float | None:
         """Rolling average of response time for remote commands."""
         return self._avg_response_time
+
+    @property
+    def chunk_max_size(self) -> int:
+        """Maximum size of a chunk for remote command execution."""
+        return self._chunk_max_size
+
+    @chunk_max_size.setter
+    def chunk_max_size(self, size: int) -> None:
+        """Set the maximum size of a chunk for remote command execution."""
+        if size <= 0:
+            raise ValueError("Chunk size must be a positive integer.")
+
+        if size % 1024 != 0:
+            self._logger.warning(
+                f"Chunk size {size} is not a multiple of 1024. Rounding down to nearest 1024."
+            )
+            size = (size // 1024) * 1024
+
+        try:
+            self.remote_execute(
+                f"echo {'A' * (size - len('echo') - 1)}",
+                # -1 for space
+                timeout=5,
+                retry=False,
+                raise_on_failure=True,
+                debug=False,
+            )
+        except Exception:
+            self._logger.error(
+                f"❌ Chunk size of {size} bytes does not work on the remote system."
+            )
+            return
+
+        self._chunk_max_size = size
+        self._logger.info(f"📏 Chunk max size set to: {self._chunk_max_size} bytes")

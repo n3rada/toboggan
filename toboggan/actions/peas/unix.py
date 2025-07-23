@@ -1,11 +1,12 @@
 import httpx
 from pathlib import Path
 
-from toboggan.utils.methods import generate_fixed_length_token
+from toboggan.core.action import BaseAction
 from toboggan.actions.put.unix import PutAction
+from toboggan.utils.methods import generate_fixed_length_token
 
 
-class LinPEASAction(PutAction):
+class LinPEASAction(BaseAction):
     DESCRIPTION = "Upload and execute linpeas.sh on the target in the background."
 
     DEFAULT_URL = (
@@ -34,7 +35,7 @@ class LinPEASAction(PutAction):
         filename = f".linpeas_{generate_fixed_length_token(6)}.sh"
         remote_path = f"{self._executor.working_directory}/{filename}"
 
-        super().run(local_path=str(local_path), remote_path=remote_path)
+        PutAction().run(local_path=str(local_path), remote_path=remote_path)
 
         # Make it executable
         self._executor.remote_execute(f"chmod +x {remote_path}")
