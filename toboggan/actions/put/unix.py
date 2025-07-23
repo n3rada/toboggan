@@ -1,6 +1,7 @@
 # Standard library imports
 import base64
 import gzip
+import hashlib
 from pathlib import Path
 
 # Related third-party imports
@@ -51,11 +52,15 @@ class PutAction(BaseAction):
             return
 
         # Step 1: Compress & base64 encode the file
-        compressed_data = gzip.compress(local_file.read_bytes())
+        raw_bytes = local_file.read_bytes()
+        compressed_data = gzip.compress(raw_bytes)
         encoded_file = base64.b64encode(compressed_data).decode("utf-8")
 
-        chunk_size = self._executor.chunk_max_size
+        # Calculate local MD5 of original file
+        local_md5 = hashlib.md5(raw_bytes).hexdigest()
+        self._logger.info(f"🔒 Local MD5: {local_md5}")
 
+        chunk_size = self._executor.chunk_max_size
         encoded_size = len(encoded_file)
         total_chunks = (encoded_size + chunk_size - 1) // chunk_size
 
@@ -87,24 +92,29 @@ class PutAction(BaseAction):
         # Step 3: Decode and decompress remotely
         self._logger.info(f"📂 Decoding and extracting remotely to {remote_path}")
         self._executor.remote_execute(
-            f"base64 -d {remote_encoded_path} | gunzip -c | dd of={remote_path} bs=4094 conv=sync",
-            retry=False,
+            f"base64 -d {remote_encoded_path} | gunzip -c | dd of={remote_path} bs=1024",
+            retry=True,
             timeout=60,
-            debug=False,
         )
 
+        self._executor.remote_execute(f"rm -f {remote_encoded_path}")
+
         # Check if the file was created successfully
-        if (
-            not self._executor.remote_execute(
-                f"test -f {remote_path} && echo 'O' || echo 'F'"
-            )
-            == "O"
-        ):
+        md5sum = self._executor.remote_execute(f"md5sum {remote_path}").strip()
+
+        if not md5sum:
             self._logger.error(f"❌ Failed to create the file at {remote_path}.")
             return
 
-        # Step 4: Cleanup
-        self._executor.remote_execute(f"rm -f {remote_encoded_path}")
+        remote_md5 = md5sum.split()[0]
+        self._logger.info(f"🔒 Remote MD5: {remote_md5}")
+        if remote_md5 != local_md5:
+            self._logger.error(
+                f"❌ MD5 mismatch! Local: {local_md5}, Remote: {remote_md5}"
+            )
+            self._executor.remote_execute(f"rm -f {remote_path}")
+            return
+
         self._logger.success(
             f"✅ File uploaded and extracted successfully: {remote_path}"
         )

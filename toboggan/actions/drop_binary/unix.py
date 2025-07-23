@@ -34,6 +34,6 @@ class DropBinary(BaseAction):
 
             chmod_result = self._executor.remote_execute(f"chmod +x {remote_path}")
             if chmod_result is not None:
-                self._logger.success(f"✅ {filename} uploaded and made executable.")
+                self._logger.success(f"✅ {filename} made executable.")
             else:
                 self._logger.warning(f"⚠️ Failed to chmod {filename}")
