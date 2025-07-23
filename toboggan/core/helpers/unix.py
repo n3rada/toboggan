@@ -3,7 +3,7 @@ import random
 import re
 
 from toboggan.core.helpers import base
-from toboggan.core import utils
+from toboggan.utils import methods
 from toboggan.core.action import NamedPipe
 
 
@@ -69,8 +69,8 @@ class UnixHelper(base.OSHelperBase):
     def create_working_directory_string(self) -> str:
         """Generate a temp directory path."""
 
-        random_hex = utils.generate_fixed_length_token(length=32)
-        random_suffix = utils.generate_fixed_length_token(length=6).upper()
+        random_hex = methods.generate_fixed_length_token(length=32)
+        random_suffix = methods.generate_fixed_length_token(length=6).upper()
         return f"/tmp/systemd-private-{random_hex}-upower.service-{random_suffix}"
 
     def stealthy_name(

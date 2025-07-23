@@ -5,7 +5,7 @@ import base64
 
 # Local application/library specific imports
 from toboggan.core import logbook
-from toboggan.core.utils import SingletonMeta
+from toboggan.utils.methods import SingletonMeta
 from toboggan.core import action
 from toboggan.core import target
 from toboggan.core.helpers.unix import UnixHelper

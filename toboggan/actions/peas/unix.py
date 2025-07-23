@@ -1,7 +1,7 @@
 import httpx
 from pathlib import Path
 
-from toboggan.core.utils import generate_fixed_length_token
+from toboggan.utils.methods import generate_fixed_length_token
 from toboggan.actions.put.unix import PutAction
 
 

@@ -26,7 +26,8 @@ import httpx
 from toboggan.core import logbook
 from toboggan.core import executor
 from toboggan.core import terminal
-from toboggan.core import utils
+from toboggan.utils import methods
+from toboggan.utils import banner
 from toboggan.version import get_version
 
 # Directory where built-in handlers are stored
@@ -172,7 +173,7 @@ def run() -> int:
     # Parse arguments
     args = parser.parse_args()
 
-    print(utils.banner())
+    print(banner.show())
 
     env = os.environ
 
@@ -183,7 +184,7 @@ def run() -> int:
     logger = logbook.get_logger()
 
     if args.proxy:
-        if not utils.is_valid_proxy(args.proxy):
+        if not methods.is_valid_proxy(args.proxy):
             logger.warning("⚠️ Provided proxy may be malformed or unsupported.")
             return 1
 

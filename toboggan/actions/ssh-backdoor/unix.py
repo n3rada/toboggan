@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from toboggan.core.action import BaseAction
-from toboggan.core.utils import generate_fixed_length_token
+from toboggan.utils.methods import generate_fixed_length_token
 
 
 class AutoSshBackdoorAction(BaseAction):
