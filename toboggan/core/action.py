@@ -244,30 +244,28 @@ class ActionsManager:
     def __extract_parameters(self, file_path: Path) -> list:
         """
         Extracts parameters of the action's entry point using modwrap.
-        Prioritizes __init__ for NamedPipe-based actions, else uses run().
+        Uses __init__ for NamedPipe-based actions, else uses run().
         """
+        if not file_path.exists():
+            self._logger.warning(f"⚠️ File '{file_path}' does not exist.")
+            return []
+
+        self._logger.debug(f"Extracting parameters from {file_path}")
         try:
             wrapper = ModuleWrapper(file_path)
 
-            # NamedPipe-based actions → use __init__ signature
-            for name in dir(wrapper.module):
-                obj = getattr(wrapper.module, name)
-                if inspect.isclass(obj) and issubclass(obj, NamedPipe):
-                    sig = wrapper.get_signature(f"{name}.__init__")
-                    break
-            else:
-                # Standard actions → use run() method of the first BaseAction
-                for name in dir(wrapper.module):
-                    obj = getattr(wrapper.module, name)
-                    if (
-                        inspect.isclass(obj)
-                        and issubclass(obj, BaseAction)
-                        and obj is not BaseAction
-                    ):
-                        sig = wrapper.get_signature(f"{name}.run")
-                        break
-                else:
-                    return []
+            # Get the class that inherits from BaseAction
+            action_cls = wrapper.get_class(must_inherit=BaseAction)
+            if not action_cls:
+                self._logger.warning(f"⚠️ No action class found in {file_path.name}")
+                return []
+
+            class_name = action_cls.__name__
+            method_name = "__init__" if issubclass(action_cls, NamedPipe) else "run"
+            signature = wrapper.get_signature(f"{class_name}.{method_name}")
+
+            self._logger.debug(f"👀 Found class: {class_name}, method: {method_name}")
+            self._logger.debug(f"Extracted signature: {signature}")
 
             return [
                 (
@@ -275,11 +273,11 @@ class ActionsManager:
                     if value["default"] is not None
                     else param
                 )
-                for param, value in sig.items()
+                for param, value in signature.items()
             ]
 
-        except Exception as e:
+        except Exception as exc:
             self._logger.warning(
-                f"⚠ Failed to extract parameters from {file_path.name}: {e}"
+                f"⚠ Failed to extract parameters from {file_path.name}: {exc}"
             )
             return []
