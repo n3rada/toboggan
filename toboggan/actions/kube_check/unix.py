@@ -1,3 +1,5 @@
+import json
+
 from toboggan.core.action import BaseAction
 from toboggan.utils.jwt import TokenReader
 
@@ -68,11 +70,11 @@ class KubeCheckAction(BaseAction):
 
         if curl_path := self._executor.remote_execute("command -v curl"):
             curl_cmd = (
-                f"{curl_path.strip()} --cacert {cert_path} "
+                f"{curl_path.strip()} -sS --cacert {cert_path} "
                 f"-H 'Authorization: Bearer {token}' "
                 f"{api_server}/api/v1/pods"
             )
-            self._logger.info("🚀 Using curl to query pods.")
+            self._logger.info("⚙️ Using curl to query pods.")
             response = self._executor.remote_execute(curl_cmd, timeout=10)
         elif wget_path := self._executor.remote_execute("command -v wget"):
             wget_cmd = (
@@ -80,7 +82,7 @@ class KubeCheckAction(BaseAction):
                 f"--header='Authorization: Bearer {token}' "
                 f"{api_server}/api/v1/pods -O -"
             )
-            self._logger.info("🚀 Using wget to query pods.")
+            self._logger.info("⚙️ Using wget to query pods.")
             response = self._executor.remote_execute(wget_cmd, timeout=10)
             if "unrecognized option" in response:
                 self._logger.error("❌ wget does not support --ca-certificate option.")
@@ -91,6 +93,10 @@ class KubeCheckAction(BaseAction):
 
         if response:
 
+            json_data = json.loads(response.strip())
+
+            print(json.dumps(json_data, indent=4))
+
             if "kind" in response and "PodList" in response:
                 self._logger.success("✅ Successfully queried pods from the API.")
             else:
@@ -98,6 +104,5 @@ class KubeCheckAction(BaseAction):
                     "⚠️ Query sent, but response didn't contain pod data."
                 )
 
-            self._logger.info(f"📄 Response: {response.strip()}")
         else:
             self._logger.error("❌ No response from Kubernetes API.")
