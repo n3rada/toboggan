@@ -15,20 +15,19 @@ class FifoAction(NamedPipe):
         read_interval=0.4,
         command_in=None,
         command_out=None,
-        shell=None,
     ):
         super().__init__(executor, read_interval, command_in, command_out)
 
         self.__os_helper = executor.os_helper
         self.__os_helper.is_busybox_present  # Force BusyBox detection
 
-        if shell is None:
-            self.__shell = "$(command -v $0)"
-        else:
-            self.__shell = shell.strip()
-
-        self._logger.info(f"Using shell: {self.__shell}")
         self.tty = False
+
+        self._shell = self._executor.remote_execute(
+            "command -v bash || command -v sh"
+        ).strip()
+
+        self._logger.info(f"🌀 FiFo will use shell: {self._shell}")
 
     def setup(self):
         # Use busybox-wrapped mkfifo
@@ -37,7 +36,7 @@ class FifoAction(NamedPipe):
 
         # Use busybox-wrapped tail
         tail_cmd = self.__os_helper.busybox_wrap(f"tail -f {self._stdin}")
-        full_cmd = f"{tail_cmd}|{self.__shell} > {self._stdout} 2>&1 &"
+        full_cmd = f"{tail_cmd}|{self._shell} > {self._stdout} 2>&1 &"
         self._executor.remote_execute(full_cmd)
 
         self.__stop_thread = False
