@@ -299,7 +299,7 @@ class Executor(metaclass=SingletonMeta):
         self._logger.info("🔍 Guessing remote OS")
 
         if self.remote_execute(command="/bin/ls"):
-            self._logger.info("🖥️ Assuming Unix-like OS.")
+            self._logger.info("🖥️ Assuming Linux OS.")
             return "linux"
 
         self._logger.info("🖥️ Assuming Windows OS.")
