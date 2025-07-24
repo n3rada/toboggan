@@ -24,12 +24,6 @@ class KubeCheckAction(BaseAction):
 
         self._logger.success(f"🔐 Found Kubernetes token: {token}")
 
-        self._executor.saver.save(
-            data=token,
-            parent_directory="kubernetes",
-            filename="token.txt",
-        )
-
         try:
             reader = TokenReader(token)
             api_server = reader.iss
@@ -81,12 +75,6 @@ class KubeCheckAction(BaseAction):
         )
         self._logger.info(f"📛 Using namespace: {namespace}")
 
-        self._executor.saver.save(
-            data=namespace,
-            parent_directory="kubernetes",
-            filename="namespace.txt",
-        )
-
         # SelfSubjectRulesReview (check what we can do)
         self._logger.info(
             "🔎 Enumerating allowed actions using SelfSubjectRulesReview (SSR)"
@@ -100,13 +88,6 @@ class KubeCheckAction(BaseAction):
         ssrr_raw = self._executor.remote_execute(ssrr_cmd, timeout=10)
         try:
             ssrr_json = json.loads(ssrr_raw)
-
-            self._executor.saver.save(
-                data=json.dumps(ssrr_json, indent=4),
-                parent_directory="kubernetes",
-                filename="selfsubjectrulesreviews.json",
-            )
-
             verbs = {
                 r["resources"][0]: r["verbs"]
                 for r in ssrr_json.get("status", {}).get("resourceRules", [])
@@ -124,12 +105,6 @@ class KubeCheckAction(BaseAction):
         pods_raw = self._executor.remote_execute(pods_cmd, timeout=10)
         try:
             pods_json = json.loads(pods_raw)
-
-            self._executor.saver.save(
-                data=json.dumps(pods_json, indent=4),
-                parent_directory="kubernetes",
-                filename="pods.json",
-            )
 
             kind = pods_json.get("kind", "")
 

@@ -8,7 +8,6 @@ from toboggan.core import logbook
 from toboggan.utils.methods import SingletonMeta
 from toboggan.core import action
 from toboggan.core import target
-from toboggan.core.saver import Saver
 from toboggan.core.helpers.unix import LinuxHelper
 from toboggan.core.helpers.windows import WindowsHelper
 from toboggan.core.helpers.base import OSHelperBase
@@ -83,8 +82,6 @@ class Executor(metaclass=SingletonMeta):
             hostname=self.remote_execute(command="hostname").strip(),
             pwd=self._os_helper.get_current_path(),
         )
-
-        self._saver = Saver(self)
 
     # Dunders
 
@@ -345,11 +342,6 @@ class Executor(metaclass=SingletonMeta):
             )
 
         return self._working_directory
-
-    @property
-    def saver(self) -> Saver:
-        """Provides access to the Saver instance for saving files."""
-        return self._saver
 
     @property
     def os_helper(self) -> OSHelperBase:
