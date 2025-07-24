@@ -7,7 +7,7 @@ from toboggan.utils import methods
 from toboggan.core.action import NamedPipe
 
 
-class UnixHelper(base.OSHelperBase):
+class LinuxHelper(base.OSHelperBase):
     """
     Unix-specific operations like handling binaries and shell paths.
     """

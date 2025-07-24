@@ -35,7 +35,7 @@ toboggan -m ~/phpexploit.py
 
 When you are knowing what you are doing, you can also do:
 ```shell
-toboggan -m ~/phpexploit.py --camouflage --fifo --os "unix" -wd /dev/shm/apache-tmp
+toboggan -m ~/phpexploit.py --camouflage --fifo --os "linux" -wd /dev/shm/apache-tmp
 ```
 
 It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `unix` (`--os`) remote system and obfuscating all commands using the [hide.py](./toboggan/actions/hide/unix.py) actions.

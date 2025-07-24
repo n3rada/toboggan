@@ -1,13 +1,16 @@
-# Local application/library specific imports
-from toboggan.core import logbook
-from toboggan.core.executor import Executor
-from toboggan.core.action import NamedPipe
+# Built-in imports
+import shlex
 
-# Third party library imports
+# External library imports
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import ThreadedAutoSuggest, AutoSuggestFromHistory
 from prompt_toolkit.history import ThreadedHistory, InMemoryHistory
 from prompt_toolkit.cursor_shapes import CursorShape
+
+# Local library imports
+from toboggan.core import logbook
+from toboggan.core.executor import Executor
+from toboggan.core.action import NamedPipe
 
 
 class Terminal:
@@ -44,7 +47,7 @@ class Terminal:
                 self._logger.warning("Keyboard interruption received.")
 
                 if (
-                    self.__target.os == "unix"
+                    self.__target.os == "linux"
                     and self.__executor.os_helper.is_fifo_active()
                 ):
                     self.__executor.os_helper.stop_named_pipe()
@@ -58,7 +61,7 @@ class Terminal:
             else:
                 if not user_input.startswith(self.__prefix):
                     if (
-                        self.__target.os == "unix"
+                        self.__target.os == "linux"
                         and self.__executor.os_helper.is_fifo_active()
                     ):
                         self.__executor.os_helper.fifo_execute(user_input)
@@ -69,14 +72,20 @@ class Terminal:
 
                     continue
 
-                command_parts = user_input[len(self.__prefix) :].strip().split()
+                try:
+                    command_parts = shlex.split(
+                        user_input[len(self.__prefix) :].strip()
+                    )
+                except ValueError as e:
+                    self._logger.error(f"❌ Command parsing failed: {e}")
+                    continue
 
                 if not command_parts:
                     continue
 
-                command = command_parts[0].lower()
-                # Remaining parts as arguments
-                args = command_parts[1:]
+                command = command_parts[0].lower().replace("-", "_")
+
+                raw_args = command_parts[1:]
 
                 if command in ["e", "ex", "exit"]:
                     self._logger.info("🛝 Sliding back up the toboggan.")
@@ -86,9 +95,9 @@ class Terminal:
                     print(self.__get_help())
                     continue
 
-                if command == "max-size":
-                    if args:
-                        self.__executor.chunk_max_size = int(args[0])
+                if command == "max_size":
+                    if raw_args:
+                        self.__executor.chunk_max_size = int(raw_args[0])
                     else:
                         self.__executor.chunk_max_size = (
                             self.__executor.calculate_max_chunk_size()
@@ -105,13 +114,47 @@ class Terminal:
 
                         if issubclass(action_class, NamedPipe):
                             self.__executor.os_helper.start_named_pipe(
-                                action_class, *args
+                                action_class, *raw_args
                             )
                             continue
 
-                        if args:
+                        # Parse args into kwargs and positionals
+                        keyword_args = {}
+                        positional_args = []
+
+                        i = 0
+                        while i < len(raw_args):
+                            arg = raw_args[i]
+
+                            # Handle --key=value
+                            if arg.startswith("--") and "=" in arg:
+                                key, value = arg[2:].split("=", 1)
+                                keyword_args[key] = value
+                                i += 1
+                                continue
+
+                            # Handle --key value
+                            if arg.startswith("--"):
+                                key = arg[2:]
+
+                                # If next token exists and is not another --flag, treat it as value
+                                if i + 1 < len(raw_args) and not raw_args[
+                                    i + 1
+                                ].startswith("--"):
+                                    keyword_args[key] = raw_args[i + 1]
+                                    i += 2
+                                else:
+                                    keyword_args[key] = True  # Boolean flag
+                                    i += 1
+                                continue
+
+                            # Handle positional argument
+                            positional_args.append(arg)
+                            i += 1
+
+                        if raw_args:
                             self._logger.info(
-                                f"▶️ Running '{command}' with args: {args}"
+                                f"▶️ Running '{command}' with args: {raw_args}"
                             )
                         else:
                             self._logger.info(f"▶️ Running '{command}'")
@@ -119,10 +162,13 @@ class Terminal:
                         try:
                             action = action_class(self.__executor)
 
-                            if args:
-                                action_output = action.run(*args)
+                            if positional_args or keyword_args:
+                                action_output = action.run(
+                                    *positional_args, **keyword_args
+                                )
                             else:
                                 action_output = action.run()
+
                         except TypeError as exc:
                             self._logger.warning(
                                 f"⚠️ Incorrect arguments for '{command}': {exc}"
@@ -183,18 +229,16 @@ class Terminal:
         # Add built-in commands
         help_message += f"{BOLD}Built-in Commands:{RESET}\n"
         help_message += "-" * (max_action_length + 50) + "\n"
-        help_message += f"🔹 {GREEN}max-size [bytes]{RESET} → {CYAN}Probe or manually set the max command size (must be multiple of 1024).{RESET}\n"
-
-        help_message += f"🔹 {GREEN}exit{RESET}    → {CYAN}Exit the toboggan shell session.{RESET}\n"
-
-        return help_message
+        help_message += f"🔹 {GREEN}max_size{RESET} → {CYAN}Probe or manually set the max command size.{RESET}\n"
+        help_message += f"    ⚙️ Parameters: bytes (optional, multiple of 1024)\n"
+        help_message += f"🔹 {GREEN}exit{RESET}     → {CYAN}Exit the toboggan shell session.{RESET}\n"
 
         return help_message
 
     def __prompt(self) -> str:
         """Generates a dynamic shell prompt based on available target information."""
 
-        if self.__target.os == "unix" and self.__executor.os_helper.is_fifo_active():
+        if self.__target.os == "linux" and self.__executor.os_helper.is_fifo_active():
             return ""
 
         # Add user if available, otherwise use only hostname

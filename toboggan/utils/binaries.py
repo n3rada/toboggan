@@ -1,48 +1,147 @@
+# Built-in imports
+import os
+import tempfile
+import tarfile
 from pathlib import Path
-from typing import Set, Optional
+
+# External library imports
+import httpx
+
+# Local library imports
+from toboggan.core import logbook
 
 
-class Binary:
-    def __init__(self, path: Path):
-        self._path = path.resolve()
+class BinaryFetcher:
+    BASE_DIR = (
+        Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+        / "toboggan"
+        / "binaries"
+    )
 
-    @property
-    def name(self) -> str:
-        return self._path.name
+    def __init__(self, os: str = "linux", arch: str = "x86-64"):
+        self.BASE_DIR.mkdir(parents=True, exist_ok=True)
+        self._logger = logbook.get_logger()
 
-    @property
-    def path(self) -> Path:
-        return self._path
+        self._os = os.lower()
+        self._arch = arch.lower()
 
-    def read_bytes(self) -> bytes:
-        return self._path.read_bytes()
+        if self._os not in ["linux", "windows"]:
+            raise ValueError(
+                f"❌ Unsupported OS: {self._os}. Only 'linux' and 'windows' are supported."
+            )
 
-    def __str__(self) -> str:
-        return str(self._path)
+    def get(self, name: str) -> Path | None:
+        """
+        Get the path to the binary, downloading it if needed.
+        """
+        match name:
+            case "kubectl":
+                return self._fetch_kubectl()
+            case "curl":
+                return self._fetch_curl()
+            case _:
+                raise ValueError(f"❌ Unknown binary: {name}")
 
-    def __repr__(self) -> str:
-        return f"<Binary: {self.name}>"
+    def _fetch_kubectl(self) -> Path | None:
+        """
+        Downloads the latest kubectl binary for Linux x86_64.
+        """
 
+        destination = self.BASE_DIR / "kubectl"
 
-class BinaryManager:
-    def __init__(self, os: str = "unix", binaries_dir: Optional[Path] = None):
-        self._binaries_dir = binaries_dir or Path(__file__).parent / "binaries" / os
-        self._binaries_dir = self._binaries_dir.resolve()
-        self._available: Set[Binary] = set()
-        self._scan_binaries()
+        if destination.exists():
+            return destination
 
-    def _scan_binaries(self):
-        if not self._binaries_dir.exists():
-            return
-        for file in self._binaries_dir.iterdir():
-            if file.is_file() and file.stat().st_mode & 0o111:  # is executable
-                self._available.add(Binary(file))
+        if self._arch == "x86-64":
+            api_arch = "amd64"
+        else:
+            api_arch = "arm64"
 
-    def list(self) -> Set[str]:
-        return {binary.name for binary in self._available}
+        try:
+            # Step 1: Get latest stable version
+            version_resp = httpx.get(
+                "https://dl.k8s.io/release/stable.txt",
+                timeout=10.0,
+                verify=False,
+                follow_redirects=True,
+            )
+            version_resp.raise_for_status()
+            version = version_resp.text.strip()
 
-    def get(self, name: str) -> Optional[Binary]:
-        for binary in self._available:
-            if binary.name == name:
-                return binary
-        return None
+            # Step 2: Build download URL
+            binary_url = (
+                f"https://dl.k8s.io/release/{version}/bin/{self._os}/{api_arch}/kubectl"
+            )
+
+            # Step 3: Download the binary
+            self._logger.info(f"⬇️ Downloading kubectl {version} → {destination}")
+            bin_resp = httpx.get(binary_url, timeout=30.0, verify=False)
+            bin_resp.raise_for_status()
+
+            # Step 4: Save it
+            destination.write_bytes(bin_resp.content)
+            destination.chmod(0o755)
+
+            self._logger.success(f"✅ kubectl saved to: {destination}")
+            return destination
+
+        except httpx.HTTPError as exc:
+            self._logger.error(f"❌ Failed to download kubectl: {exc}")
+            return None
+
+    def _fetch_curl(self) -> Path | None:
+        destination = self.BASE_DIR / "curl"
+        if destination.exists():
+            return destination
+
+        try:
+            # Step 1: Get redirect to latest version
+            resp = httpx.get(
+                "https://github.com/stunnel/static-curl/releases/latest",
+                follow_redirects=False,
+                verify=False,
+                timeout=10.0,
+            )
+
+            if "location" not in resp.headers:
+                raise ValueError("No redirect found for latest curl version.")
+
+            latest_tag_url = resp.headers["location"]
+            tag = latest_tag_url.rstrip("/").split("/")[-1]
+
+            self._logger.info(f"Latest cURL tag: {tag}")
+
+            if self._os == "windows":
+                filename = f"curl-windows-{self._arch}-{tag}.tar.xz"
+            else:
+                filename = f"curl-linux-{self._arch}-glibc-{tag}.tar.xz"
+
+            # Step 2: Download tarball
+            tar_resp = httpx.get(
+                f"https://github.com/stunnel/static-curl/releases/download/{tag}/{filename}",
+                timeout=30.0,
+                verify=False,
+                follow_redirects=True,
+            )
+            tar_resp.raise_for_status()
+
+            # Step 3: Extract 'curl' from archive
+            with tempfile.TemporaryDirectory() as tmpdir:
+                archive_path = Path(tmpdir) / filename
+                archive_path.write_bytes(tar_resp.content)
+
+                with tarfile.open(archive_path, mode="r:xz") as tar:
+                    for member in tar.getmembers():
+                        if member.isfile() and Path(member.name).name == "curl":
+                            tar.extract(member, path=tmpdir)
+                            extracted = Path(tmpdir) / member.name
+                            destination.write_bytes(extracted.read_bytes())
+                            destination.chmod(0o755)
+                            self._logger.success(f"✅ cURL saved to: {destination}")
+                            return destination
+
+                raise FileNotFoundError("curl binary not found in archive.")
+
+        except Exception as e:
+            self._logger.error(f"❌ Failed to fetch curl: {e}")
+            return None

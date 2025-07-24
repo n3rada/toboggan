@@ -9,7 +9,7 @@ from toboggan.utils.methods import SingletonMeta
 from toboggan.core import action
 from toboggan.core import target
 from toboggan.core.saver import Saver
-from toboggan.core.helpers.unix import UnixHelper
+from toboggan.core.helpers.unix import LinuxHelper
 from toboggan.core.helpers.windows import WindowsHelper
 from toboggan.core.helpers.base import OSHelperBase
 
@@ -49,12 +49,12 @@ class Executor(metaclass=SingletonMeta):
 
         self._shell = shell
 
-        if self.__os not in ["unix", "windows"]:
-            raise ValueError("Operating System should be either unix or windows.")
+        if self.__os not in ["linux", "windows"]:
+            raise ValueError("Operating System should be either linux or windows.")
 
         # Attach the appropriate OS Helper
-        if self.__os == "unix":
-            self._os_helper = UnixHelper(self)
+        if self.__os == "linux":
+            self._os_helper = LinuxHelper(self)
 
         elif self.__os == "windows":
             self._os_helper = WindowsHelper(self)
@@ -303,7 +303,7 @@ class Executor(metaclass=SingletonMeta):
 
         if self.remote_execute(command="/bin/ls"):
             self._logger.info("🖥️ Assuming Unix-like OS.")
-            return "unix"
+            return "linux"
 
         self._logger.info("🖥️ Assuming Windows OS.")
         return "windows"

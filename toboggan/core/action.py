@@ -98,9 +98,9 @@ class NamedPipe(BaseAction):
 class ActionsManager:
     """Dynamically loads and manages Toboggan actions from system and user directories."""
 
-    def __init__(self, target_os: str = "unix"):
+    def __init__(self, target_os: str = "linux"):
 
-        if target_os not in ["unix", "windows"]:
+        if target_os not in ["linux", "windows"]:
             raise ValueError(
                 f"Invalid target OS '{target_os}'. Must be 'unix' or 'windows'."
             )
@@ -175,12 +175,7 @@ class ActionsManager:
         system_module_path = self.__system_actions_path / f"{name}.py"
         user_module_path = self.__user_actions_path / f"{name}.py"
 
-        # Step 1: Try loading the system action
-        if action := self.load_action_from_path(system_module_path):
-            self._logger.debug(f"✅ Loaded system action")
-            return action
-
-        # Step 2: Check if a user-defined action exists
+        # Check if a user-defined action exists
         if user_module_path.exists():
             last_modified = user_module_path.stat().st_mtime
             formatted_time = datetime.fromtimestamp(last_modified).strftime(
@@ -191,7 +186,12 @@ class ActionsManager:
             if action := self.load_action_from_path(user_module_path):
                 return action
 
-        # Step 3: If no action was loaded, log an error
+        # Try loading the system action
+        if action := self.load_action_from_path(system_module_path):
+            self._logger.debug(f"✅ Loaded system action")
+            return action
+
+        # If no action was loaded, log an error
         self._logger.error(f"❌ No valid action found for '{name}'.")
         return None
 

@@ -142,7 +142,7 @@ def run() -> int:
     system_group.add_argument(
         "--os",
         type=str,
-        choices=["unix", "windows"],
+        choices=["linux", "windows"],
         required=False,
         help="Specify the target operating system (unix or windows).",
     )
@@ -271,7 +271,7 @@ def run() -> int:
     try:
         remote_terminal = terminal.Terminal(executor=command_executor)
 
-        if command_executor.target.os == "unix":
+        if command_executor.target.os == "linux":
             if args.fifo:
                 logger.info(
                     "🤏 Making your dumb shell semi-interactive using 'fifo' action."
