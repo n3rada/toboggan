@@ -28,7 +28,7 @@ from toboggan.core import executor
 from toboggan.core import terminal
 from toboggan.utils import methods
 from toboggan.utils import banner
-from toboggan.version import get_version
+from toboggan import __version__ as version
 
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"
@@ -38,14 +38,17 @@ def run() -> int:
     parser = argparse.ArgumentParser(
         prog="toboggan",
         add_help=True,
-        description="Bring intelligence to any remote command execution (RCE).",
+        description="Bring intelligence to any remote command execution (RCE) vector.",
         formatter_class=argparse.RawTextHelpFormatter,
+        epilog=f"""\nExample usage:\n    - toboggan -m rce.py --os linux --camouflage\n\nFor more information, visit: https://github.com/n3rada/toboggan\n\nVersion: {version}""",
+        allow_abbrev=True,
+        exit_on_error=True,
     )
 
     parser.add_argument(
         "--version",
         action="version",
-        version=f"%(prog)s {get_version()}",
+        version=f"%(prog)s {version}",
         help="Show Toboggan version and exit.",
     )
 

@@ -1,3 +1,6 @@
+# toboggan/utils/methods.py
+
+# Built-in imports
 import secrets
 import base64
 import io
@@ -7,9 +10,6 @@ from urllib.parse import urlparse
 # Third party library imports
 from prompt_toolkit import shortcuts
 from prompt_toolkit.styles import Style
-
-# Local library imports
-from toboggan.version import get_version
 
 
 class SingletonMeta(type):
@@ -26,22 +26,6 @@ class SingletonMeta(type):
             instance = super().__call__(*args, **kwargs)
             cls._instances[cls] = instance
         return cls._instances[cls]
-
-
-def banner() -> str:
-    version = get_version()
-
-    return rf"""
- _____      _
-/__   \___ | |__   ___   __ _  __ _  __ _ _ __
-  / /\/ _ \| '_ \ / _ \ / _` |/ _` |/ _` | '_ \
- / / | (_) | |_) | (_) | (_| | (_| | (_| | | | |
- \/   \___/|_.__/ \___/ \__, |\__, |\__,_|_| |_|
-                        |___/ |___/
-      Slides onto remote system with ease
-                 @n3rada
-                  {version}
-"""
 
 
 def is_valid_proxy(url):

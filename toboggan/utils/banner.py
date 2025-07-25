@@ -1,10 +1,10 @@
+# toboggan/utils/banner.py
+
 # Local library imports
-from toboggan.version import get_version
+from toboggan import __version__ as version
 
 
 def show() -> str:
-    version = get_version()
-
     return rf"""
  _____      _
 /__   \___ | |__   ___   __ _  __ _  __ _ _ __
