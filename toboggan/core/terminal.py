@@ -1,5 +1,6 @@
 # Built-in imports
 import shlex
+import re
 
 # External library imports
 from prompt_toolkit import PromptSession
@@ -198,44 +199,55 @@ class Terminal:
         if not actions:
             return "❌ No available actions found."
 
-        # Define ANSI colors for terminal output
+        # ANSI styles
         BOLD = "\033[1m"
         GREEN = "\033[92m"
         CYAN = "\033[96m"
+        DIM = "\033[2m"
         RESET = "\033[0m"
 
-        # Determine max length for alignment
-        max_action_length = max(len(action) for action in actions.keys()) + 2
+        def ansi_ljust(text: str, width: int) -> str:
+            """Left-justify while ignoring ANSI escape codes."""
+            ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+            visible_length = len(ansi_escape.sub("", text))
+            return text + " " * (width - visible_length)
 
-        # Create header
-        help_message = f"\n{BOLD}Available Actions:{RESET}\n"
-        help_message += "-" * (max_action_length + 50) + "\n"
+        # Align column widths
+        max_action_length = max(len(action) for action in actions) + 2
 
-        # Sort actions alphabetically and format output
+        lines = []
+        lines.append(f"\n{BOLD}Available Actions:{RESET}")
+        lines.append(DIM + "-" * (max_action_length + 50) + RESET)
+
         for action, details in sorted(actions.items()):
-            action_name = f"{GREEN}{action}{RESET}"
-            try:
-                description = details["description"]
-            except KeyError:
-                description = "No description available"
+            description = details.get("description", "No description available")
+            action_colored = f"{GREEN}{action}{RESET}"
+            lines.append(
+                f"🔹 {ansi_ljust(action_colored, max_action_length)} → {CYAN}{description}{RESET}"
+            )
+            if details.get("parameters"):
+                params = ", ".join(details["parameters"])
+                lines.append(f"    ⚙️ Parameters: {params}")
 
-            # Align descriptions properly
-            help_message += f"🔹 {action_name.ljust(max_action_length)} → {CYAN}{description}{RESET}\n"
-            if details["parameters"]:
-                param_list = ", ".join(details["parameters"])
-                help_message += f"    ⚙️ Parameters: {param_list}\n"
+        lines.append(DIM + "-" * (max_action_length + 50) + RESET)
+        lines.append(
+            f"{BOLD}Usage:{RESET} Type '!action_name' followed by parameters if required.\n"
+        )
 
-        help_message += "-" * (max_action_length + 50) + "\n"
-        help_message += f"{BOLD}Usage:{RESET} Type '!action_name' followed by parameters if required.\n\n"
+        # Built-in commands
+        lines.append(f"{BOLD}Built-in Commands:{RESET}")
+        lines.append(DIM + "-" * (max_action_length + 50) + RESET)
+        lines.append(
+            f"🔹 {ansi_ljust(f'{GREEN}max_size{RESET}', max_action_length)} → "
+            f"{CYAN}Probe or manually set the max command size.{RESET}"
+        )
+        lines.append(f"    ⚙️ Parameters: bytes (optional, multiple of 1024)")
+        lines.append(
+            f"🔹 {ansi_ljust(f'{GREEN}exit{RESET}', max_action_length)} → "
+            f"{CYAN}Exit the toboggan shell session.{RESET}"
+        )
 
-        # Add built-in commands
-        help_message += f"{BOLD}Built-in Commands:{RESET}\n"
-        help_message += "-" * (max_action_length + 50) + "\n"
-        help_message += f"🔹 {GREEN}max_size{RESET} → {CYAN}Probe or manually set the max command size.{RESET}\n"
-        help_message += f"    ⚙️ Parameters: bytes (optional, multiple of 1024)\n"
-        help_message += f"🔹 {GREEN}exit{RESET}     → {CYAN}Exit the toboggan shell session.{RESET}\n"
-
-        return help_message
+        return "\n".join(lines)
 
     def __prompt(self) -> str:
         """Generates a dynamic shell prompt based on available target information."""

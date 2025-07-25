@@ -358,7 +358,7 @@ class Executor(metaclass=SingletonMeta):
 
         # Validate shell lazily (once)
         if not self._shell_validated:
-            self._logger.info(f"🔍 First-time shell validation (camouflage disabled)")
+            self._logger.debug(f"🔍 First-time shell validation (camouflage disabled)")
             test_cmd = f"{self._shell} -h"
             try:
                 output = (
@@ -380,7 +380,7 @@ class Executor(metaclass=SingletonMeta):
                 self._logger.error(f"❌ Remote shell '{self._shell}' appears invalid.")
                 raise RuntimeError(f"Shell '{self._shell}' is not usable.")
 
-            self._logger.info(
+            self._logger.debug(
                 f"💾 Remote shell resolved to: '{self._shell}' — verified and ready."
             )
             self._shell_validated = True

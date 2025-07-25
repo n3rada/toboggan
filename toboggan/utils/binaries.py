@@ -18,6 +18,11 @@ class BinaryFetcher:
         / "binaries"
     )
 
+    @staticmethod
+    def list_available() -> list[str]:
+        """Returns a list of available binary names."""
+        return ["curl", "kubectl"]
+
     def __init__(self, os: str = "linux", arch: str = "x86-64"):
         self.BASE_DIR.mkdir(parents=True, exist_ok=True)
         self._logger = logbook.get_logger()

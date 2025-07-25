@@ -58,7 +58,8 @@ def get_log_directory():
 
 def get_logger():
     """Returns a singleton instance of the logger to be shared across all modules."""
-    if "toboggan_logger" in logging.Logger.manager.loggerDict:
+
+    if "toboggan" in logging.Logger.manager.loggerDict:
         return logging.getLogger("toboggan")
 
     logger = logging.getLogger("toboggan")
@@ -82,6 +83,8 @@ def get_logger():
     logger.addHandler(ch)
 
     log_file = get_log_directory() / "toboggan.log"
+
+    logger.info(f"Logging into the file: {log_file}")
 
     fh = logging.FileHandler(log_file)
     fh.setLevel(logger.level)

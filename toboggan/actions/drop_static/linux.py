@@ -4,13 +4,15 @@ from toboggan.utils.binaries import BinaryFetcher
 
 
 class DropStaticBinary(BaseAction):
-    DESCRIPTION = (
-        "📦 Drop a prebuilt static binary (e.g., curl, kubectl) to the target."
-    )
+    DESCRIPTION = f"Drop a prebuilt static binary to the target within this list: {BinaryFetcher.list_available()}."
 
     def run(self, name: str = None, remote_path: str = None) -> None:
         if not name:
-            self._logger.error("❌ You must provide a binary name (e.g. curl).")
+            self._logger.warning("⚠️ No binary name provided.")
+            available = BinaryFetcher.list_available()
+            print("📦 Available static binaries:")
+            for b in available:
+                print(f"  • {b}")
             return
 
         os = self._executor.target.os.lower()
@@ -21,6 +23,10 @@ class DropStaticBinary(BaseAction):
             local_path = fetcher.get(name)
         except Exception as e:
             self._logger.error(f"❌ Failed to fetch binary: {e}")
+            return
+
+        if not local_path or not local_path.exists():
+            self._logger.error("❌ Binary download failed or path invalid.")
             return
 
         DropBinary(self._executor).run(
