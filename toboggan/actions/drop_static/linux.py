@@ -10,7 +10,7 @@ class DropStaticBinary(BaseAction):
         if not name:
             self._logger.warning("⚠️ No binary name provided.")
             available = BinaryFetcher.list_available()
-            print("📦 Available static binaries:")
+            self._logger.info("📦 Available static binaries:")
             for b in available:
                 print(f"  • {b}")
             return
