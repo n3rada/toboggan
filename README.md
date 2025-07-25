@@ -38,7 +38,8 @@ When you are knowing what you are doing, you can also do:
 toboggan -m ~/phpexploit.py --camouflage --fifo --os "linux" -wd /dev/shm/apache-tmp
 ```
 
-It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `unix` (`--os`) remote system and obfuscating all commands using the [hide.py](./toboggan/actions/hide/unix.py) actions.
+It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `linux` (`--os`) remote system and obfuscating all commands (`--camouflage`) using the [hide.py](./toboggan/actions/hide/unix.py) actions.
+
 
 ### Wrap a shell command
 
@@ -52,7 +53,7 @@ toboggan --exec-wrapper 'curl -s --path-as-is -d "echo Content-Type: text/plain;
 You can forward to your favorite proxifier such as your favorite [`Squid`](https://www.squid-cache.org/) server using the `--proxy` parameter:
 
 ```shell
-toboggan -m ~/phpexploit.py --proxy http://squidrandom.<something>.io:3128
+toboggan -m ~/phpexploit.py --proxy http://squideu.<something>.io:3128
 ```
 
 ### BurpSuite
