@@ -19,24 +19,6 @@ class LinuxHelper(base.OSHelperBase):
         self.__is_busybox_present = None
         self.__busybox_commands = set()
 
-        if self._executor.shell is None:
-            self._executor.shell = "$(command -v $0)"
-
-        # Ensure shell is present
-        shell_test = (
-            self._executor.remote_execute(f"{self._executor.shell} --help")
-            .strip()
-            .lower()
-        )
-
-        if (
-            shell_test is None
-            or "no such file or directory" in shell_test
-            or "not found" in shell_test
-        ):
-            self._logger.error("❌ Shell binary not found or invalid.")
-            raise RuntimeError("Shell binary is invalid.")
-
     def fifo_execute(self, command: str) -> None:
         self.__named_pipe_instance.execute(command)
 

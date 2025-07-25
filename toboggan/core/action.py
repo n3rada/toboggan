@@ -116,48 +116,71 @@ class ActionsManager:
         self._logger.debug(f"User actions path: {self.__user_actions_path}")
 
     def get_actions(self) -> dict:
-
         ignored_actions = {"hide", "unhide"}
-
         actions = {}
 
-        if self.__system_actions_path.exists():
-            for action_file in self.__system_actions_path.iterdir():
-                action_name = action_file.stem
+        for source_path in [self.__system_actions_path, self.__user_actions_path]:
+            if not source_path.exists():
+                continue
 
+            for action_dir in source_path.iterdir():
+                action_name = action_dir.stem
                 if action_name in ignored_actions:
                     continue
 
-                file_path = action_file / f"{self.__os}.py"
-                description = self.__extract_description(file_path)
-
-                actions[action_name] = {
-                    "path": file_path,
-                    "parameters": self.__extract_parameters(file_path),
-                }
-
-                if description is not None:
-                    actions[action_name]["description"] = description
-
-        if self.__user_actions_path.exists():
-            for action_file in self.__user_actions_path.iterdir():
-                action_name = action_file.stem
-
-                if action_name in ignored_actions:
+                file_path = action_dir / f"{self.__os}.py"
+                if not file_path.exists():
                     continue
 
-                file_path = action_file / f"{self.__os}.py"
-                description = self.__extract_description(file_path)
+                try:
+                    wrapper = ModuleWrapper(file_path)
+                    cls = wrapper.get_class(must_inherit=BaseAction)
+                    if not cls:
+                        continue
 
-                actions[action_name] = {
-                    "path": file_path,
-                    "parameters": self.__extract_parameters(file_path),
-                }
+                    parameters = self.__extract_parameters(wrapper)
+                    description = getattr(cls, "DESCRIPTION", None)
 
-                if description is not None:
-                    actions[action_name]["description"] = description
+                    actions[action_name] = {
+                        "path": file_path,
+                        "parameters": parameters,
+                    }
+
+                    if description:
+                        actions[action_name]["description"] = description
+
+                except Exception as exc:
+                    self._logger.warning(f"⚠️ Skipping action '{action_name}': {exc}")
 
         return actions
+
+    def __extract_parameters(self, wrapper: ModuleWrapper) -> list:
+
+        try:
+            # Get the class that inherits from BaseAction
+            action_cls = wrapper.get_class(must_inherit=BaseAction)
+            if not action_cls:
+                self._logger.warning(f"⚠️ No action class found in {wrapper.name}")
+                return []
+
+            class_name = action_cls.__name__
+            method_name = "__init__" if issubclass(action_cls, NamedPipe) else "run"
+            signature = wrapper.get_signature(f"{class_name}.{method_name}")
+
+            return [
+                (
+                    f"{param} ({value['default']})"
+                    if value["default"] is not None
+                    else param
+                )
+                for param, value in signature.items()
+            ]
+
+        except Exception as exc:
+            self._logger.warning(
+                f"⚠ Failed to extract parameters from {wrapper.name}: {exc}"
+            )
+            return []
 
     def get_action(self, name: str) -> BaseAction:
         """
@@ -169,30 +192,33 @@ class ActionsManager:
         Returns:
             BaseAction instance if found, else None.
         """
-        self._logger.info(f"Loading action named '{name}'")
+        name_with_os = f"{name}/{self.__os}"
+        system_module_path = self.__system_actions_path / f"{name_with_os}.py"
+        user_module_path = self.__user_actions_path / f"{name_with_os}.py"
 
-        name = f"{name}/{self.__os}"
-        system_module_path = self.__system_actions_path / f"{name}.py"
-        user_module_path = self.__user_actions_path / f"{name}.py"
-
-        # Check if a user-defined action exists
+        # Prioritize user-defined actions
         if user_module_path.exists():
-            last_modified = user_module_path.stat().st_mtime
-            formatted_time = datetime.fromtimestamp(last_modified).strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
-            self._logger.info(f"📝 Found user action (Last modified: {formatted_time})")
+            try:
+                last_modified = user_module_path.stat().st_mtime
+                formatted_time = datetime.fromtimestamp(last_modified).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+                if action := self.load_action_from_path(user_module_path):
+                    self._logger.info(
+                        f"📦 Loaded user action '{name}' (last modified: {formatted_time})"
+                    )
+                    return action
+            except Exception as e:
+                self._logger.warning(f"⚠️ Failed to load user action '{name}': {e}")
 
-            if action := self.load_action_from_path(user_module_path):
+        # Fallback to system action
+        if system_module_path.exists():
+            if action := self.load_action_from_path(system_module_path):
+                self._logger.info(f"📦 Loaded system action '{name}'")
                 return action
 
-        # Try loading the system action
-        if action := self.load_action_from_path(system_module_path):
-            self._logger.debug(f"✅ Loaded system action")
-            return action
-
-        # If no action was loaded, log an error
-        self._logger.error(f"❌ No valid action found for '{name}'.")
+        # No valid action found
+        self._logger.error(f"❌ No valid action found for '{name}'")
         return None
 
     def load_action_from_path(self, file_path: Path) -> BaseAction:
@@ -228,49 +254,3 @@ class ActionsManager:
             "XDG_DATA_HOME", str(Path.home() / ".local" / "share")
         )
         return Path(xdg_data_home) / "toboggan" / "actions"
-
-    def __extract_description(self, file_path: Path) -> str | None:
-        wrapper = ModuleWrapper(file_path)
-        cls = wrapper.get_class(must_inherit=BaseAction)
-
-        if cls and hasattr(cls, "DESCRIPTION"):
-            return cls.DESCRIPTION
-
-        return None
-
-    def __extract_parameters(self, file_path: Path) -> list:
-        """
-        Extracts parameters of the action's entry point using modwrap.
-        Uses __init__ for NamedPipe-based actions, else uses run().
-        """
-        if not file_path.exists():
-            self._logger.warning(f"⚠️ File '{file_path}' does not exist.")
-            return []
-
-        try:
-            wrapper = ModuleWrapper(file_path)
-
-            # Get the class that inherits from BaseAction
-            action_cls = wrapper.get_class(must_inherit=BaseAction)
-            if not action_cls:
-                self._logger.warning(f"⚠️ No action class found in {file_path.name}")
-                return []
-
-            class_name = action_cls.__name__
-            method_name = "__init__" if issubclass(action_cls, NamedPipe) else "run"
-            signature = wrapper.get_signature(f"{class_name}.{method_name}")
-
-            return [
-                (
-                    f"{param} ({value['default']})"
-                    if value["default"] is not None
-                    else param
-                )
-                for param, value in signature.items()
-            ]
-
-        except Exception as exc:
-            self._logger.warning(
-                f"⚠ Failed to extract parameters from {file_path.name}: {exc}"
-            )
-            return []

@@ -47,6 +47,7 @@ class Executor(metaclass=SingletonMeta):
             self._logger.info(f"🖥️ OS set to {target_os}")
 
         self._shell = shell
+        self._shell_validated = False  # Shell validation flag
 
         if self.__os not in ["linux", "windows"]:
             raise ValueError("Operating System should be either linux or windows.")
@@ -54,11 +55,8 @@ class Executor(metaclass=SingletonMeta):
         # Attach the appropriate OS Helper
         if self.__os == "linux":
             self._os_helper = LinuxHelper(self)
-
-        elif self.__os == "windows":
+        else:
             self._os_helper = WindowsHelper(self)
-
-        self._logger.info(f"💾 Using remote shell: {self._shell}")
 
         self._chunk_max_size = 4096  # Default chunk size for remote commands
 
@@ -105,6 +103,7 @@ class Executor(metaclass=SingletonMeta):
         retry: bool = True,
         raise_on_failure: bool = False,
         debug: bool = True,
+        bypass_camouflage: bool = False,
     ) -> str:
         """
         Executes the specified command within the module.
@@ -114,6 +113,7 @@ class Executor(metaclass=SingletonMeta):
             timeout (float, optional): Timeout for command execution.
             retry (bool, optional): Whether to retry on failure.
             debug (bool, optional): Enable or disable debug logging for this execution.
+            bypass_camouflage (bool, optional): Bypass camouflage check.
 
         Returns:
             str: The output of the executed command, if successful.
@@ -140,7 +140,7 @@ class Executor(metaclass=SingletonMeta):
             self._logger.debug(f"Executing: {command}")
 
         # Apply obfuscation if enabled
-        if self.__camouflage:
+        if not bypass_camouflage and self.__camouflage:
             command = self.__camouflage_action.run(command)
             if debug:
                 self._logger.debug(f"🔒 Obfuscated command for execution: {command}")
@@ -211,7 +211,7 @@ class Executor(metaclass=SingletonMeta):
             self._logger.debug(f"📩 Received raw output: {result!r}")
 
         # Attempt to de-obfuscate the result if obfuscation was used
-        if self.__camouflage:
+        if not bypass_camouflage and self.__camouflage:
             try:
                 result = self.__uncamouflage_action.run(result)
                 if debug:
@@ -349,11 +349,48 @@ class Executor(metaclass=SingletonMeta):
 
     @property
     def shell(self) -> str:
+        # Fallback to dynamic detection if not explicitly set
+        if not self._shell:
+            if isinstance(self._os_helper, LinuxHelper):
+                self._shell = "$(command -v $0)"
+            elif isinstance(self._os_helper, WindowsHelper):
+                self._shell = "powershell.exe"
+
+        # Validate shell lazily (once)
+        if not self._shell_validated:
+            self._logger.info(f"🔍 First-time shell validation (camouflage disabled)")
+            test_cmd = f"{self._shell} -h"
+            try:
+                output = (
+                    self.remote_execute(
+                        test_cmd,
+                        timeout=10,
+                        retry=False,
+                        debug=True,
+                        bypass_camouflage=True,
+                    )
+                    .strip()
+                    .lower()
+                )
+            except Exception as exc:
+                self._logger.warning(f"⚠️ Failed to test shell '{self._shell}': {exc}")
+                output = ""
+
+            if not output or "not found" in output or "no such file" in output:
+                self._logger.error(f"❌ Remote shell '{self._shell}' appears invalid.")
+                raise RuntimeError(f"Shell '{self._shell}' is not usable.")
+
+            self._logger.info(
+                f"💾 Remote shell resolved to: '{self._shell}' — verified and ready."
+            )
+            self._shell_validated = True
+
         return self._shell
 
     @shell.setter
     def shell(self, shell: str) -> None:
         self._shell = shell
+        self._shell_validated = False  # Reset validation flag
 
     @property
     def is_ready(self) -> bool:

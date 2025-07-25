@@ -36,7 +36,9 @@ class Terminal:
         result = None
         user_input = ""
 
-        self._logger.info(f"Terminal prefix is: {self.__prefix}")
+        self._logger.info(
+            f"🔧 Prefix set to '{self.__prefix}' — use '{self.__prefix}h' for available commands."
+        )
 
         while True:
             try:
