@@ -72,25 +72,28 @@ def get_logger():
         logger.handlers.clear()
 
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-
-    logger.info(f"Setting log level at: {log_level}")
-
     logger.setLevel(getattr(logging, log_level, logging.INFO))
 
+    # --- Stream handler with color ---
     ch = logging.StreamHandler()
     ch.setLevel(logger.level)
-    ch.setFormatter(ToboLogger())
+    ch.setFormatter(ToboLogger())  # colored formatter for console
     logger.addHandler(ch)
 
+    # --- File handler without color ---
     log_file = get_log_directory() / "toboggan.log"
-
-    logger.info(f"Logging into the file: {log_file}")
+    file_formatter = logging.Formatter(
+        fmt="[{asctime} (UTC)] [{levelname}] {message}",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        style="{",
+    )
 
     fh = logging.FileHandler(log_file)
     fh.setLevel(logger.level)
+    fh.setFormatter(file_formatter)
     logger.addHandler(fh)
 
-    # Extend the logger with a `success` method
+    # Add custom success level
     def success(self, message, *args, **kwargs):
         if self.isEnabledFor(success_level):
             self._log(success_level, message, args, **kwargs)
