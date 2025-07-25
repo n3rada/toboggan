@@ -73,6 +73,7 @@ class TokenReader:
     def expiration_datetime(self) -> datetime:
         return datetime.fromtimestamp(self._expires_on, tz=timezone.utc)
 
+    @property
     def is_expired(self) -> bool:
         return datetime.now(timezone.utc).timestamp() > self._expires_on
 
