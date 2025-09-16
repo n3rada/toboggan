@@ -1,12 +1,15 @@
 # Built-in imports
 import shlex
 import re
+from typing import List, Iterable
 
 # External library imports
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import ThreadedAutoSuggest, AutoSuggestFromHistory
 from prompt_toolkit.history import ThreadedHistory, InMemoryHistory
 from prompt_toolkit.cursor_shapes import CursorShape
+from prompt_toolkit.completion import Completer, Completion
+from prompt_toolkit.document import Document
 
 # Local library imports
 from toboggan.core import logbook
@@ -14,10 +17,66 @@ from toboggan.core.executor import Executor
 from toboggan.core.action import NamedPipe
 
 
+class TobogganCompleter(Completer):
+    """Completer for Toboggan terminal commands and actions."""
+    
+    def __init__(self, prefix: str, executor: Executor):
+        self.prefix = prefix
+        self.executor = executor
+        
+        # Built-in commands with descriptions
+        self.builtins = {
+            "exit": "Exit the terminal",
+            "help": "Show help message",
+            "max_size": "Probe or manually set the max command size",
+        }
+        
+    def get_completions(self, document: Document, complete_event) -> Iterable[Completion]:
+        text = document.text_before_cursor
+        
+        # If text is empty or doesn't start with prefix, no completions
+        if not text or not text.startswith(self.prefix):
+            return
+            
+        # Remove prefix for processing
+        text = text[len(self.prefix):].lstrip()
+        
+        # Get all available actions
+        available_actions = self.executor.action_manager.get_actions()
+        
+        # If no text entered yet, suggest all commands and actions
+        if not text:
+            # Suggest built-in commands
+            for cmd, desc in self.builtins.items():
+                yield Completion(cmd, start_position=0, display_meta=desc)
+            
+            # Suggest available actions
+            for action_name, action_info in available_actions.items():
+                yield Completion(
+                    action_name, 
+                    start_position=0,
+                    display_meta=action_info.get('description', 'No description available')
+                )
+            return
+            
+        # If text entered, filter suggestions
+        for cmd, desc in self.builtins.items():
+            if cmd.startswith(text):
+                yield Completion(cmd[len(text):], display_meta=desc)
+                
+        for action_name, action_info in available_actions.items():
+            if action_name.startswith(text):
+                yield Completion(
+                    action_name[len(text):],
+                    display_meta=action_info.get('description', 'No description available')
+                )
+
+
 class Terminal:
     def __init__(self, executor: Executor, prefix="!"):
         self._logger = logbook.get_logger()
 
+        # Create prompt session with completer
         self.__prompt_session = PromptSession(
             cursor=CursorShape.BLINKING_BLOCK,
             multiline=False,
@@ -25,6 +84,7 @@ class Terminal:
             wrap_lines=True,
             auto_suggest=ThreadedAutoSuggest(auto_suggest=AutoSuggestFromHistory()),
             history=ThreadedHistory(history=InMemoryHistory()),
+            completer=TobogganCompleter(prefix, executor),
         )
 
         self.__target = executor.target
