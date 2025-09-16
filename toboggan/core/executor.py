@@ -125,7 +125,7 @@ class Executor(metaclass=SingletonMeta):
                     "⚠️ Attempted to execute an empty command. Skipping."
                 )
             return ""
-        
+
         if debug:
             self._logger.debug(f"Executing: {command}")
 
@@ -318,7 +318,7 @@ class Executor(metaclass=SingletonMeta):
     def __guess_os(self) -> str:
         self._logger.info("🔍 Guessing remote OS")
 
-        if "/" in self.remote_execute(command="/bin/ls").strip():
+        if self.remote_execute(command="uname").strip():
             self._logger.info("🖥️ Assuming Linux OS.")
             return "linux"
 
