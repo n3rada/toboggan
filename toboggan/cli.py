@@ -33,8 +33,7 @@ from toboggan import __version__ as version
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"
 
-
-def run() -> int:
+def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="toboggan",
         add_help=True,
@@ -50,6 +49,14 @@ def run() -> int:
         action="version",
         version=f"%(prog)s {version}",
         help="Show Toboggan version and exit.",
+    )
+
+    parser.add_argument(
+        "--proxy",
+        type=str,
+        nargs="?",
+        const="http://127.0.0.1:8080",
+        help="Set HTTP(S) proxy, e.g. 'http://127.0.0.1:8080'. Default is Burp Suite proxy.",
     )
 
     # Argument Groups
@@ -158,13 +165,6 @@ def run() -> int:
         help="Specify the target working directory.",
     )
 
-    parser.add_argument(
-        "--proxy",
-        type=str,
-        nargs="?",
-        const="http://127.0.0.1:8080",
-        help="Set HTTP(S) proxy, e.g. 'http://127.0.0.1:8080'. Default is Burp Suite proxy.",
-    )
 
     advanced_group.add_argument(
         "--debug",
@@ -172,9 +172,12 @@ def run() -> int:
         required=False,
         help="Enable debug logging mode.",
     )
+    return parser.parse_args()
 
+def main() -> int:
+   
     # Parse arguments
-    args = parser.parse_args()
+    args = parse_arguments()
 
     print(banner.show())
 

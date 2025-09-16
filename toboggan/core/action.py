@@ -20,6 +20,7 @@ class BaseAction(ABC):
     def __init__(self, executor):
         self._logger = logbook.get_logger()
         self._executor = executor
+        self._os_helper = executor.os_helper
 
     @abstractmethod
     def run(self, *args, **kwargs):

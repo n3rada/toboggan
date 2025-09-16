@@ -19,6 +19,8 @@ class LinuxHelper(base.OSHelperBase):
         self.__is_busybox_present = None
         self.__busybox_commands = set()
 
+        self._logger.debug("Initialized LinuxHelper.")
+
     def fifo_execute(self, command: str) -> None:
         self.__named_pipe_instance.execute(command)
 
@@ -48,7 +50,7 @@ class LinuxHelper(base.OSHelperBase):
         """Returns True if a FIFO session is active."""
         return self.__named_pipe_instance is not None
 
-    def create_working_directory_string(self) -> str:
+    def format_working_directory(self) -> str:
         """Generate a temp directory path."""
 
         random_hex = methods.generate_fixed_length_token(length=32)
@@ -146,7 +148,7 @@ class LinuxHelper(base.OSHelperBase):
         return stealthy_name
 
     def get_current_path(self) -> str:
-        return self._executor.remote_execute(command="/bin/pwd").strip()
+        return self._executor.remote_execute(command="pwd").strip()
 
     def is_shell_prompt_in(self, command_output: str) -> bool:
         """

@@ -254,9 +254,25 @@ class Terminal:
 
         if self.__target.os == "linux" and self.__executor.os_helper.is_fifo_active():
             return ""
+        
+        user = self.__target.user
+        host = self.__target.hostname
+        pwd = self.__target.pwd
 
-        # Add user if available, otherwise use only hostname
-        if self.__target.user and self.__target.hostname and self.__target.pwd:
-            return f"({self.__target.user}@{self.__target.hostname})-[{self.__target.pwd}]$ "
-
+        # Build prompt with available information
+        if user and host and pwd:
+            return f"({user}@{host})-[{pwd}]$ "
+        elif user and host:
+            return f"{user}@{host}:~$ "
+        elif host and pwd:
+            return f"{host}:{pwd}$ "
+        elif user and pwd:
+            return f"{user}:{pwd}$ "
+        elif pwd:
+            return f"{pwd}$ "
+        elif user:
+            return f"{user}@localhost:~$ "
+        elif host:
+            return f"{host}:~$ "
+        
         return "$ "

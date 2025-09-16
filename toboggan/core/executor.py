@@ -125,6 +125,9 @@ class Executor(metaclass=SingletonMeta):
                     "⚠️ Attempted to execute an empty command. Skipping."
                 )
             return ""
+        
+        if debug:
+            self._logger.debug(f"Executing: {command}")
 
         # Adjust timeout based on avg response time, even if passed explicitly
         if self._avg_response_time is not None and timeout is not None:
@@ -135,9 +138,6 @@ class Executor(metaclass=SingletonMeta):
                 )
 
         result = ""
-
-        if debug:
-            self._logger.debug(f"Executing: {command}")
 
         # Apply obfuscation if enabled
         if not bypass_camouflage and self.__camouflage:
@@ -243,32 +243,53 @@ class Executor(metaclass=SingletonMeta):
 
     def calculate_max_chunk_size(self, min_size=1024, max_size=262144) -> int:
         """
-        Determines the maximum shell command size accepted by the remote shell,
-        using reverse binary search and ensuring results are multiples of 1024.
+        Determines the maximum shell command size accepted by the remote shell.
+        First tries the maximum size directly, then falls back to binary search if needed.
+        All sizes are ensured to be multiples of 1024.
 
         Returns:
             int: Maximum command size in bytes (rounded to nearest 1024) that succeeded.
         """
+        # Round max_size down to nearest multiple of 1024
+        max_size = (max_size // 1024) * 1024
+        min_size = (min_size // 1024) * 1024
+
+        # Try maximum size first
+        junk_size = max_size - len("echo") - 1  # -1 for space
+        junk = "A" * junk_size
+        cmd = f"echo {junk}"
+
+        self._logger.info(f"📏 Trying maximum size: {max_size} bytes")
+
+        try:
+            self.remote_execute(
+                cmd,
+                timeout=5,
+                retry=False,
+                raise_on_failure=True,
+                debug=False,
+            )
+            self._logger.success(f"✅ Maximum size {max_size} bytes works!")
+            return max_size
+        except Exception:
+            self._logger.info("❌ Maximum size failed, falling back to binary search")
+
+        # Fall back to binary search if maximum size failed
         self._logger.info(
-            "🧪 Starting reverse binary search to determine max command size"
-        )
-        self._logger.info(
-            f"🔢 Search range: {min_size} to {max_size} bytes (1024-aligned)"
+            f"🔢 Binary search range: {min_size} to {max_size} bytes (1024-aligned)"
         )
 
-        low = (min_size // 1024) * 1024
-        high = (max_size // 1024) * 1024
+        low = min_size
+        high = max_size
         best = 0
 
         while low <= high:
-            mid = (
-                ((low + high) // 2) // 1024 * 1024
-            )  # Round mid down to multiple of 1024
+            mid = ((low + high) // 2) // 1024 * 1024  # Round to multiple of 1024
             junk_size = mid - len("echo") - 1  # -1 for space
             junk = "A" * junk_size
             cmd = f"echo {junk}"
 
-            self._logger.info(f"📏 Trying command of size: {mid} bytes")
+            self._logger.info(f"📏 Trying size: {mid} bytes")
 
             try:
                 self.remote_execute(
@@ -282,15 +303,14 @@ class Executor(metaclass=SingletonMeta):
                 best = mid
                 low = mid + 1024
             except Exception:
-                self._logger.info(f"❌ Failure at {mid} bytes")
+                self._logger.info(f"❌ Failed at {mid} bytes")
                 high = mid - 1024
 
             self._logger.debug(
-                f"🔁 Updated search range: low={low}, high={high}, best={best}"
+                f"🔁 Search range: low={low}, high={high}, best={best}"
             )
 
-        self._logger.success(f"📏 Final max remote command size: {best} bytes")
-
+        self._logger.success(f"📏 Final maximum command size: {best} bytes")
         return best
 
     # Private methods
@@ -298,7 +318,7 @@ class Executor(metaclass=SingletonMeta):
     def __guess_os(self) -> str:
         self._logger.info("🔍 Guessing remote OS")
 
-        if self.remote_execute(command="/bin/ls"):
+        if "/" in self.remote_execute(command="/bin/ls").strip():
             self._logger.info("🖥️ Assuming Linux OS.")
             return "linux"
 
@@ -333,7 +353,7 @@ class Executor(metaclass=SingletonMeta):
                     hasattr(self, "_provided_working_directory")
                     and self._provided_working_directory is not None
                 )
-                else self._os_helper.create_working_directory_string()
+                else self._os_helper.format_working_directory()
             )
 
             self.remote_execute(command=f"mkdir -p {self._working_directory}")

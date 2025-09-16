@@ -25,7 +25,7 @@ class OSHelperBase(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def create_working_directory_string(self) -> str:
+    def format_working_directory(self) -> str:
         raise NotImplementedError()
 
     @property
