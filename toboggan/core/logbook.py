@@ -30,7 +30,7 @@ class ToboLogger(logging.Formatter):
         color_prefix = self.COLORS.get(levelname, "") if self.color else ""
         color_reset = self.RESET if self.color else ""
 
-        formatted = f"[{utc_time} (UTC)] [{color_prefix}{levelname}{color_reset}] {record.getMessage()}"
+        formatted = f"{utc_time} (UTC) - [{color_prefix}{levelname}{color_reset}] {record.getMessage()}"
 
         if record.exc_info:
             formatted += "\n" + self.formatException(record.exc_info)
@@ -137,7 +137,7 @@ def get_logger() -> logging.Logger:
             return s
 
     file_formatter = UtcFormatter(
-        fmt="[{asctime} (UTC)] [{levelname}] {message}",
+        fmt="{asctime} (UTC)- [{levelname}] {message}",
         datefmt="%Y-%m-%d %H:%M:%S",
         style="{",
     )
