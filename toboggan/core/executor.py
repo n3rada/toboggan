@@ -372,7 +372,8 @@ class Executor(metaclass=SingletonMeta):
         # Fallback to dynamic detection if not explicitly set
         if not self._shell:
             if isinstance(self._os_helper, LinuxHelper):
-                self._shell = "$(command -v $0)"
+                # self._shell = "$(command -v $0)"
+                self._shell = "/bin/sh"
             elif isinstance(self._os_helper, WindowsHelper):
                 self._shell = "powershell.exe"
 
