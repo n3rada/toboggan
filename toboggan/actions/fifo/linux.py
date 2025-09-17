@@ -25,9 +25,7 @@ class FifoAction(NamedPipe):
 
         self.tty = False
 
-        self._shell = self._executor.remote_execute(
-            "command -v bash || command -v sh"
-        ).strip()
+        self._shell = self._executor.shell
 
         self._logger.info(f"🌀 FiFo will use shell: {self._shell}")
 
