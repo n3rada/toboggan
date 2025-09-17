@@ -6,11 +6,10 @@ import tempfile
 
 # Third party library imports
 from tqdm import tqdm
-from wonderwords import RandomWord
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
-
+from toboggan.utils import methods
 
 class GetAction(BaseAction):
     """Handles remote file retrieval."""
@@ -56,7 +55,7 @@ class GetAction(BaseAction):
         self._logger.info(f"💾 File will be saved to: {save_path}")
 
         # Step 2: Compress and Base64-encode the remote file
-        random_file_name = RandomWord().word(word_min_length=4)
+        random_file_name = methods.generate_fixed_length_token(6) + ".tar.gz"
         remote_archive = f"{self._executor.working_directory}/{random_file_name}"
         remote_base64_path = f"{remote_archive}.b64"
 
