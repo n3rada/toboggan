@@ -12,14 +12,16 @@ class FifoAction(NamedPipe):
     def __init__(
         self,
         executor,
-        read_interval=0.4,
-        command_in=None,
-        command_out=None,
+        read_interval: float=0.4,
+        command_in: str=None,
+        command_out: str=None,
     ):
         super().__init__(executor, read_interval, command_in, command_out)
 
         self.__os_helper = executor.os_helper
-        self.__os_helper.is_busybox_present  # Force BusyBox detection
+
+        # Force BusyBox detection
+        self.__os_helper.is_busybox_present
 
         self.tty = False
 

@@ -325,6 +325,52 @@ class Executor(metaclass=SingletonMeta):
         self._logger.info("🖥️ Assuming Windows OS.")
         return "windows"
 
+    def __validate_shell(self) -> bool:
+        """
+        Validates the current shell for remote command execution.
+
+        For Linux targets, this method attempts to verify that the shell specified in
+        `self._shell` exists and is available on the remote system by running
+        `command -v <shell>`. If the shell is not found or is invalid, the method
+        returns False and logs an error. For Windows targets, PowerShell is assumed
+        to be valid and the method returns True immediately.
+
+        Returns:
+            bool: True if the shell is valid and available on the remote system, False otherwise.
+        """
+
+        if isinstance(self._os_helper, WindowsHelper):
+            return True  # Assume PowerShell is valid for Windows
+
+        validation_command = f'command -v {self._shell}'
+
+        try:
+            output = (
+                self.remote_execute(
+                    validation_command,
+                    timeout=10,
+                    retry=False,
+                    debug=True,
+                    bypass_camouflage=True,
+                )
+                .strip()
+                .lower()
+            )
+        except Exception as exc:
+            self._logger.warning(f"⚠️ Failed to test shell '{self._shell}': {exc}")
+            output = ""
+
+        if not output or "not found" in output or "no such file" in output:
+            self._logger.error(f"❌ Remote shell '{self._shell}' appears invalid.")
+            self._shell_validated = False
+            return False
+
+        self._logger.info(
+            f"💾 Remote shell: '{self._shell}' — verified and ready."
+        )
+        self._shell_validated = True
+        return True
+
     # Properties
     @property
     def target(self) -> target.Target:
@@ -369,47 +415,61 @@ class Executor(metaclass=SingletonMeta):
 
     @property
     def shell(self) -> str:
-        # Fallback to dynamic detection if not explicitly set
+        """
+        Returns the current shell to be used for remote command execution.
+
+        This property determines and validates the appropriate shell for the remote target,
+        depending on the operating system. For Linux targets, it tries a list of common shells
+        in order, falling back if validation fails. For Windows, it defaults to PowerShell.
+
+        The shell is validated by attempting to locate it on the
+        remote system.
+
+        Raises:
+            RuntimeError: If no valid shell can be found or validated on a Linux target.
+
+        Returns:
+            str: The name of the validated shell to use for remote execution.
+        """
+
+        linux_shells = ["$0", "zsh", "bash", "sh"]
+
         if not self._shell:
             if isinstance(self._os_helper, LinuxHelper):
-                # self._shell = "$(command -v $0)"
-                self._shell = "/bin/sh"
+                # Try first one
+                self.shell = linux_shells.pop(0)
+
             elif isinstance(self._os_helper, WindowsHelper):
-                self._shell = "powershell.exe"
+                self.shell = "powershell"
+                self._shell_validated = True  # Assume PowerShell is valid
 
-        # Validate shell lazily (once)
-        if not self._shell_validated:
-            self._logger.debug(f"🔍 First-time shell validation (camouflage disabled)")
-            test_cmd = f"{self._shell} -h"
-            try:
-                output = (
-                    self.remote_execute(
-                        test_cmd,
-                        timeout=10,
-                        retry=False,
-                        debug=True,
-                        bypass_camouflage=True,
-                    )
-                    .strip()
-                    .lower()
-                )
-            except Exception as exc:
-                self._logger.warning(f"⚠️ Failed to test shell '{self._shell}': {exc}")
-                output = ""
+        while not self._shell_validated:
 
-            if not output or "not found" in output or "no such file" in output:
-                self._logger.error(f"❌ Remote shell '{self._shell}' appears invalid.")
-                raise RuntimeError(f"Shell '{self._shell}' is not usable.")
-
-            self._logger.debug(
-                f"💾 Remote shell resolved to: '{self._shell}' — verified and ready."
-            )
-            self._shell_validated = True
+            if not self.__validate_shell():
+                if isinstance(self._os_helper, LinuxHelper):
+                    if linux_shells:
+                        next_shell = linux_shells.pop(0)
+                        self._logger.info(f"🔄 Falling back to {next_shell}")
+                        self.shell = next_shell
+                        continue
+                    else:
+                        self._logger.error("❌ No valid shell found on Linux target.")
+                        raise RuntimeError("No valid shell found on Linux target.")
 
         return self._shell
 
     @shell.setter
     def shell(self, shell: str) -> None:
+        """
+        Sets the shell to be used for remote command execution.
+
+        This setter updates the shell used by the Executor for running remote commands.
+        It also resets the shell validation flag, so the next access to the shell property
+        will trigger validation of the new shell.
+
+        Args:
+            shell (str): The name or path of the shell to use for remote execution (e.g., 'bash', 'zsh', 'powershell').
+        """
         self._shell = shell
         self._shell_validated = False  # Reset validation flag
 

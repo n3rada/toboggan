@@ -19,51 +19,51 @@ from toboggan.core.action import NamedPipe
 
 class TobogganCompleter(Completer):
     """Completer for Toboggan terminal commands and actions."""
-    
+
     def __init__(self, prefix: str, executor: Executor):
         self.prefix = prefix
         self.executor = executor
-        
+
         # Built-in commands with descriptions
         self.builtins = {
             "exit": "Exit the terminal",
             "help": "Show help message",
             "max_size": "Probe or manually set the max command size",
         }
-        
+
     def get_completions(self, document: Document, complete_event) -> Iterable[Completion]:
         text = document.text_before_cursor
-        
+
         # If text is empty or doesn't start with prefix, no completions
         if not text or not text.startswith(self.prefix):
             return
-            
+
         # Remove prefix for processing
         text = text[len(self.prefix):].lstrip()
-        
+
         # Get all available actions
         available_actions = self.executor.action_manager.get_actions()
-        
+
         # If no text entered yet, suggest all commands and actions
         if not text:
             # Suggest built-in commands
             for cmd, desc in self.builtins.items():
                 yield Completion(cmd, start_position=0, display_meta=desc)
-            
+
             # Suggest available actions
             for action_name, action_info in available_actions.items():
                 yield Completion(
-                    action_name, 
+                    action_name,
                     start_position=0,
                     display_meta=action_info.get('description', 'No description available')
                 )
             return
-            
+
         # If text entered, filter suggestions
         for cmd, desc in self.builtins.items():
             if cmd.startswith(text):
                 yield Completion(cmd[len(text):], display_meta=desc)
-                
+
         for action_name, action_info in available_actions.items():
             if action_name.startswith(text):
                 yield Completion(
@@ -148,8 +148,6 @@ class Terminal:
 
                 command = command_parts[0].lower().replace("-", "_")
 
-                raw_args = command_parts[1:]
-
                 if command in ["e", "ex", "exit"]:
                     self._logger.info("🛝 Sliding back up the toboggan.")
                     break
@@ -157,6 +155,8 @@ class Terminal:
                 if command in ["help", "h"]:
                     print(self.__get_help())
                     continue
+
+                raw_args = command_parts[1:]
 
                 if command == "max_size":
                     if raw_args:
@@ -174,12 +174,6 @@ class Terminal:
                     if action_class := self.__executor.action_manager.load_action_from_path(
                         targeted_action["path"]
                     ):
-
-                        if issubclass(action_class, NamedPipe):
-                            self.__executor.os_helper.start_named_pipe(
-                                action_class, *raw_args
-                            )
-                            continue
 
                         # Parse args into kwargs and positionals
                         keyword_args = {}
@@ -223,6 +217,12 @@ class Terminal:
                             self._logger.info(f"▶️ Running '{command}'")
 
                         try:
+                            if issubclass(action_class, NamedPipe):
+                                self.__executor.os_helper.start_named_pipe(
+                                    action_class, [positional_args, keyword_args]
+                                )
+                                continue
+
                             action = action_class(self.__executor)
 
                             if positional_args or keyword_args:
@@ -314,7 +314,7 @@ class Terminal:
 
         if self.__target.os == "linux" and self.__executor.os_helper.is_fifo_active():
             return ""
-        
+
         user = self.__target.user
         host = self.__target.hostname
         pwd = self.__target.pwd
@@ -334,5 +334,5 @@ class Terminal:
             return f"{user}@localhost:~$ "
         elif host:
             return f"{host}:~$ "
-        
+
         return "$ "

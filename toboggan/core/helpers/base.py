@@ -27,7 +27,3 @@ class OSHelperBase(ABC):
     @abstractmethod
     def format_working_directory(self) -> str:
         raise NotImplementedError()
-
-    @property
-    def shell(self) -> str:
-        return self._executor.shell

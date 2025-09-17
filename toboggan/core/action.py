@@ -38,6 +38,15 @@ class NamedPipe(BaseAction):
         command_in: str = None,
         command_out: str = None,
     ):
+        """
+        Initialize a NamedPipe action for inter-process communication using named pipes.
+
+        Args:
+            executor: The Executor instance responsible for remote command execution and OS helper access.
+            read_interval (float, optional): Time interval (in seconds) between read operations on the pipe. Defaults to 0.4. If the average response time of the executor is higher, it will be used instead.
+            command_in (str, optional): Name of the input (stdin) pipe. If None, a stealthy name is generated. Defaults to None.
+            command_out (str, optional): Name of the output (stdout) pipe. If None, a stealthy name is generated. Defaults to None.
+        """
         super().__init__(executor)
 
         if command_out is None:
@@ -53,7 +62,7 @@ class NamedPipe(BaseAction):
         self._logger.info(f"Using stdin: {self._stdin}")
         self._logger.info(f"Using stdout: {self._stdout}")
 
-        self._read_interval = read_interval
+        self._read_interval = float(read_interval)
 
         # If server is slow, override with actual RTT
         avg_rtt = self._executor.avg_response_time

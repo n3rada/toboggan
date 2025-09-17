@@ -1,8 +1,7 @@
-# Third-party imports
-from wonderwords import RandomWord
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
+from toboggan.utils import methods
 
 
 class UpgradeAction(BaseAction):
@@ -21,7 +20,7 @@ class UpgradeAction(BaseAction):
             return
 
         # Use provided shell or fallback to default
-        used_shell = shell if shell else self._executor.os_helper.shell
+        used_shell = shell if shell else self._executor.shell
 
         self._logger.info(f"🔄 Attempting to upgrade shell to: {used_shell}")
 
@@ -41,9 +40,9 @@ class UpgradeAction(BaseAction):
 
         if python_path := self._executor.remote_execute("command -v python3"):
             self._logger.info(f"✅ Found Python3 at: {python_path}")
-            random_word = RandomWord().word(word_min_length=4)
+            random_token = methods.generate_fixed_length_token(4)
             self._executor.os_helper.fifo_execute(
-                command=f"{python_path} -c 'import os,pty,signal; [signal.signal({random_word}, signal.SIG_DFL) for {random_word} in (signal.SIGTTOU, signal.SIGTTIN, signal.SIGTSTP)]; pty.spawn(\"{used_shell}\")'"
+                command=f"{python_path} -c 'import os,pty,signal; [signal.signal({random_token}, signal.SIG_DFL) for {random_token} in (signal.SIGTTOU, signal.SIGTTIN, signal.SIGTSTP)]; pty.spawn(\"{used_shell}\")'"
             )
             return
 

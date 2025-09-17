@@ -24,14 +24,15 @@ class LinuxHelper(base.OSHelperBase):
     def fifo_execute(self, command: str) -> None:
         self.__named_pipe_instance.execute(command)
 
-    def start_named_pipe(self, action_class, **kwargs):
+    def start_named_pipe(self, action_class, arguments: list[list, dict]=[[], {}]) -> None:
         """Starts a NamedPipe action and keeps track of it."""
         if not issubclass(action_class, NamedPipe):
             self._logger.error(f"❌ {action_class.__name__} is not a NamedPipe action.")
             return
 
+        positional_args, keyword_args = arguments
         try:
-            self.__named_pipe_instance = action_class(self._executor, **kwargs)
+            self.__named_pipe_instance = action_class(self._executor, *positional_args, **keyword_args)
             self.__named_pipe_instance.setup()
             self.__named_pipe_instance.run()
             self._logger.success(f"✅ Named pipe {action_class.__name__} started!")
