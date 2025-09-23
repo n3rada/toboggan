@@ -31,7 +31,9 @@ class TobogganCompleter(Completer):
             "max_size": "Probe or manually set the max command size",
         }
 
-    def get_completions(self, document: Document, complete_event) -> Iterable[Completion]:
+    def get_completions(
+        self, document: Document, complete_event
+    ) -> Iterable[Completion]:
         text = document.text_before_cursor
 
         # If text is empty or doesn't start with prefix, no completions
@@ -39,7 +41,7 @@ class TobogganCompleter(Completer):
             return
 
         # Remove prefix for processing
-        text = text[len(self.prefix):].lstrip()
+        text = text[len(self.prefix) :].lstrip()
 
         # Get all available actions
         available_actions = self.executor.action_manager.get_actions()
@@ -55,20 +57,24 @@ class TobogganCompleter(Completer):
                 yield Completion(
                     action_name,
                     start_position=0,
-                    display_meta=action_info.get('description', 'No description available')
+                    display_meta=action_info.get(
+                        "description", "No description available"
+                    ),
                 )
             return
 
         # If text entered, filter suggestions
         for cmd, desc in self.builtins.items():
             if cmd.startswith(text):
-                yield Completion(cmd[len(text):], display_meta=desc)
+                yield Completion(cmd[len(text) :], display_meta=desc)
 
         for action_name, action_info in available_actions.items():
             if action_name.startswith(text):
                 yield Completion(
-                    action_name[len(text):],
-                    display_meta=action_info.get('description', 'No description available')
+                    action_name[len(text) :],
+                    display_meta=action_info.get(
+                        "description", "No description available"
+                    ),
                 )
 
 
@@ -107,6 +113,11 @@ class Terminal:
                 if not user_input:
                     continue
             except KeyboardInterrupt:
+
+                if self.__prompt_session.app.current_buffer.text:
+                    # If there's text in the buffer, just clear it and continue
+                    continue
+
                 self._logger.warning("Keyboard interruption received.")
 
                 if (
