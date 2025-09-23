@@ -1,12 +1,15 @@
 # Built-in imports
 import shlex
+import os
 import re
-from typing import List, Iterable
+from pathlib import Path
+import tempfile
+from typing import Iterable
 
 # External library imports
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import ThreadedAutoSuggest, AutoSuggestFromHistory
-from prompt_toolkit.history import ThreadedHistory, InMemoryHistory
+from prompt_toolkit.history import ThreadedHistory, InMemoryHistory, FileHistory
 from prompt_toolkit.cursor_shapes import CursorShape
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.document import Document
@@ -79,17 +82,41 @@ class TobogganCompleter(Completer):
 
 
 class Terminal:
-    def __init__(self, executor: Executor, prefix="!"):
+    def __init__(self, executor: Executor, prefix="!", history: bool = False):
         self._logger = logbook.get_logger()
+
+        if history:
+            self._logger.info("💾 Persistent command history enabled.")
+
+            # Create temp directory for history files
+            self.__temp_dir = Path(tempfile.gettempdir()) / "toboggan"
+            self.__temp_dir.mkdir(exist_ok=True)
+
+            # Create unique history file using hostname
+            self.__history_file = (
+                self.__temp_dir / f"{executor.target.hostname}_history"
+            )
+            # Set permissions to 0600 (rw-------)
+            try:
+                os.chmod(self.__history_file, 0o600)
+            except PermissionError as e:
+                self._logger.warning(
+                    f"⚠️ Could not set secure permissions on history file: {e}"
+                )
+
+            history_backend = ThreadedHistory(FileHistory(str(self.__history_file)))
+        else:
+            self._logger.info("🗑️ In-memory command history enabled.")
+            history_backend = ThreadedHistory(InMemoryHistory())  # in-memory history
 
         # Create prompt session with completer
         self.__prompt_session = PromptSession(
-            cursor=CursorShape.BLINKING_BLOCK,
+            cursor=CursorShape.BLINKING_BEAM,
             multiline=False,
             enable_history_search=True,
             wrap_lines=True,
             auto_suggest=ThreadedAutoSuggest(auto_suggest=AutoSuggestFromHistory()),
-            history=ThreadedHistory(history=InMemoryHistory()),
+            history=history_backend,
             completer=TobogganCompleter(prefix, executor),
         )
 

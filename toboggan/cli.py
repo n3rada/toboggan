@@ -33,6 +33,7 @@ from toboggan import __version__ as version
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"
 
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="toboggan",
@@ -57,6 +58,14 @@ def parse_arguments() -> argparse.Namespace:
         nargs="?",
         const="http://127.0.0.1:8080",
         help="Set HTTP(S) proxy, e.g. 'http://127.0.0.1:8080'. Default is Burp Suite proxy.",
+    )
+
+    parser.add_argument(
+        "--history",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable persistent command history (stored in temporary folder).",
     )
 
     # Argument Groups
@@ -165,7 +174,6 @@ def parse_arguments() -> argparse.Namespace:
         help="Specify the target working directory.",
     )
 
-
     advanced_group.add_argument(
         "--debug",
         action="store_true",
@@ -174,8 +182,9 @@ def parse_arguments() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+
 def main() -> int:
-   
+
     # Parse arguments
     args = parse_arguments()
 
@@ -275,7 +284,9 @@ def main() -> int:
     )
 
     try:
-        remote_terminal = terminal.Terminal(executor=command_executor)
+        remote_terminal = terminal.Terminal(
+            executor=command_executor, history=args.history
+        )
 
         if command_executor.target.os == "linux":
             if args.fifo:
