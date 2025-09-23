@@ -141,8 +141,14 @@ class Terminal:
                         self.__executor.os_helper.fifo_execute(user_input)
                         continue
 
-                    if result := self.__executor.remote_execute(command=user_input):
-                        print(result)
+                    try:
+                        if result := self.__executor.remote_execute(command=user_input):
+                            print(result)
+                    except KeyboardInterrupt:
+                        print("\r", end="", flush=True)  # Clear the ^C
+                        self._logger.warning(
+                            "Keyboard interruption received during remote command execution."
+                        )
 
                     continue
 
