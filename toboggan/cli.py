@@ -193,7 +193,7 @@ def main() -> int:
     # Show help if no cli args provided
     if len(sys.argv) <= 1:
         parser.print_help()
-        return 0
+        return 1
 
     env = os.environ
 
