@@ -34,7 +34,7 @@ from toboggan import __version__ as version
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"
 
 
-def parse_arguments() -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="toboggan",
         add_help=True,
@@ -180,15 +180,20 @@ def parse_arguments() -> argparse.Namespace:
         required=False,
         help="Enable debug logging mode.",
     )
-    return parser.parse_args()
+    return parser
 
 
 def main() -> int:
 
-    # Parse arguments
-    args = parse_arguments()
-
     print(banner.show())
+
+    parser = build_parser()
+    args = parser.parse_args()
+
+    # Show help if no cli args provided
+    if len(sys.argv) <= 1:
+        parser.print_help()
+        return 0
 
     env = os.environ
 
