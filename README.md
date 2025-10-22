@@ -118,8 +118,13 @@ Toboggan will create a FIFO-based communication channel, allowing you to interac
 
 Actions in Toboggan are modular plugins that allow you to extend its functionality. Actions can automate common post-exploitation tasks, such as downloading files, executing scripts, or setting up persistent access. Custom actions should be placed in `~/.local/share/toboggan/actions` (Linux) or `%APPDATA%\toboggan\actions` (Windows).
 
-## Disclaimer
+## ⚠️ Disclaimer
 
 Toboggan is intended for use in legal penetration testing, Capture The Flag (CTF) competitions, or other authorized and ethical security assessments.
 
-Unauthorized use of this tool on systems you do not own or without proper authorization may be illegal. Please use "Toboggan" responsibly and in compliance with applicable laws and regulations.
+It is specifically crafted to be used in controlled environments, such as:
+- Penetration testing labs (e.g., HackTheBox, OffSec exam scenarios).
+- Personal lab setups designed for ethical hacking and security research.
+- Penetration Testing or Red Team engagements with customer consent.
+
+Misuse of this project may result in legal action. Please use this tool responsibly and in compliance with applicable laws and regulations.
