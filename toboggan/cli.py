@@ -19,7 +19,6 @@ from toboggan import __version__ as version
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="toboggan",
