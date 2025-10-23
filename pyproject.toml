@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository  = "https://github.com/n3rada/toboggan"
+repository  = "https://github.com/n3rada/toboggan"
 
 [project.scripts]
 toboggan = 'toboggan.cli:main'
