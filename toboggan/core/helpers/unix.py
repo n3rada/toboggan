@@ -149,12 +149,12 @@ class LinuxHelper(base.OSHelperBase):
     def get_current_path(self) -> str:
         return self._executor.remote_execute(command="pwd").strip()
 
-    def is_shell_prompt_in(self, command_output: str) -> bool:
+    def is_shell_prompt_in(self, stdout_pathtput: str) -> bool:
         """
         Detects if the command output is a shell prompt.
 
         Args:
-            command_output (str): The latest command output to analyze.
+            stdout_pathtput (str): The latest command output to analyze.
 
         Returns:
             bool: True if the output appears to be a shell prompt, False otherwise.
@@ -167,7 +167,7 @@ class LinuxHelper(base.OSHelperBase):
             r"root@.*?:.*?#",  # Generic root prompt
         ]
 
-        return any(re.search(pattern, command_output) for pattern in prompt_patterns)
+        return any(re.search(pattern, stdout_pathtput) for pattern in prompt_patterns)
 
     def check_busybox(self) -> bool:
         """

@@ -297,8 +297,8 @@ def main() -> int:
                 command_executor.os_helper.start_named_pipe(
                     action_class=fifo_action,
                     read_interval=args.read_interval,
-                    command_in=args.stdin,
-                    command_out=args.stdout,
+                    stdin_path=args.stdin,
+                    stdout_patht=args.stdout,
                 )
 
         

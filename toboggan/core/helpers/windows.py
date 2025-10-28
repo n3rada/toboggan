@@ -79,12 +79,12 @@ class WindowsHelper(base.OSHelperBase):
         """Stub for Windows named pipe support. Not implemented yet."""
         raise NotImplementedError("start_named_pipe is not implemented for WindowsHelper.")
 
-    def is_shell_prompt_in(self, command_output: str) -> bool:
+    def is_shell_prompt_in(self, stdout_pathtput: str) -> bool:
         """
         Detects if the command output appears to be a Windows shell prompt.
 
         Args:
-            command_output (str): The latest command output to analyze.
+            stdout_pathtput (str): The latest command output to analyze.
 
         Returns:
             bool: True if the output appears to be a Windows shell prompt, False otherwise.
@@ -94,7 +94,7 @@ class WindowsHelper(base.OSHelperBase):
             r"[A-Z]:\\.*>",     # CMD default prompt
             r"PS.*>",           # Generic PowerShell prompt
         ]
-        return any(re.search(pattern, command_output) for pattern in prompt_patterns)
+        return any(re.search(pattern, stdout_pathtput) for pattern in prompt_patterns)
 
     def __detect_shell_type(self) -> str:
         """

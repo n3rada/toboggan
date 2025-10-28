@@ -35,8 +35,8 @@ class NamedPipe(BaseAction):
         self,
         executor,
         read_interval: float = 0.3,
-        command_in: str = None,
-        command_out: str = None,
+        stdin_path: str = None,
+        stdout_patht: str = None,
     ):
         """
         Initialize a NamedPipe action for inter-process communication using named pipes.
@@ -44,24 +44,24 @@ class NamedPipe(BaseAction):
         Args:
             executor: The Executor instance responsible for remote command execution and OS helper access.
             read_interval (float, optional): Time interval (in seconds) between read operations on the pipe. Defaults to 0.4. If the average response time of the executor is higher, it will be used instead.
-            command_in (str, optional): Name of the input (stdin) pipe. If None, a stealthy name is generated. Defaults to None.
-            command_out (str, optional): Name of the output (stdout) pipe. If None, a stealthy name is generated. Defaults to None.
+            stdin_path (str, optional): Name of the input (stdin) pipe. If None, a stealthy name is generated. Defaults to None.
+            stdout_patht (str, optional): Name of the output (stdout) pipe. If None, a stealthy name is generated. Defaults to None.
         """
         super().__init__(executor)
 
-        if command_out is None:
+        if stdout_patht is None:
             self._logger.info(f"stdout pipe not provided, generating random name.")
             self._stdout = self._executor.os_helper.random_system_file_name()
         else:
             self._logger.info(f"Using provided stdout.")
-            self._stdout = command_out
+            self._stdout = stdout_patht
 
-        if command_in is None:
+        if stdin_path is None:
             self._logger.info(f"stdin pipe not provided, generating random name.")
             self._stdin = self._executor.os_helper.random_system_file_name()
         else:
             self._logger.info(f"Using provided stdin.")
-            self._stdin = command_in
+            self._stdin = stdin_path
 
         self._logger.info(f"Using stdin: {self._stdin}")
         self._logger.info(f"Using stdout: {self._stdout}")

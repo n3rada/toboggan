@@ -13,19 +13,19 @@ class FifoAction(NamedPipe):
         self,
         executor,
         read_interval: float=0.4,
-        command_in: str=None,
-        command_out: str=None,
+        stdin_path: str=None,
+        stdout_patht: str=None,
     ):
         
-        # If command_in or command_out are provided, verify they are valid file paths
-        if command_in and not methods.is_valid_file_path(command_in):
+        # If stdin_path or stdout_patht are provided, verify they are valid file paths
+        if stdin_path and not methods.is_valid_file_path(stdin_path):
             # Add random name for the file
-            command_in = command_in.rstrip('/') + '_' + methods.generate_variable_length_token(3,6)
+            stdin_path = stdin_path.rstrip('/') + '_' + methods.generate_variable_length_token(3,6)
 
-        if command_out and not methods.is_valid_file_path(command_out):
-            command_out = command_out.rstrip('/') + '_' + methods.generate_variable_length_token(3,6)
+        if stdout_patht and not methods.is_valid_file_path(stdout_patht):
+            stdout_patht = stdout_patht.rstrip('/') + '_' + methods.generate_variable_length_token(3,6)
 
-        super().__init__(executor, read_interval, command_in, command_out)
+        super().__init__(executor, read_interval, stdin_path, stdout_patht)
 
         self.__os_helper = executor.os_helper
 
@@ -87,19 +87,19 @@ class FifoAction(NamedPipe):
             # Apply jitter to avoid burst collisions
             time.sleep(random.uniform(self._read_interval, self._read_interval * 1.5))
 
-            command_output = self._executor.remote_execute(
+            stdout_pathtput = self._executor.remote_execute(
                 random.choice(poll_commands),
                 debug=False,
             )
 
-            if command_output:
+            if stdout_pathtput:
                 if self.tty:
-                    print(command_output, end="", flush=True)
+                    print(stdout_pathtput, end="", flush=True)
                     continue
 
-                if self._executor.os_helper.is_shell_prompt_in(command_output):
+                if self._executor.os_helper.is_shell_prompt_in(stdout_pathtput):
                     self.tty = True
-                    print(command_output, end=" ", flush=True)
+                    print(stdout_pathtput, end=" ", flush=True)
                 else:
                     self.tty = False
-                    print(command_output)
+                    print(stdout_pathtput)
