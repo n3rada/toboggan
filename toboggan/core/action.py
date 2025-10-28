@@ -34,7 +34,7 @@ class NamedPipe(BaseAction):
     def __init__(
         self,
         executor,
-        read_interval: float = 0.4,
+        read_interval: float = 0.3,
         command_in: str = None,
         command_out: str = None,
     ):
@@ -50,13 +50,17 @@ class NamedPipe(BaseAction):
         super().__init__(executor)
 
         if command_out is None:
-            self._stdout = self._executor.os_helper.stealthy_name()
+            self._logger.info(f"stdout pipe not provided, generating random name.")
+            self._stdout = self._executor.os_helper.random_system_file_name()
         else:
+            self._logger.info(f"Using provided stdout.")
             self._stdout = command_out
 
         if command_in is None:
-            self._stdin = self._executor.os_helper.stealthy_name()
+            self._logger.info(f"stdin pipe not provided, generating random name.")
+            self._stdin = self._executor.os_helper.random_system_file_name()
         else:
+            self._logger.info(f"Using provided stdin.")
             self._stdin = command_in
 
         self._logger.info(f"Using stdin: {self._stdin}")

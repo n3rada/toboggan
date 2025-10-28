@@ -24,15 +24,14 @@ class LinuxHelper(base.OSHelperBase):
     def fifo_execute(self, command: str) -> None:
         self.__named_pipe_instance.execute(command)
 
-    def start_named_pipe(self, action_class, arguments: list[list, dict]=[[], {}]) -> None:
+    def start_named_pipe(self, action_class, **kwargs) -> None:
         """Starts a NamedPipe action and keeps track of it."""
         if not issubclass(action_class, NamedPipe):
             self._logger.error(f"❌ {action_class.__name__} is not a NamedPipe action.")
             return
 
-        positional_args, keyword_args = arguments
         try:
-            self.__named_pipe_instance = action_class(self._executor, *positional_args, **keyword_args)
+            self.__named_pipe_instance = action_class(self._executor, **kwargs)
             self.__named_pipe_instance.setup()
             self.__named_pipe_instance.run()
             self._logger.success(f"✅ Named pipe {action_class.__name__} started!")
@@ -58,7 +57,7 @@ class LinuxHelper(base.OSHelperBase):
         random_suffix = methods.generate_fixed_length_token(length=6).upper()
         return f"/tmp/systemd-private-{random_hex}-upower.service-{random_suffix}"
 
-    def stealthy_name(
+    def random_system_file_name(
         self,
         prefix_pool: list = None,
         suffix_pool: list = None,
@@ -143,10 +142,10 @@ class LinuxHelper(base.OSHelperBase):
         if add_dot_prefix:
             name = f".{name}"
 
-        stealthy_name = f"{directory}{name}"
-        self._logger.debug(f"Generated stealthy name: {stealthy_name}")
+        random_system_file_name = f"{directory}{name}"
+        self._logger.debug(f"Generated random system file name: {random_system_file_name}")
 
-        return stealthy_name
+        return random_system_file_name
 
     def get_current_path(self) -> str:
         return self._executor.remote_execute(command="pwd").strip()

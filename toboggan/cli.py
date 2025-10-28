@@ -173,6 +173,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=False,
         help="Enable debug logging mode.",
     )
+    
     return parser
 
 
@@ -187,7 +188,7 @@ def main() -> int:
     if len(sys.argv) <= 1:
         parser.print_help()
         return 1
-
+    
     env = os.environ
 
     # Set log level to DEBUG if --debug is passed
@@ -291,13 +292,16 @@ def main() -> int:
                 logger.info(
                     "🤏 Making your dumb shell semi-interactive using 'fifo' action."
                 )
+                fifo_action = command_executor.action_manager.get_action("fifo")
+
                 command_executor.os_helper.start_named_pipe(
-                    action_class=command_executor.action_manager.get_action("fifo"),
+                    action_class=fifo_action,
                     read_interval=args.read_interval,
                     command_in=args.stdin,
                     command_out=args.stdout,
                 )
 
+        
         remote_terminal.start()
     except Exception:
         logger.exception("Unhandled exception occurred")
