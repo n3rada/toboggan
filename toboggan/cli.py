@@ -20,6 +20,7 @@ from toboggan.utils import banner
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"
 
+
 def build_parser() -> argparse.ArgumentParser:
 
     class BannerArgumentParser(argparse.ArgumentParser):
@@ -173,7 +174,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=False,
         help="Enable debug logging mode.",
     )
-    
+
     return parser
 
 
@@ -188,11 +189,13 @@ def main() -> int:
     if len(sys.argv) <= 1:
         parser.print_help()
         return 1
-    
+
     # Validate that stdin and stdout are provided when fifo is enabled
     if args.fifo and (args.stdin is None or args.stdout is None):
-        parser.error("--fifo requires both --stdin (-i) and --stdout (-o) to be specified.")
-    
+        parser.error(
+            "--fifo requires both --stdin (-i) and --stdout (-o) to be specified."
+        )
+
     env = os.environ
 
     # Set log level to DEBUG if --debug is passed
@@ -257,11 +260,25 @@ def main() -> int:
 
         wrapper = ModuleWrapper(args.module)
 
-        wrapper.validate_signature(
-            func_name="execute", expected_args=[("command", str), ("timeout", float)]
-        )
+        if not wrapper.has_args("execute", ["command", "timeout"]):
+            logger.error(
+                "Provided module does not implement required 'execute(command, timeout)' function."
+            )
+            return 1
+
+        # Verify that the module can be imported correctly
+        deps = wrapper.get_dependencies()
+        if deps["missing"]:
+            logger.error(
+                f"Cannot import module due to missing dependencies: {', '.join(deps['missing'])}"
+            )
+            logger.warning(
+                "Inject the dependencies or install toboggan using pipx with --system-site-packages"
+            )
+            return 1
 
         execution_module = wrapper.module
+
     else:
         logger.error("No module provided. I cannot slide on anything.")
         return 1
@@ -294,7 +311,7 @@ def main() -> int:
             command_executor.os_helper.stdin_path = args.stdin
         elif methods.is_valid_directory_path(args.stdin):
             # It's a directory, generate filename
-            base_dir = args.stdin.rstrip('/')
+            base_dir = args.stdin.rstrip("/")
             file_name = methods.generate_variable_length_token(6, 10)
             stdin_path = f"{base_dir}/{file_name}"
             command_executor.os_helper.stdin_path = stdin_path
@@ -302,14 +319,14 @@ def main() -> int:
         else:
             logger.error(f"❌ Invalid stdin path: {args.stdin}")
             return 1
-    
+
     if args.stdout:
         if methods.is_valid_file_path(args.stdout):
             # It's a file path
             command_executor.os_helper.stdout_path = args.stdout
         elif methods.is_valid_directory_path(args.stdout):
             # It's a directory, generate filename
-            base_dir = args.stdout.rstrip('/')
+            base_dir = args.stdout.rstrip("/")
             file_name = methods.generate_variable_length_token(6, 10)
             stdout_path = f"{base_dir}/{file_name}"
             command_executor.os_helper.stdout_path = stdout_path
@@ -340,7 +357,6 @@ def main() -> int:
                     read_interval=args.read_interval,
                 )
 
-        
         remote_terminal.start()
     except Exception:
         logger.exception("Unhandled exception occurred")
