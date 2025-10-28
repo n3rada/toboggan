@@ -108,7 +108,7 @@ def is_valid_directory_path(path: str) -> bool:
 
 
 def is_valid_file_path(path: str) -> bool:
-    """
+    r"""
     Validates if the provided path is a valid Unix or Windows file path (not ending with / or \).
 
     Args:
