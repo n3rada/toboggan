@@ -96,6 +96,10 @@ class Terminal:
             self.__history_file = (
                 self.__temp_dir / f"{executor.target.hostname}_history"
             )
+
+            # Create the history file first if it doesn't exist
+            self.__history_file.touch(exist_ok=True)
+
             # Set permissions to 0600 (rw-------)
             try:
                 os.chmod(self.__history_file, 0o600)
