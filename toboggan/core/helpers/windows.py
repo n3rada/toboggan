@@ -1,6 +1,7 @@
 import secrets
 import random
 import re
+import pathlib
 
 from toboggan.core.helpers import base
 
@@ -13,6 +14,23 @@ class WindowsHelper(base.OSHelperBase):
         super().__init__(executor)
         self.__shell_type = self.__detect_shell_type()
         self._logger.debug(f"Initialized WindowsHelper (shell: {self.__shell_type})")
+    
+    def is_valid_file_path(self, path: str) -> bool:
+        """
+        Validates if the provided path is a valid Windows file path (not a directory).
+
+        Args:
+            path (str): The file path to validate.
+        Returns:
+            bool: True if the path is valid and doesn't end with \, False otherwise.
+        """
+        try:
+            p = pathlib.PureWindowsPath(path)
+            # Must be absolute and not end with \ (directory indicator)
+            return p.is_absolute() and not path.endswith('\\')
+        except Exception as e:
+            self._logger.debug(f"Path validation error for '{path}': {e}")
+            return False
 
     def get_current_path(self) -> str:
         """
