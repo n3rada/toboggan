@@ -263,7 +263,8 @@ class Terminal:
                         try:
                             if issubclass(action_class, NamedPipe):
                                 self.__executor.os_helper.start_named_pipe(
-                                    action_class, [positional_args, keyword_args]
+                                    action_class=action_class,
+                                    **keyword_args
                                 )
                                 continue
 
