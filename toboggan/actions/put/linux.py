@@ -82,7 +82,7 @@ class PutAction(BaseAction):
                 for idx in range(total_chunks):
                     chunk = encoded_file[idx * chunk_size : (idx + 1) * chunk_size]
                     self._executor.remote_execute(
-                        f"echo -n {chunk} >> {remote_encoded_path}"
+                        f"printf %s {chunk} >> {remote_encoded_path}"
                     )
                     progress_bar.update(len(chunk))
         except KeyboardInterrupt:
