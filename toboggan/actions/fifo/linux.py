@@ -18,13 +18,11 @@ class FifoAction(NamedPipe):
     ):
         
         # If command_in or command_out are provided, verify they are valid file paths
-        if command_in and not executor.os_helper.is_valid_file_path(command_in):
-            self._logger.error(f"Invalid command_in path: {command_in}")
+        if command_in and not methods.is_valid_file_path(command_in):
             # Add random name for the file
             command_in = command_in.rstrip('/') + '_' + methods.generate_variable_length_token(3,6)
 
-        if command_out and not executor.os_helper.is_valid_file_path(command_out):
-            self._logger.error(f"Invalid command_out path: {command_out}")
+        if command_out and not methods.is_valid_file_path(command_out):
             command_out = command_out.rstrip('/') + '_' + methods.generate_variable_length_token(3,6)
 
         super().__init__(executor, read_interval, command_in, command_out)

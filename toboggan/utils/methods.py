@@ -1,7 +1,6 @@
-# toboggan/utils/methods.py
-
 # Built-in imports
 import secrets
+import pathlib
 import base64
 import io
 import gzip
@@ -82,3 +81,29 @@ def yes_no_query(query: str, title: str = "Hey! Listen!") -> bool:
     )
 
     return message_box.run()
+
+
+
+def is_valid_file_path(path: str) -> bool:
+    """
+    Validates if the provided path is a valid Unix or Windows file path (not a directory).
+
+    Args:
+        path (str): The file path to validate.
+    Returns:
+        bool: True if the path is valid and doesn't end with / or \, False otherwise.
+    """
+    try:
+        # Detect if it's a Windows or Unix path
+        if '\\' in path or ':' in path:
+            # Windows path
+            p = pathlib.PureWindowsPath(path)
+            # Must be absolute and not end with \ (directory indicator)
+            return p.is_absolute() and not path.endswith('\\')
+        else:
+            # Unix path
+            p = pathlib.PurePosixPath(path)
+            # Must be absolute and not end with / (directory indicator)
+            return p.is_absolute() and not path.endswith('/')
+    except Exception as e:
+        return False

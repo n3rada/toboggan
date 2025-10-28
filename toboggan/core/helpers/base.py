@@ -25,9 +25,5 @@ class OSHelperBase(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def is_valid_file_path(self, path: str) -> bool:
-        raise NotImplementedError()
-
-    @abstractmethod
     def format_working_directory(self) -> str:
         raise NotImplementedError()

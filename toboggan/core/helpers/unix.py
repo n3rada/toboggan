@@ -1,12 +1,10 @@
 import secrets
 import random
 import re
-import pathlib
 
 from toboggan.core.helpers import base
 from toboggan.utils import methods
 from toboggan.core.action import NamedPipe
-
 
 class LinuxHelper(base.OSHelperBase):
     """
@@ -21,23 +19,6 @@ class LinuxHelper(base.OSHelperBase):
         self.__busybox_commands = set()
 
         self._logger.debug("Initialized LinuxHelper.")
-
-    def is_valid_file_path(self, path: str) -> bool:
-        """
-        Validates if the provided path is a valid Unix file path (not a directory).
-
-        Args:
-            path (str): The file path to validate.
-        Returns:
-            bool: True if the path is valid and doesn't end with /, False otherwise.
-        """
-        try:
-            p = pathlib.PurePosixPath(path)
-            # Must be absolute and not end with / (directory indicator)
-            return p.is_absolute() and not path.endswith('/')
-        except Exception as e:
-            self._logger.debug(f"Path validation error for '{path}': {e}")
-            return False
 
     def fifo_execute(self, command: str) -> None:
         self.__named_pipe_instance.execute(command)
