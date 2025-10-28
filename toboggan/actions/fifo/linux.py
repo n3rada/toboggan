@@ -16,6 +16,7 @@ class FifoAction(NamedPipe):
         command_in: str=None,
         command_out: str=None,
     ):
+        
         super().__init__(executor, read_interval, command_in, command_out)
 
         self.__os_helper = executor.os_helper
