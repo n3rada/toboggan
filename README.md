@@ -26,6 +26,39 @@ If you want-it to use system site packages, pass `--system-site-packages` when i
 pipx install --system-site-packages 'git+https://github.com/n3rada/toboggan.git'
 ```
 
+## 🔍 What is an RCE Python Module?
+
+A Remote Code Execution (RCE) module is a Python script that defines how commands are sent to and executed on a remote system. Toboggan uses this module to wrap and streamline post-exploitation command execution.
+
+To be compatible with Toboggan, your module must define a function with the following exact signature:
+
+```python
+def execute(command: str, timeout: float) -> str:
+    """
+    Execute a command remotely and return the output.
+    
+    Args:
+        command (str): The command to execute.
+        timeout (float): Execution timeout.
+
+    Returns:
+        str: The command output.
+    """
+```
+
+This function will be called internally by Toboggan to execute commands remotely. It uses [`modwrap`](https://pypi.org/project/modwrap/) under the hood.
+
+### Considerations
+
+Your `execute()` function must handle all quirks of the target system.
+
+- If space characters need to be replaced (e.g., with `${IFS}`), handle that inside the function.
+- If special encoding is required (e.g., `base64`, `hex`), apply it before sending.
+- If the system echoes extra characters or wraps the output, sanitize it.
+- If the remote interface is slow or unreliable, tune the timeout.
+
+The goal is for Toboggan to call your `execute()` function with any arbitrary command and get the correct output, as if you typed it in a shell.
+
 ## Execution
 
 Once installed, you can execute it using:
@@ -67,39 +100,6 @@ You can also directly import a Burp saved request that contains the `||cmd||` pl
 ```shell
 toboggan -r brequest
 ```
-
-## 🔍 What is an RCE Python Module?
-
-A Remote Code Execution (RCE) module is a Python script that defines how commands are sent to and executed on a remote system. Toboggan uses this module to wrap and streamline post-exploitation command execution.
-
-To be compatible with Toboggan, your module must define a function with the following exact signature:
-
-```python
-def execute(command: str, timeout: float) -> str:
-    """
-    Execute a command remotely and return the output.
-    
-    Args:
-        command (str): The command to execute.
-        timeout (float): Execution timeout.
-
-    Returns:
-        str: The command output.
-    """
-```
-
-This function will be called internally by Toboggan to execute commands remotely. It uses [`modwrap`](https://pypi.org/project/modwrap/) under the hood.
-
-### Considerations
-
-Your `execute()` function must handle all quirks of the target system.
-
-- If space characters need to be replaced (e.g., with `${IFS}`), handle that inside the function.
-- If special encoding is required (e.g., base64, hex), apply it before sending.
-- If the system echoes extra characters or wraps the output, sanitize it.
-- If the remote interface is slow or unreliable, tune the timeout.
-
-The goal is for Toboggan to call your `execute()` function with any arbitrary command and get the correct output, as if you typed it in a shell.
 
 ## 🏗️ Making Dumb Shells Smarter
 
