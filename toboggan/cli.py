@@ -1,6 +1,7 @@
 # Built-in imports
 import argparse
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -9,23 +10,30 @@ from modwrap import ModuleWrapper
 import httpx
 
 # Local library imports
+from toboggan import __version__
 from toboggan.core import logbook
 from toboggan.core import executor
 from toboggan.core import terminal
 from toboggan.utils import methods
 from toboggan.utils import banner
-from toboggan import __version__ as version
 
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+
+    class BannerArgumentParser(argparse.ArgumentParser):
+        """Custom ArgumentParser that shows banner before help."""
+
+        def format_help(self):
+            banner_text = banner.display_banner()
+            return banner_text + "\n" + super().format_help()
+
+    parser = BannerArgumentParser(
         prog="toboggan",
         add_help=True,
         description="Bring intelligence to any remote command execution (RCE) vector.",
-        formatter_class=argparse.RawTextHelpFormatter,
-        epilog=f"""\nExample usage:\n    - toboggan -m rce.py --os linux --camouflage\n\nFor more information, visit: https://github.com/n3rada/toboggan\n\nVersion: {version}""",
+        epilog=f"""\nExample usage:\n    - toboggan -m rce.py --os linux --camouflage\n\nFor more information, visit: https://github.com/n3rada/toboggan""",
         allow_abbrev=True,
         exit_on_error=True,
     )
@@ -33,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"%(prog)s {version}",
+        version=f"%(prog)s {__version__}",
         help="Show Toboggan version and exit.",
     )
 
@@ -170,7 +178,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
 
-    print(banner.show())
+    print(banner.display_banner())
 
     parser = build_parser()
     args = parser.parse_args()
