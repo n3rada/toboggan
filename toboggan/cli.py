@@ -298,7 +298,7 @@ def main() -> int:
                     action_class=fifo_action,
                     read_interval=args.read_interval,
                     stdin_path=args.stdin,
-                    stdout_patht=args.stdout,
+                    stdout_path=args.stdout,
                 )
 
         

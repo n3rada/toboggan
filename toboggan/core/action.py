@@ -36,7 +36,7 @@ class NamedPipe(BaseAction):
         executor,
         read_interval: float = 0.3,
         stdin_path: str = None,
-        stdout_patht: str = None,
+        stdout_path: str = None,
     ):
         """
         Initialize a NamedPipe action for inter-process communication using named pipes.
@@ -45,16 +45,16 @@ class NamedPipe(BaseAction):
             executor: The Executor instance responsible for remote command execution and OS helper access.
             read_interval (float, optional): Time interval (in seconds) between read operations on the pipe. Defaults to 0.4. If the average response time of the executor is higher, it will be used instead.
             stdin_path (str, optional): Name of the input (stdin) pipe. If None, a stealthy name is generated. Defaults to None.
-            stdout_patht (str, optional): Name of the output (stdout) pipe. If None, a stealthy name is generated. Defaults to None.
+            stdout_path (str, optional): Name of the output (stdout) pipe. If None, a stealthy name is generated. Defaults to None.
         """
         super().__init__(executor)
 
-        if stdout_patht is None:
+        if stdout_path is None:
             self._logger.info(f"stdout pipe not provided, generating random name.")
             self._stdout = self._executor.os_helper.random_system_file_name()
         else:
             self._logger.info(f"Using provided stdout.")
-            self._stdout = stdout_patht
+            self._stdout = stdout_path
 
         if stdin_path is None:
             self._logger.info(f"stdin pipe not provided, generating random name.")

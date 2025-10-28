@@ -14,18 +14,18 @@ class FifoAction(NamedPipe):
         executor,
         read_interval: float=0.4,
         stdin_path: str=None,
-        stdout_patht: str=None,
+        stdout_path: str=None,
     ):
         
-        # If stdin_path or stdout_patht are provided, verify they are valid file paths
+        # If stdin_path or stdout_path are provided, verify they are valid file paths
         if stdin_path and not methods.is_valid_file_path(stdin_path):
             # Add random name for the file
             stdin_path = stdin_path.rstrip('/') + '_' + methods.generate_variable_length_token(3,6)
 
-        if stdout_patht and not methods.is_valid_file_path(stdout_patht):
-            stdout_patht = stdout_patht.rstrip('/') + '_' + methods.generate_variable_length_token(3,6)
+        if stdout_path and not methods.is_valid_file_path(stdout_path):
+            stdout_path = stdout_path.rstrip('/') + '_' + methods.generate_variable_length_token(3,6)
 
-        super().__init__(executor, read_interval, stdin_path, stdout_patht)
+        super().__init__(executor, read_interval, stdin_path, stdout_path)
 
         self.__os_helper = executor.os_helper
 
@@ -87,19 +87,19 @@ class FifoAction(NamedPipe):
             # Apply jitter to avoid burst collisions
             time.sleep(random.uniform(self._read_interval, self._read_interval * 1.5))
 
-            stdout_pathtput = self._executor.remote_execute(
+            stdout_pathput = self._executor.remote_execute(
                 random.choice(poll_commands),
                 debug=False,
             )
 
-            if stdout_pathtput:
+            if stdout_pathput:
                 if self.tty:
-                    print(stdout_pathtput, end="", flush=True)
+                    print(stdout_pathput, end="", flush=True)
                     continue
 
-                if self._executor.os_helper.is_shell_prompt_in(stdout_pathtput):
+                if self._executor.os_helper.is_shell_prompt_in(stdout_pathput):
                     self.tty = True
-                    print(stdout_pathtput, end=" ", flush=True)
+                    print(stdout_pathput, end=" ", flush=True)
                 else:
                     self.tty = False
-                    print(stdout_pathtput)
+                    print(stdout_pathput)
