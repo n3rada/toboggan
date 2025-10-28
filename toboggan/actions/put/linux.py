@@ -72,7 +72,7 @@ class PutAction(BaseAction):
             f"📤 Uploading {local_file.name} in chunks inside: {self._executor.working_directory}"
         )
         remote_encoded_path = (
-            f"{self._executor.working_directory}/{local_file.name}.gz.b64"
+            f"{self._executor.working_directory}/{local_file.name}.b64"
         )
 
         try:
