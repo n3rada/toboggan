@@ -30,6 +30,8 @@ class ToboLogger(logging.Formatter):
         color_prefix = self.COLORS.get(levelname, "") if self.color else ""
         color_reset = self.RESET if self.color else ""
 
+        # levelname < 7 chars for alignment
+        levelname = levelname.ljust(7)
         formatted = f"{utc_time} (UTC) - [{color_prefix}{levelname}{color_reset}] {record.getMessage()}"
 
         if record.exc_info:

@@ -58,7 +58,7 @@ class Executor(metaclass=SingletonMeta):
         else:
             self._os_helper = WindowsHelper(self)
 
-        self._chunk_max_size = 4096  # Default chunk size for remote commands
+        self._chunk_max_size = 2048  # Default chunk size for remote commands
 
         self.__action_manager = action.ActionsManager(target_os=self.__os)
 

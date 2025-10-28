@@ -31,7 +31,7 @@ class TobogganCompleter(Completer):
         self.builtins = {
             "exit": "Exit the terminal",
             "help": "Show help message",
-            "maxsize": "Probe or manually set the max command size",
+            "chunksize": "Probe or manually set the max command size",
         }
 
     def get_completions(
@@ -202,7 +202,7 @@ class Terminal:
 
                 raw_args = command_parts[1:]
 
-                if command == "maxsize" or command == "max_size":
+                if command == "chunksize" or command == "chunk_size":
                     if raw_args:
                         self.__executor.chunk_max_size = int(raw_args[0])
                     else:
