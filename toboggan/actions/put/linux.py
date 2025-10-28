@@ -75,7 +75,6 @@ class PutAction(BaseAction):
         )
 
         # Step 2: Upload in chunks
-
         self._logger.info(
             f"📤 Uploading {local_file.name} in chunks inside: {self._executor.working_directory}"
         )
@@ -117,8 +116,7 @@ class PutAction(BaseAction):
         remote_md5 = md5sum.split()[0]
         self._logger.info(f"🔒 Remote MD5: {remote_md5}")
         if remote_md5 != local_md5:
-            self._logger.error(f"❌ MD5 mismatch!")
-            self._executor.remote_execute(f"rm -f {remote_path}")
+            self._logger.warning(f"❌ MD5 mismatch!")
             return
 
         self._logger.success(
