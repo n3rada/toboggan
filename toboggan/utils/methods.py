@@ -84,9 +84,32 @@ def yes_no_query(query: str, title: str = "Hey! Listen!") -> bool:
 
 
 
+def is_valid_directory_path(path: str) -> bool:
+    """
+    Validates if the provided path is a valid Unix or Windows directory path.
+
+    Args:
+        path (str): The directory path to validate.
+    Returns:
+        bool: True if the path is valid absolute path, False otherwise.
+    """
+    try:
+        # Detect if it's a Windows or Unix path
+        if '\\' in path or ':' in path:
+            # Windows path
+            p = pathlib.PureWindowsPath(path)
+            return p.is_absolute()
+        else:
+            # Unix path
+            p = pathlib.PurePosixPath(path)
+            return p.is_absolute()
+    except Exception as e:
+        return False
+
+
 def is_valid_file_path(path: str) -> bool:
     """
-    Validates if the provided path is a valid Unix or Windows file path (not a directory).
+    Validates if the provided path is a valid Unix or Windows file path (not ending with / or \).
 
     Args:
         path (str): The file path to validate.
@@ -98,12 +121,10 @@ def is_valid_file_path(path: str) -> bool:
         if '\\' in path or ':' in path:
             # Windows path
             p = pathlib.PureWindowsPath(path)
-            # Must be absolute and not end with \ (directory indicator)
             return p.is_absolute() and not path.endswith('\\')
         else:
             # Unix path
             p = pathlib.PurePosixPath(path)
-            # Must be absolute and not end with / (directory indicator)
             return p.is_absolute() and not path.endswith('/')
     except Exception as e:
         return False

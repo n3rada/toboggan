@@ -140,7 +140,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--stdin",
         type=str,
         default=None,
-        help="Input file name (FIFO) where commands go.",
+        help="Input path (file or directory) for FIFO where commands go. If directory, filename will be auto-generated.",
     )
 
     named_pipe_group.add_argument(
@@ -148,7 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--stdout",
         type=str,
         default=None,
-        help="Output file name where command output appears.",
+        help="Output path (file or directory) for FIFO where command output appears. If directory, filename will be auto-generated.",
     )
 
     system_group.add_argument(
@@ -164,7 +164,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         required=False,
-        help="Specify the target working directory.",
+        help="Specify the target working directory (must be an absolute path to a directory).",
     )
 
     advanced_group.add_argument(
@@ -188,6 +188,10 @@ def main() -> int:
     if len(sys.argv) <= 1:
         parser.print_help()
         return 1
+    
+    # Validate that stdin and stdout are provided when fifo is enabled
+    if args.fifo and (args.stdin is None or args.stdout is None):
+        parser.error("--fifo requires both --stdin (-i) and --stdout (-o) to be specified.")
     
     env = os.environ
 
@@ -265,6 +269,12 @@ def main() -> int:
     if args.base64:
         logger.info("🔐 Base64 encoding enabled for all commands.")
 
+    # Validate working directory if provided
+    if args.working_directory:
+        if not methods.is_valid_directory_path(args.working_directory):
+            logger.error(f"❌ Invalid working directory path: {args.working_directory}")
+            return 1
+
     try:
         command_executor = executor.Executor(
             execute_method=execution_module.execute,
@@ -276,6 +286,37 @@ def main() -> int:
         )
     except RuntimeError:
         return 1
+
+    # Validate and set stdin/stdout paths if provided
+    if args.stdin:
+        if methods.is_valid_file_path(args.stdin):
+            # It's a file path
+            command_executor.os_helper.stdin_path = args.stdin
+        elif methods.is_valid_directory_path(args.stdin):
+            # It's a directory, generate filename
+            base_dir = args.stdin.rstrip('/')
+            file_name = methods.generate_variable_length_token(6, 10)
+            stdin_path = f"{base_dir}/{file_name}"
+            command_executor.os_helper.stdin_path = stdin_path
+            logger.info(f"📝 Generated stdin path: {stdin_path}")
+        else:
+            logger.error(f"❌ Invalid stdin path: {args.stdin}")
+            return 1
+    
+    if args.stdout:
+        if methods.is_valid_file_path(args.stdout):
+            # It's a file path
+            command_executor.os_helper.stdout_path = args.stdout
+        elif methods.is_valid_directory_path(args.stdout):
+            # It's a directory, generate filename
+            base_dir = args.stdout.rstrip('/')
+            file_name = methods.generate_variable_length_token(6, 10)
+            stdout_path = f"{base_dir}/{file_name}"
+            command_executor.os_helper.stdout_path = stdout_path
+            logger.info(f"📝 Generated stdout path: {stdout_path}")
+        else:
+            logger.error(f"❌ Invalid stdout path: {args.stdout}")
+            return 1
 
     logger.info(
         f"🛝 It takes about {command_executor.avg_response_time:.2f}s for a command "
@@ -297,8 +338,6 @@ def main() -> int:
                 command_executor.os_helper.start_named_pipe(
                     action_class=fifo_action,
                     read_interval=args.read_interval,
-                    stdin_path=args.stdin,
-                    stdout_path=args.stdout,
                 )
 
         
