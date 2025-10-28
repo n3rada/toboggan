@@ -1,6 +1,5 @@
 # Standard library imports
 import base64
-import gzip
 import hashlib
 from pathlib import Path
 
@@ -53,8 +52,7 @@ class PutAction(BaseAction):
 
         # Step 1: Compress & base64 encode the file
         raw_bytes = local_file.read_bytes()
-        compressed_data = gzip.compress(raw_bytes)
-        encoded_file = base64.b64encode(compressed_data).decode("utf-8")
+        encoded_file = base64.b64encode(raw_bytes).decode("utf-8")
 
         # Calculate local MD5 of original file
         local_md5 = hashlib.md5(raw_bytes).hexdigest()
@@ -97,7 +95,7 @@ class PutAction(BaseAction):
         # Step 3: Decode and decompress remotely
         self._logger.info(f"📂 Decoding and extracting remotely to {remote_path}")
         self._executor.remote_execute(
-            f"base64 -d {remote_encoded_path} | gunzip -c | dd of={remote_path} bs=1024",
+            f"base64 -d {remote_encoded_path} | dd of={remote_path} bs=1024",
             retry=True,
             timeout=60,
         )
