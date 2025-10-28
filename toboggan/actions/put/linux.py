@@ -36,6 +36,14 @@ class PutAction(BaseAction):
 
         self._logger.info(f"📤 Uploading {local_path} to {remote_path}")
 
+        # Define remote encoded path early
+        remote_encoded_path = (
+            f"{self._executor.working_directory}/{local_file.name}.b64"
+        )
+
+        # Clean up any leftover encoded file from previous runs
+        self._executor.remote_execute(f"rm -f {remote_encoded_path}")
+
         # Ensure remote path is writable
         upper_directory = Path(remote_path).parent
 
@@ -70,9 +78,6 @@ class PutAction(BaseAction):
 
         self._logger.info(
             f"📤 Uploading {local_file.name} in chunks inside: {self._executor.working_directory}"
-        )
-        remote_encoded_path = (
-            f"{self._executor.working_directory}/{local_file.name}.b64"
         )
 
         try:
