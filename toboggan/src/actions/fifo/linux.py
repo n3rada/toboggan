@@ -24,11 +24,6 @@ class FifoAction(NamedPipe):
 
         super().__init__(executor, read_interval, stdin_path, stdout_path)
 
-        self.__os_helper = executor.os_helper
-
-        # Force BusyBox detection
-        self.__os_helper.is_busybox_present
-
         self.tty = False
 
         self._shell = self._executor.shell

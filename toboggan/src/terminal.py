@@ -284,7 +284,19 @@ class Terminal:
                     continue
 
                 if command == "paths":
-                    print(self.__get_paths_info())
+                    # Handle paths subcommands
+                    if raw_args and raw_args[0] in ["add", "a"]:
+                        # Add new paths
+                        if len(raw_args) > 1:
+                            self.__handle_paths_add(raw_args[1:])
+                        else:
+                            logger.error("❌ No paths provided. Usage: !paths add /path1 /path2 or !paths add /path1:/path2")
+                    elif raw_args and raw_args[0] in ["clear", "c"]:
+                        # Clear cache
+                        self.__handle_paths_clear()
+                    else:
+                        # Show paths info
+                        print(self.__get_paths_info())
                     continue
 
                 actions_dict = self.__executor.action_manager.get_actions()
@@ -492,7 +504,16 @@ class Terminal:
 
             lines.append("")
             lines.append(
-                f"{DIM}Tip: The cache avoids redundant 'command -v', 'which', etc. calls{RESET}"
+                f"{DIM}Usage: !paths [add <paths>] [clear]{RESET}"
+            )
+            lines.append(
+                f"{DIM}  - !paths add /opt/bin /usr/local/bin   # Add space-separated paths{RESET}"
+            )
+            lines.append(
+                f"{DIM}  - !paths add /opt/bin:/usr/local/bin  # Add colon-separated paths{RESET}"
+            )
+            lines.append(
+                f"{DIM}  - !paths clear                        # Clear command cache{RESET}"
             )
         else:
             lines.append(
@@ -502,6 +523,61 @@ class Terminal:
         lines.append(DIM + "-" * 70 + RESET)
 
         return "\n".join(lines)
+
+    def __handle_paths_add(self, path_args: list) -> None:
+        """Add new custom paths to the LinuxHelper configuration.
+
+        Args:
+            path_args: List of paths to add (can include colon-separated strings)
+        """
+        if self.__target.os != "linux":
+            logger.error("❌ Custom paths feature is only available for Linux targets")
+            return
+
+        os_helper = self.__executor.os_helper
+        custom_paths = getattr(os_helper, "_LinuxHelper__custom_paths", [])
+
+        new_paths = []
+        for arg in path_args:
+            # Support both space-separated and colon-separated paths
+            if ':' in arg:
+                new_paths.extend([p.strip() for p in arg.split(':') if p.strip()])
+            else:
+                new_paths.append(arg.strip())
+
+        # Remove duplicates while preserving order
+        added_count = 0
+        for path in new_paths:
+            if path not in custom_paths:
+                custom_paths.append(path)
+                added_count += 1
+                logger.success(f"✅ Added custom path: {path}")
+            else:
+                logger.info(f"ℹ️  Path already exists: {path}")
+
+        # Update the LinuxHelper's custom paths
+        setattr(os_helper, "_LinuxHelper__custom_paths", custom_paths)
+
+        if added_count > 0:
+            logger.success(f"📂 Added {added_count} new custom path(s)")
+        else:
+            logger.info("ℹ️  No new paths were added")
+
+    def __handle_paths_clear(self) -> None:
+        """Clear the command location cache."""
+        if self.__target.os != "linux":
+            logger.error("❌ Custom paths feature is only available for Linux targets")
+            return
+
+        os_helper = self.__executor.os_helper
+        cache = os_helper.command_location_cache
+        cache_size = len(cache)
+
+        if cache_size > 0:
+            os_helper.clear_command_cache()
+            logger.success(f"🗑️  Cleared {cache_size} cached command location(s)")
+        else:
+            logger.info("ℹ️  Command cache is already empty")
 
     def __prompt(self) -> str:
         """Generate a dynamic shell prompt based on available target information.
