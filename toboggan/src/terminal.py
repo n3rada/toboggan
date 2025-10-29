@@ -84,7 +84,13 @@ class TobogganCompleter(Completer):
 
 
 class Terminal:
-    def __init__(self, executor: Executor, prefix="!", history: bool = False):
+    def __init__(
+        self,
+        executor: Executor,
+        prefix="!",
+        history: bool = False,
+        log_level: str = "INFO",
+    ):
         if history:
             logger.info("💾 Persistent command history enabled.")
 
@@ -127,6 +133,7 @@ class Terminal:
         self.__target = executor.target
         self.__executor = executor
         self.__prefix = prefix
+        self.__log_level = log_level  # Track current log level
 
     # Public methods
 
@@ -218,17 +225,13 @@ class Terminal:
 
                 if command == "debug":
                     # Toggle debug mode
-                    current_level = os.getenv("LOG_LEVEL", "INFO").upper()
-
-                    if current_level == "DEBUG":
-                        new_level = "INFO"
-                        os.environ["LOG_LEVEL"] = new_level
-                        logbook.setup_logging(new_level)
+                    if self.__log_level == "DEBUG":
+                        self.__log_level = "INFO"
+                        logbook.setup_logging(self.__log_level)
                         logger.info("🔇 Debug mode disabled")
                     else:
-                        new_level = "DEBUG"
-                        os.environ["LOG_LEVEL"] = new_level
-                        logbook.setup_logging(new_level)
+                        self.__log_level = "DEBUG"
+                        logbook.setup_logging(self.__log_level)
                         logger.info("🔊 Debug mode enabled")
 
                     continue

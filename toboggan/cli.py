@@ -174,8 +174,15 @@ def build_parser() -> argparse.ArgumentParser:
     advanced_group.add_argument(
         "--debug",
         action="store_true",
-        required=False,
-        help="Enable debug logging mode.",
+        help="Enable debug logging (shortcut for --log-level DEBUG).",
+    )
+
+    advanced_group.add_argument(
+        "--log-level",
+        type=str,
+        choices=["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default=None,
+        help="Set the logging level explicitly (overrides --debug).",
     )
 
     return parser
@@ -193,13 +200,15 @@ def main() -> int:
         parser.print_help()
         return 1
 
-    env = os.environ
+    # Determine log level: --log-level takes precedence, then --debug, then default INFO
+    if args.log_level:
+        log_level = args.log_level
+    elif args.debug:
+        log_level = "DEBUG"
+    else:
+        log_level = "INFO"
 
-    # Set log level to DEBUG if --debug is passed
-    if args.debug:
-        env["LOG_LEVEL"] = "DEBUG"
-
-    logbook.setup_logging(level=env.get("LOG_LEVEL", "INFO"))
+    logbook.setup_logging(level=log_level)
 
     if args.proxy:
         if not common.is_valid_proxy(args.proxy):
@@ -339,7 +348,7 @@ def main() -> int:
 
     try:
         remote_terminal = terminal.Terminal(
-            executor=command_executor, history=args.history
+            executor=command_executor, history=args.history, log_level=log_level
         )
 
         if args.fifo:
