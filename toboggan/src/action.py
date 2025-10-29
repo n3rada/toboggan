@@ -59,18 +59,17 @@ class NamedPipe(BaseAction):
 
         self._read_interval = float(read_interval)
 
-        # If server is slow, override with actual RTT
-        avg_rtt = self._executor.avg_response_time
-        if avg_rtt and avg_rtt > self._read_interval:
-            self._read_interval = (
-                avg_rtt  # Don't poll faster than the target can respond
-            )
-
-            logger.info(f"⏱️ Adjusted reading interval based on average RTT.")
-
         logger.info(f"🔁 Reading interval: {self._read_interval:.2f} seconds")
 
-        req_per_sec = 1 / self._read_interval
+        # Note: The actual polling frequency will be read_interval + avg request execution time
+        avg_rtt = self._executor.avg_response_time
+        if avg_rtt:
+            estimated_poll_freq = self._read_interval + avg_rtt
+            logger.info(
+                f"⏱️ Estimated total poll cycle: ~{estimated_poll_freq:.2f}s (interval + avg RTT)"
+            )
+
+        req_per_sec = 1 / (self._read_interval + (avg_rtt or 0))
         req_per_min = req_per_sec * 60
 
         logger.info(
