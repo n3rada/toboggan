@@ -269,6 +269,19 @@ class Terminal:
 
                     continue
 
+                if command == "trace":
+                    # Toggle trace mode
+                    if self.__log_level == "TRACE":
+                        self.__log_level = "INFO"
+                        logbook.setup_logging(self.__log_level)
+                        logger.info("🔇 Trace mode disabled")
+                    else:
+                        self.__log_level = "TRACE"
+                        logbook.setup_logging(self.__log_level)
+                        logger.info("🔊 Trace mode enabled")
+
+                    continue
+
                 actions_dict = self.__executor.action_manager.get_actions()
 
                 if targeted_action := actions_dict.get(command):
