@@ -156,7 +156,7 @@ class FifoAction(NamedPipe):
         while not self.__stop_thread:
 
             # Apply jitter to avoid burst collisions
-            time.sleep(random.uniform(self._read_interval, self._read_interval * 1.5))
+            time.sleep(random.uniform(self._read_interval, self._read_interval * 1.3))
 
             # Simplest: read and truncate in one command using shell redirection
             stdout_output = self._executor.remote_execute(
