@@ -84,6 +84,12 @@ class TobogganCompleter(Completer):
 
 
 class Terminal:
+    """Interactive terminal interface for executing commands on a remote target.
+
+    Provides a prompt-based interface with command history, auto-completion,
+    and support for both regular command execution and FIFO-based sessions.
+    """
+
     def __init__(
         self,
         executor: Executor,
@@ -91,6 +97,14 @@ class Terminal:
         history: bool = False,
         log_level: str = "INFO",
     ):
+        """Initialize the Terminal instance.
+
+        Args:
+            executor: The Executor instance for running remote commands.
+            prefix: Command prefix for built-in actions (default: '!').
+            history: Whether to enable persistent command history (default: False).
+            log_level: Initial logging level (default: 'INFO').
+        """
         if history:
             logger.info("💾 Persistent command history enabled.")
 
@@ -135,13 +149,14 @@ class Terminal:
         self.__prefix = prefix
         self.__log_level = log_level  # Track current log level
 
-    # Public methods
+    # Private Methods
+    def _exit(self) -> bool:
+        """Clean up and exit the terminal session.
 
-    def exit(self) -> bool:
-        """_summary_
+        Stops any active FIFO sessions and deletes the remote working directory.
 
         Returns:
-            bool: _description_
+            bool: True if terminal should exit completely, False if it should continue.
         """
         logger.info("🛝 Sliding back up the toboggan")
 
@@ -152,7 +167,14 @@ class Terminal:
         self.__executor.delete_working_directory()
         return True
 
+    # Public Methods
     def start(self) -> None:
+        """Start the interactive terminal session.
+
+        Runs the main command loop, handling user input, executing commands,
+        and dispatching to appropriate handlers (built-in commands, actions, or remote execution).
+        Continues until the user exits or an unrecoverable error occurs.
+        """
         result = None
         user_input = ""
 
@@ -169,7 +191,7 @@ class Terminal:
                 if self.__prompt_session.app.current_buffer.text:
                     continue
 
-                if self.exit():
+                if self._exit():
                     break
                 else:
                     continue
@@ -212,7 +234,7 @@ class Terminal:
                 command = command_parts[0].lower().replace("-", "_")
 
                 if command in ["e", "ex", "exit"]:
-                    if self.exit():
+                    if self._exit():
                         break
                     else:
                         continue
@@ -329,7 +351,11 @@ class Terminal:
     # Private methods
 
     def __get_help(self) -> str:
-        """Generates a well-formatted help message for available actions."""
+        """Generate a formatted help message listing available actions and built-in commands.
+
+        Returns:
+            str: Formatted help text with action names, descriptions, and parameters.
+        """
         actions = self.__executor.action_manager.get_actions()
 
         if not actions:
@@ -386,8 +412,14 @@ class Terminal:
         return "\n".join(lines)
 
     def __prompt(self) -> str:
-        """Generates a dynamic shell prompt based on available target information."""
+        """Generate a dynamic shell prompt based on available target information.
 
+        Creates a context-aware prompt showing user, hostname, and current directory
+        when available. Returns empty string when in FIFO mode.
+
+        Returns:
+            str: The formatted prompt string (e.g., '(user@host)-[/path]$ ').
+        """
         if self.__target.os == "linux" and self.__executor.os_helper.is_fifo_active():
             return ""
 
