@@ -172,6 +172,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     advanced_group.add_argument(
+        "--prefix",
+        type=str,
+        default="!",
+        help="Command prefix to use actions in the terminal session.",
+    )
+
+    advanced_group.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug logging (shortcut for --log-level DEBUG).",
