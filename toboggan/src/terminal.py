@@ -107,8 +107,6 @@ class Terminal:
             log_level: Initial logging level (default: 'INFO').
         """
         if history:
-            logger.info("💾 Persistent command history enabled.")
-
             # Create temp directory for history files
             self.__temp_dir = Path(tempfile.gettempdir()) / "toboggan"
             self.__temp_dir.mkdir(exist_ok=True)
@@ -130,9 +128,11 @@ class Terminal:
                 )
 
             history_backend = ThreadedHistory(FileHistory(str(self.__history_file)))
+            logger.info("💾 Persistent command history enabled.")
+
         else:
-            logger.info("🗑️ In-memory command history enabled.")
             history_backend = ThreadedHistory(InMemoryHistory())  # in-memory history
+            logger.debug("🗑️ In-memory command history enabled.")
 
         # Create prompt session with completer
         self.__prompt_session = PromptSession(
