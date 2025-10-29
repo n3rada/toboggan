@@ -40,8 +40,16 @@ class UpgradeAction(BaseAction):
             )
             return
 
-        if python_path := self._executor.os_helper.get_command_location("python3"):
-            logger.info(f"✅ Found Python3 at: {python_path}")
+        if python3_path := self._executor.os_helper.get_command_location("python3"):
+            logger.info(f"✅ Found Python3 at: {python3_path}")
+            random_token = common.generate_fixed_length_token(4)
+            self._executor.os_helper.fifo_execute(
+                command=f"{python3_path} -c 'import os,pty,signal; [signal.signal({random_token}, signal.SIG_DFL) for {random_token} in (signal.SIGTTOU, signal.SIGTTIN, signal.SIGTSTP)]; pty.spawn(\"{used_shell}\")'"
+            )
+            return
+
+        if python_path := self._executor.os_helper.get_command_location("python"):
+            logger.info(f"✅ Found Python at: {python_path}")
             random_token = common.generate_fixed_length_token(4)
             self._executor.os_helper.fifo_execute(
                 command=f"{python_path} -c 'import os,pty,signal; [signal.signal({random_token}, signal.SIG_DFL) for {random_token} in (signal.SIGTTOU, signal.SIGTTIN, signal.SIGTSTP)]; pty.spawn(\"{used_shell}\")'"

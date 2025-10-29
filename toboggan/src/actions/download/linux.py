@@ -62,8 +62,10 @@ class GetAction(BaseAction):
         remote_base64_path = f"{remote_archive}.b64"
 
         # Tar and encode
+        tar_path = self._executor.os_helper.get_command_location("tar")
+        base64_path = self._executor.os_helper.get_command_location("base64")
         self._executor.remote_execute(
-            command=f"tar czf - {remote_path} | base64 -w0 > {remote_base64_path}"
+            command=f"{tar_path} czf - {remote_path} | {base64_path} -w0 > {remote_base64_path}"
         )
 
         # Step 3: Get the encoded file size

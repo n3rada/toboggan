@@ -50,7 +50,11 @@ class PutAction(BaseAction):
 
         test_file = f"{upper_directory}/{generate_fixed_length_token(5)}"
 
-        test_command = f"touch {test_file} && echo O && rm -f {test_file} || echo F"
+        touch_path = self._executor.os_helper.get_command_location("touch")
+
+        test_command = (
+            f"{touch_path} {test_file} && echo O && rm -f {test_file} || echo F"
+        )
 
         if self._executor.remote_execute(test_command) != "O":
             logger.error(
@@ -99,8 +103,9 @@ class PutAction(BaseAction):
 
         # Step 3: Decode and decompress remotely
         logger.info(f"📂 Decoding and extracting remotely to {remote_path}")
+        base64_path = self._executor.os_helper.get_command_location("base64")
         self._executor.remote_execute(
-            f"base64 -d {remote_encoded_path} | dd of={remote_path} bs=1024",
+            f"{base64_path} -d {remote_encoded_path} | dd of={remote_path} bs=1024",
             retry=True,
             timeout=60,
         )
@@ -108,7 +113,8 @@ class PutAction(BaseAction):
         self._executor.remote_execute(f"rm -f {remote_encoded_path}")
 
         # Check if the file was created successfully
-        md5sum = self._executor.remote_execute(f"md5sum {remote_path}").strip()
+        md5sum_path = self._executor.os_helper.get_command_location("md5sum")
+        md5sum = self._executor.remote_execute(f"{md5sum_path} {remote_path}").strip()
 
         if not md5sum:
             logger.error(f"❌ Failed to create the file at {remote_path}.")
