@@ -398,17 +398,23 @@ class Terminal:
         # Build prompt with available information
         if user and host and pwd:
             return f"({user}@{host})-[{pwd}]$ "
-        elif user and host:
+
+        if user and host:
             return f"{user}@{host}:~$ "
-        elif host and pwd:
+
+        if host and pwd:
             return f"{host}:{pwd}$ "
-        elif user and pwd:
+
+        if user and pwd:
             return f"{user}:{pwd}$ "
-        elif pwd:
+
+        if pwd:
             return f"{pwd}$ "
-        elif user:
+
+        if user:
             return f"{user}@localhost:~$ "
-        elif host:
+
+        if host:
             return f"{host}:~$ "
 
         return "$ "
