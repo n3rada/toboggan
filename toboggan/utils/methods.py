@@ -4,6 +4,7 @@ import pathlib
 import base64
 import io
 import gzip
+import uuid
 from urllib.parse import urlparse
 
 # Third party library imports
@@ -57,6 +58,11 @@ def generate_fixed_length_token(length: int) -> str:
     return secrets.token_hex(length // 2 + 1)[:length]
 
 
+def generate_uuid() -> str:
+    """Generates a random UUID string."""
+    return str(uuid.uuid4())
+
+
 def random_float_in_range(
     min_value: float, max_value: float, precision: float = 10**10
 ) -> float:
@@ -83,7 +89,6 @@ def yes_no_query(query: str, title: str = "Hey! Listen!") -> bool:
     return message_box.run()
 
 
-
 def is_valid_directory_path(path: str) -> bool:
     """
     Validates if the provided path is a valid Unix or Windows directory path.
@@ -95,7 +100,7 @@ def is_valid_directory_path(path: str) -> bool:
     """
     try:
         # Detect if it's a Windows or Unix path
-        if '\\' in path or ':' in path:
+        if "\\" in path or ":" in path:
             # Windows path
             p = pathlib.PureWindowsPath(path)
             return p.is_absolute()
@@ -118,13 +123,13 @@ def is_valid_file_path(path: str) -> bool:
     """
     try:
         # Detect if it's a Windows or Unix path
-        if '\\' in path or ':' in path:
+        if "\\" in path or ":" in path:
             # Windows path
             p = pathlib.PureWindowsPath(path)
-            return p.is_absolute() and not path.endswith('\\')
+            return p.is_absolute() and not path.endswith("\\")
         else:
             # Unix path
             p = pathlib.PurePosixPath(path)
-            return p.is_absolute() and not path.endswith('/')
+            return p.is_absolute() and not path.endswith("/")
     except Exception as e:
         return False
