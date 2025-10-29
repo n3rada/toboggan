@@ -114,6 +114,9 @@ toboggan -m ~/phpexploit.py --fifo
 
 Toboggan will create a FIFO-based communication channel, allowing you to interact with the remote system in a more dynamic way (e.g., using `sudo -l`).
 
+>[!WARNING] Ctrl+C not forwarded
+> Control characters only work in real TTY/PTY environments.
+
 ## 🛠️ Bring Your Own Actions (BYOA)
 
 Actions in Toboggan are modular plugins that allow you to extend its functionality. Actions can automate common post-exploitation tasks, such as downloading files, executing scripts, or setting up persistent access. Custom actions should be placed in `~/.local/share/toboggan/actions` (Linux) or `%APPDATA%\toboggan\actions` (Windows).
