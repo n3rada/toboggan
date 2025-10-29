@@ -4,7 +4,7 @@ import shutil
 from loguru import logger
 
 # Local application/library specific imports
-# from toboggan.src.action import BaseAction
+from toboggan.src.action import BaseAction
 
 
 class GetUsersAction(BaseAction):
