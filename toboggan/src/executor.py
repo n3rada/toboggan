@@ -314,45 +314,58 @@ class Executor(metaclass=SingletonMeta):
         """
         Validates the current shell for remote command execution.
 
-        For Linux targets, this method attempts to verify that the shell specified in
-        `self._shell` exists and is available on the remote system by running
-        `command -v <shell>`. If the shell is not found or is invalid, the method
-        returns False and logs an error. For Windows targets, PowerShell is assumed
-        to be valid and the method returns True immediately.
+        Attempts multiple validation methods for maximum compatibility:
+        1. command -v (POSIX)
+        2. which (common but not POSIX)
+        3. type (built-in, very portable)
 
         Returns:
             bool: True if the shell is valid and available on the remote system, False otherwise.
         """
-
         if isinstance(self._os_helper, WindowsHelper):
             return True  # Assume PowerShell is valid for Windows
 
-        validation_command = f"command -v {self._shell}"
+        # Try multiple validation methods in order of preference
+        validation_commands = [
+            f"command -v {self._shell}",  # POSIX standard
+            f"which {self._shell} 2>/dev/null",  # Common utility
+            f"type {self._shell} 2>/dev/null",  # Shell built-in
+        ]
 
-        try:
-            output = (
-                self.remote_execute(
-                    validation_command,
-                    timeout=10,
-                    retry=False,
-                    debug=True,
-                    bypass_camouflage=True,
+        for validation_command in validation_commands:
+            try:
+                output = (
+                    self.remote_execute(
+                        validation_command,
+                        timeout=10,
+                        retry=False,
+                        debug=False,
+                        bypass_camouflage=True,
+                    )
+                    .strip()
+                    .lower()
                 )
-                .strip()
-                .lower()
-            )
-        except Exception as exc:
-            logger.warning(f"⚠️ Failed to test shell '{self._shell}': {exc}")
-            output = ""
 
-        if not output or "not found" in output or "no such file" in output:
-            logger.error(f"❌ Remote shell '{self._shell}' appears invalid.")
-            self._shell_validated = False
-            return False
+                if (
+                    output
+                    and "not found" not in output
+                    and "no such file" not in output
+                ):
+                    logger.debug(
+                        f"✅ Shell validation succeeded with: {validation_command}"
+                    )
+                    logger.info(
+                        f"💾 Remote shell: '{self._shell}' — verified and ready."
+                    )
+                    self._shell_validated = True
+                    return True
 
-        logger.info(f"💾 Remote shell: '{self._shell}' — verified and ready.")
-        self._shell_validated = True
-        return True
+            except Exception:
+                continue  # Try next validation method
+
+        logger.error(f"❌ Remote shell '{self._shell}' could not be validated.")
+        self._shell_validated = False
+        return False
 
     # Properties
     @property
