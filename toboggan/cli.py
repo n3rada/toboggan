@@ -12,11 +12,11 @@ import httpx
 
 # Local library imports
 from toboggan import __version__
-from toboggan.utils import logbook
-from toboggan.core import executor
-from toboggan.core import terminal
-from toboggan.utils import common
-from toboggan.utils import banner
+from toboggan.src.utils import logbook
+from toboggan.src import executor
+from toboggan.src import terminal
+from toboggan.src.utils import common
+from toboggan.src.utils import banner
 
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"
