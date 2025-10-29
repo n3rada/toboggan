@@ -192,12 +192,6 @@ def main() -> int:
         parser.print_help()
         return 1
 
-    # Validate that stdin and stdout are provided when fifo is enabled
-    if args.fifo and (args.stdin is None or args.stdout is None):
-        parser.error(
-            "--fifo requires both --stdin (-i) and --stdout (-o) to be specified."
-        )
-
     env = os.environ
 
     # Set log level to DEBUG if --debug is passed
