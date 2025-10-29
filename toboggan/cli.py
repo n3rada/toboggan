@@ -62,18 +62,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Enable persistent command history (stored in temporary folder).",
     )
 
-    # Argument Groups
     execution_group = parser.add_argument_group(
         "Execution Configuration", "Options to configure how commands are executed."
-    )
-    named_pipe_group = parser.add_argument_group(
-        "Named Pipe Settings", "Options to manage named pipe."
-    )
-    system_group = parser.add_argument_group(
-        "System Configuration", "Specify the target operating system."
-    )
-    advanced_group = parser.add_argument_group(
-        "Advanced Options", "Additional advanced or debugging options."
     )
 
     execution_group.add_argument(
@@ -121,6 +111,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # Named Pipe Settings
+    named_pipe_group = parser.add_argument_group(
+        "Named Pipe Settings", "Options to manage named pipe."
+    )
+
     named_pipe_group.add_argument(
         "--fifo",
         action="store_true",
@@ -132,7 +126,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-ri",
         "--read-interval",
         type=float,
-        default=0.4,
+        default=0.3,
         help="Interval (in seconds) for reading output from the named pipe.",
     )
 
@@ -152,6 +146,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output path (file or directory) for FIFO where command output appears. If directory, filename will be auto-generated.",
     )
 
+    system_group = parser.add_argument_group(
+        "System Configuration", "Specify the target operating system."
+    )
+
     system_group.add_argument(
         "--os",
         type=str,
@@ -166,6 +164,10 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         required=False,
         help="Specify the target working directory (must be an absolute path to a directory).",
+    )
+
+    advanced_group = parser.add_argument_group(
+        "Advanced Options", "Additional advanced or debugging options."
     )
 
     advanced_group.add_argument(
@@ -304,6 +306,11 @@ def main() -> int:
     except RuntimeError:
         return 1
 
+    logger.info(
+        f"🛝 It takes about {command_executor.avg_response_time:.2f}s for a command "
+        f"to slide down the toboggan 🎯"
+    )
+
     # Validate and set stdin/stdout paths if provided
     if args.stdin:
         if methods.is_valid_file_path(args.stdin):
@@ -312,10 +319,10 @@ def main() -> int:
         elif methods.is_valid_directory_path(args.stdin):
             # It's a directory, generate filename
             base_dir = args.stdin.rstrip("/")
-            file_name = methods.generate_variable_length_token(6, 10)
+            file_name = methods.generate_uuid()
             stdin_path = f"{base_dir}/{file_name}"
             command_executor.os_helper.stdin_path = stdin_path
-            logger.info(f"📝 Generated stdin path: {stdin_path}")
+            logger.info(f"📝 Generated FIFO stdin path: {stdin_path}")
         else:
             logger.error(f"❌ Invalid stdin path: {args.stdin}")
             return 1
@@ -327,35 +334,34 @@ def main() -> int:
         elif methods.is_valid_directory_path(args.stdout):
             # It's a directory, generate filename
             base_dir = args.stdout.rstrip("/")
-            file_name = methods.generate_variable_length_token(6, 10)
+            file_name = methods.generate_uuid()
             stdout_path = f"{base_dir}/{file_name}"
             command_executor.os_helper.stdout_path = stdout_path
-            logger.info(f"📝 Generated stdout path: {stdout_path}")
+            logger.info(f"📝 Generated FIFO stdout path: {stdout_path}")
         else:
             logger.error(f"❌ Invalid stdout path: {args.stdout}")
             return 1
-
-    logger.info(
-        f"🛝 It takes about {command_executor.avg_response_time:.2f}s for a command "
-        f"to slide down the toboggan 🎯"
-    )
 
     try:
         remote_terminal = terminal.Terminal(
             executor=command_executor, history=args.history
         )
 
-        if command_executor.target.os == "linux":
-            if args.fifo:
-                logger.info(
-                    "🤏 Making your dumb shell semi-interactive using 'fifo' action."
-                )
-                fifo_action = command_executor.action_manager.get_action("fifo")
+        if args.fifo:
+            logger.info(
+                "🤏 Making your dumb shell semi-interactive using 'fifo' action."
+            )
 
-                command_executor.os_helper.start_named_pipe(
-                    action_class=fifo_action,
-                    read_interval=args.read_interval,
-                )
+            fifo_action = command_executor.action_manager.get_action("fifo")
+
+            if fifo_action is None:
+                logger.error("❌ FIFO action is not available for the target OS.")
+                return 1
+
+            command_executor.os_helper.start_named_pipe(
+                action_class=fifo_action,
+                read_interval=args.read_interval,
+            )
 
         remote_terminal.start()
     except Exception:
