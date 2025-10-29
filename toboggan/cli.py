@@ -24,14 +24,7 @@ BUILTIN_DIR = Path(__file__).parent / "core/handlers"
 
 def build_parser() -> argparse.ArgumentParser:
 
-    class BannerArgumentParser(argparse.ArgumentParser):
-        """Custom ArgumentParser that shows banner before help."""
-
-        def format_help(self):
-            banner_text = banner.display_banner()
-            return banner_text + "\n" + super().format_help()
-
-    parser = BannerArgumentParser(
+    parser = argparse.ArgumentParser(
         prog="toboggan",
         add_help=True,
         description="Bring intelligence to any remote command execution (RCE) vector.",
