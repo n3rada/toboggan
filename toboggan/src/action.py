@@ -91,10 +91,6 @@ class NamedPipe(BaseAction):
         logger.info("Stopping named pipe")
         self._stop()
 
-        logger.info("Killing running session")
-        pkill_path = self._executor.os_helper.get_command_location("pkill")
-        self._executor.remote_execute(f"{pkill_path} -TERM -f {self._stdin}")
-
     @abstractmethod
     def _stop(self):
         """Every NamedPipe action must implement this method"""
