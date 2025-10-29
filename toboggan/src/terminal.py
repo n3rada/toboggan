@@ -95,6 +95,7 @@ class Terminal:
         executor: Executor,
         prefix="!",
         history: bool = False,
+        log_level: str = "INFO",
     ):
         """Initialize the Terminal instance.
 
@@ -146,6 +147,8 @@ class Terminal:
         self.__target = executor.target
         self.__executor = executor
         self.__prefix = prefix
+
+        self.__log_level = log_level
 
     # Private Methods
     def _exit(self) -> bool:

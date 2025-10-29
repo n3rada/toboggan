@@ -355,7 +355,10 @@ def main() -> int:
 
     try:
         remote_terminal = terminal.Terminal(
-            executor=command_executor, prefix=args.prefix, history=args.history
+            executor=command_executor,
+            prefix=args.prefix,
+            history=args.history,
+            log_level=log_level,
         )
 
         if args.fifo:
