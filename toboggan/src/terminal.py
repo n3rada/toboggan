@@ -34,6 +34,7 @@ class TobogganCompleter(Completer):
             "help": "Show help message",
             "chunksize": "Probe or manually set the max command size",
             "debug": "Toggle debug mode on/off",
+            "paths": "Show custom paths and command location cache",
         }
 
     def get_completions(
@@ -282,6 +283,10 @@ class Terminal:
 
                     continue
 
+                if command == "paths":
+                    print(self.__get_paths_info())
+                    continue
+
                 actions_dict = self.__executor.action_manager.get_actions()
 
                 if targeted_action := actions_dict.get(command):
@@ -422,6 +427,79 @@ class Terminal:
             f"🔹 {ansi_ljust(f'{GREEN}exit{RESET}', max_action_length)} → "
             f"{CYAN}Exit the toboggan shell session.{RESET}"
         )
+
+        return "\n".join(lines)
+
+    def __get_paths_info(self) -> str:
+        """Generate formatted information about custom paths and command location cache.
+
+        Returns:
+            str: Formatted text showing custom paths and cached command locations.
+        """
+        # ANSI styles
+        BOLD = "\033[1m"
+        GREEN = "\033[92m"
+        CYAN = "\033[96m"
+        YELLOW = "\033[93m"
+        DIM = "\033[2m"
+        RESET = "\033[0m"
+
+        lines = []
+        lines.append(f"\n{BOLD}📂 Custom Command Paths Configuration{RESET}")
+        lines.append(DIM + "-" * 70 + RESET)
+
+        # Check if OS helper has custom paths (Linux only)
+        if self.__target.os == "linux":
+            os_helper = self.__executor.os_helper
+            custom_paths = getattr(os_helper, "_LinuxHelper__custom_paths", [])
+
+            if custom_paths:
+                lines.append(f"{GREEN}✓{RESET} Custom paths are configured:")
+                for i, path in enumerate(custom_paths, 1):
+                    lines.append(f"  {i}. {CYAN}{path}{RESET}")
+            else:
+                lines.append(
+                    f"{YELLOW}ℹ{RESET} No custom paths configured (using standard detection methods)"
+                )
+
+            lines.append("")
+            lines.append(f"{BOLD}💾 Command Location Cache{RESET}")
+            lines.append(DIM + "-" * 70 + RESET)
+
+            # Get the cache
+            cache = os_helper.command_location_cache
+
+            if cache:
+                lines.append(
+                    f"{GREEN}✓{RESET} Cached command locations ({len(cache)} entries):"
+                )
+                lines.append("")
+
+                # Find longest command name for alignment
+                max_cmd_length = max(len(cmd) for cmd in cache.keys()) if cache else 0
+
+                for command, location in sorted(cache.items()):
+                    if location:
+                        lines.append(
+                            f"  {CYAN}{command.ljust(max_cmd_length)}{RESET} → {GREEN}{location}{RESET}"
+                        )
+                    else:
+                        lines.append(
+                            f"  {CYAN}{command.ljust(max_cmd_length)}{RESET} → {DIM}(not found){RESET}"
+                        )
+            else:
+                lines.append(f"{YELLOW}ℹ{RESET} No commands cached yet")
+
+            lines.append("")
+            lines.append(
+                f"{DIM}Tip: The cache avoids redundant 'command -v', 'which', etc. calls{RESET}"
+            )
+        else:
+            lines.append(
+                f"{YELLOW}ℹ{RESET} Custom paths feature is only available for Linux targets"
+            )
+
+        lines.append(DIM + "-" * 70 + RESET)
 
         return "\n".join(lines)
 

@@ -174,6 +174,13 @@ def build_parser() -> argparse.ArgumentParser:
         required=False,
         help="Custom paths to search for commands (e.g., /opt/bin /usr/local/bin). These are checked before standard detection methods.",
     )
+    system_group.add_argument(
+        "--path",
+        type=str,
+        default=None,
+        required=False,
+        help="Custom PATH string with colon-separated directories (e.g., /opt/bin:/usr/local/bin:/custom/path). These are checked before standard detection methods.",
+    )
 
     advanced_group = parser.add_argument_group(
         "Advanced Options", "Additional advanced or debugging options."
@@ -313,6 +320,28 @@ def main() -> int:
             logger.error(f"❌ Invalid working directory path: {args.working_directory}")
             return 1
 
+    # Merge --path and --paths arguments
+    custom_paths = []
+    if args.path:
+        # Split colon-separated PATH string
+        custom_paths.extend([p.strip() for p in args.path.split(":") if p.strip()])
+        logger.info(f"📂 Parsed --path: {', '.join(custom_paths)}")
+
+    if args.paths:
+        # Add space-separated paths
+        custom_paths.extend(args.paths)
+        logger.info(f"📂 Added --paths: {', '.join(args.paths)}")
+
+    # Remove duplicates while preserving order
+    if custom_paths:
+        seen = set()
+        unique_paths = []
+        for path in custom_paths:
+            if path not in seen:
+                seen.add(path)
+                unique_paths.append(path)
+        custom_paths = unique_paths
+
     try:
         command_executor = executor.Executor(
             execute_method=execution_module.execute,
@@ -321,7 +350,7 @@ def main() -> int:
             target_os=args.os,
             base64_wrapping=args.base64,
             camouflage=args.camouflage,
-            custom_paths=args.paths,
+            custom_paths=custom_paths if custom_paths else None,
         )
     except RuntimeError:
         return 1
