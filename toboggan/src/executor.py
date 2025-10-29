@@ -213,7 +213,7 @@ class Executor(metaclass=SingletonMeta):
                     )
                 raise
 
-        return result
+        return str(result)
 
     def delete_working_directory(self) -> None:
         """
