@@ -1,8 +1,5 @@
 import shutil
 
-# External library imports
-from loguru import logger
-
 # Local application/library specific imports
 from toboggan.src.action import BaseAction
 
