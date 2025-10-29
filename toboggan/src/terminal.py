@@ -151,22 +151,26 @@ class Terminal:
                 if not user_input:
                     continue
             except KeyboardInterrupt:
-
                 if self.__prompt_session.app.current_buffer.text:
-                    # If there's text in the buffer, just clear it and continue
                     continue
 
-                logger.warning("Keyboard interruption received.")
-
+                # If FIFO is active, Ctrl+C cannot be forwarded (FIFOs don't support control chars)
                 if (
                     self.__target.os == "linux"
                     and self.__executor.os_helper.is_fifo_active()
                 ):
+                    logger.warning(
+                        "Ctrl+C not forwarded. Control characters only work in real TTY/PTY environments."
+                    )
+
+                    logger.info("Going back to dumb shell mode.")
+
                     self.__executor.os_helper.stop_named_pipe()
 
-                self.__executor.delete_working_directory()
+                    continue
 
                 break
+
             except Exception as exc:
                 logger.warning(f"Exception occured: {exc}")
                 continue
@@ -182,13 +186,14 @@ class Terminal:
                     try:
                         if result := self.__executor.remote_execute(command=user_input):
                             print(result)
+
+                        continue
                     except KeyboardInterrupt:
                         print("\r", end="", flush=True)  # Clear the ^C
                         logger.warning(
                             "Keyboard interruption received during remote command execution."
                         )
-
-                    continue
+                        continue
 
                 try:
                     command_parts = shlex.split(
@@ -204,7 +209,17 @@ class Terminal:
                 command = command_parts[0].lower().replace("-", "_")
 
                 if command in ["e", "ex", "exit"]:
-                    logger.info("🛝 Sliding back up the toboggan.src.")
+                    logger.info("🛝 Sliding back up the toboggan")
+
+                    if (
+                        self.__target.os == "linux"
+                        and self.__executor.os_helper.is_fifo_active()
+                    ):
+                        self.__executor.os_helper.stop_named_pipe()
+                        continue
+
+                    self.__executor.delete_working_directory()
+
                     break
 
                 if command in ["help", "h"]:
