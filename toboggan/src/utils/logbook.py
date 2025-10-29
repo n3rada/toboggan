@@ -1,3 +1,20 @@
+"""Logbook module for logging capabilities using Loguru.
+
+Is this message about...
+
+├─ Internal framework/library mechanics?
+│  └─ Use TRACE
+│
+├─ Something the user might need to debug their usage?
+│  └─ Use DEBUG
+│
+├─ Normal operational information?
+│  └─ Use INFO
+│
+└─ Something went wrong or needs attention?
+   └─ Use WARNING/ERROR
+"""
+
 import os
 import sys
 from pathlib import Path
@@ -121,7 +138,7 @@ def setup_logging(level: str = "INFO"):
         enqueue=True,  # Thread-safe
     )
 
-    logger.debug(f"Logger initialized at level {level}")
-    logger.debug(
+    logger.trace(f"Logger initialized at level {level}")
+    logger.trace(
         f"Log file: {log_file} (rotation {max_bytes}, retention {retention_days} days)"
     )
