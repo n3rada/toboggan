@@ -6,7 +6,7 @@ from loguru import logger
 
 # Local library imports
 from toboggan.src.action import BaseAction
-from toboggan.src.actions.put.linux import PutAction
+from toboggan.src.actions.upload.linux import UploadAction
 
 
 class DropBinary(BaseAction):
@@ -36,7 +36,7 @@ class DropBinary(BaseAction):
             remote_path = f"{self._executor.working_directory}/{filename}"
 
         # Upload
-        if PutAction(self._executor).run(
+        if UploadAction(self._executor).run(
             local_path=str(local_path), remote_path=remote_path
         ):
             chmod_result = self._executor.remote_execute(f"chmod +x {remote_path}")

@@ -12,7 +12,7 @@ from toboggan.src.action import BaseAction
 from toboggan.src.utils.common import generate_fixed_length_token
 
 
-class PutAction(BaseAction):
+class UploadAction(BaseAction):
     """Handles secure file uploads to a remote system."""
 
     DESCRIPTION = "Compress, encode, and upload a local file to a remote system."

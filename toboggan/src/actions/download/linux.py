@@ -13,7 +13,7 @@ from toboggan.src.action import BaseAction
 from toboggan.src.utils import common
 
 
-class GetAction(BaseAction):
+class DownloadAction(BaseAction):
     """Handles remote file retrieval."""
 
     DESCRIPTION = "Retrieve a file remotely, compress it, and save it locally."
