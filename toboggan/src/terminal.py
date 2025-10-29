@@ -33,6 +33,7 @@ class TobogganCompleter(Completer):
             "exit": "Exit the terminal",
             "help": "Show help message",
             "chunksize": "Probe or manually set the max command size",
+            "debug": "Toggle debug mode on/off",
         }
 
     def get_completions(
@@ -212,6 +213,23 @@ class Terminal:
                         self.__executor.chunk_max_size = (
                             self.__executor.calculate_max_chunk_size()
                         )
+
+                    continue
+
+                if command == "debug":
+                    # Toggle debug mode
+                    current_level = os.getenv("LOG_LEVEL", "INFO").upper()
+
+                    if current_level == "DEBUG":
+                        new_level = "INFO"
+                        os.environ["LOG_LEVEL"] = new_level
+                        logbook.setup_logging(new_level)
+                        logger.info("🔇 Debug mode disabled")
+                    else:
+                        new_level = "DEBUG"
+                        os.environ["LOG_LEVEL"] = new_level
+                        logbook.setup_logging(new_level)
+                        logger.info("🔊 Debug mode enabled")
 
                     continue
 
