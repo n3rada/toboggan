@@ -41,7 +41,9 @@ class HideAction(BaseAction):
 
     def __init__(self, executor):
         super().__init__(executor)
-        self.__openssl_path = self._executor.remote_execute("command -v openssl")
+
+        self.__openssl_path = self._executor.os_helper.get_command_location("openssl")
+
         if self.__openssl_path:
             self.__openssl_path = self.__openssl_path.strip()
             self._AES_KEY, self._AES_IV = generate_key_iv()
@@ -69,11 +71,11 @@ class HideAction(BaseAction):
             encoded = base64.b64encode(command.encode()).decode()
             decrypt_pipeline = f"echo '{encoded}'|base64 -d|{self._executor.shell}"
 
-        # Obfuscate further: gzip + base64 + reverse + base64 encode all
+        # Obfuscate further: base64 + reverse + base64 encode all
         obfuscated = base64.urlsafe_b64encode(
-            f"{decrypt_pipeline}|gzip|base64 -w0|rev".encode()
+            f"{decrypt_pipeline}|base64 -w0|rev".encode()
         ).decode()
 
-        final_cmd = f"echo '{obfuscated}'|base64 -d|{self._executor.shell}"
+        final_cmd = f"echo {obfuscated}|base64 -d|{self._executor.shell}"
 
         return final_cmd

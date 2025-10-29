@@ -1,5 +1,4 @@
 import base64
-import gzip
 
 from toboggan.src.action import BaseAction
 
@@ -17,11 +16,8 @@ class UnHideAction(BaseAction):
             # Step 2: Base64 decode
             decoded_data = base64.b64decode(reversed_data)
 
-            # Step 3: Gzip decompress
-            unzipped_data = gzip.decompress(decoded_data)
-
             # Step 4: Decode to UTF-8 string
-            return unzipped_data.decode("utf-8", errors="replace").strip()
+            return decoded_data.decode("utf-8", errors="replace").strip()
 
         except Exception as e:
             return f"❌ Failed to decode hidden command: {e}"

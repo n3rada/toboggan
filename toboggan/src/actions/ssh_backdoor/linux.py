@@ -18,7 +18,7 @@ class AutoSshBackdoorAction(BaseAction):
 
     def run(self) -> str:
 
-        sshd_path = self._executor.remote_execute("command -v sshd")
+        sshd_path = self._executor.os_helper.get_command_location("sshd")
         if not sshd_path or "not found" in sshd_path.lower():
             logger.warning(
                 "⚠️ sshd is not installed on the target. SSH backdoor is currently unusable."
@@ -37,7 +37,7 @@ class AutoSshBackdoorAction(BaseAction):
                 logger.success("✅ sshd is running.")
 
         # Step 1: Locate ssh-keygen
-        sshkeygen_path = self._executor.remote_execute("command -v ssh-keygen")
+        sshkeygen_path = self._executor.os_helper.get_command_location("ssh-keygen")
         if not sshkeygen_path or "not found" in sshkeygen_path.lower():
             logger.warning("❌ ssh-keygen not available on target. Trying locally...")
 

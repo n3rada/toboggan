@@ -23,6 +23,11 @@ class LinuxHelper(base.OSHelperBase):
         self.__is_busybox_present = None
         self.__busybox_commands = set()
 
+        self.__detection_method = None
+
+        # Cache for command locations to avoid redundant lookups
+        self.__command_location_cache = {}
+
         logger.debug("Initialized LinuxHelper.")
 
     def fifo_execute(self, command: str) -> None:
@@ -197,6 +202,104 @@ class LinuxHelper(base.OSHelperBase):
             logger.error(f"❌ Error while checking BusyBox: {exc}")
             return False
 
+    def get_command_location(self, command: str) -> str:
+        """
+        Retrieves the full path of a command using multiple detection methods.
+
+        Tries multiple methods for maximum compatibility across different Unix-like systems:
+        1. busybox wrap (if applicable)
+        2. command -v (POSIX standard)
+        3. which (common utility)
+        4. type (shell built-in)
+
+        This ensures compatibility with:
+        - Standard Linux/Unix systems
+        - BusyBox environments
+        - IBM i (AS/400) QShell
+        - Minimal POSIX shells
+
+        Args:
+            command: The command to locate.
+
+        Returns:
+            str: The full path of the command if found, else an empty string.
+        """
+
+        # Check cache first
+        if command in self.__command_location_cache:
+            logger.trace(
+                f"💾 Command location retrieved from cache: {command} -> {self.__command_location_cache[command]}"
+            )
+            return self.__command_location_cache[command]
+
+        # Wrap a full command with /bin/busybox if its base command is supported.
+        if self.__is_busybox_present:
+            if command in self.__busybox_commands:
+                location = f"/bin/busybox {command}"
+                self.__command_location_cache[command] = location
+                logger.trace(f"💾 Cached busybox command: {command} -> {location}")
+                return location
+
+        # Try the previously successful detection method first
+        if self.__detection_method is not None:
+            result = self._executor.remote_execute(
+                f"{self.__detection_method} {command}", debug=False
+            ).strip()
+
+            if result and "not found" not in result.lower():
+                self.__command_location_cache[command] = result
+                logger.trace(f"💾 Cached command location: {command} -> {result}")
+                return result
+
+        # Try multiple detection methods in order of preference
+        detection_methods = [
+            "command -v",  # POSIX standard
+            "which",
+            "type",
+            "whence",
+        ]
+
+        # Remove the previously tried method if any
+        if self.__detection_method in detection_methods:
+            detection_methods.remove(self.__detection_method)
+
+        for method in detection_methods:
+            try:
+                location = self._executor.remote_execute(
+                    f"{method}  {command}", debug=False
+                ).strip()
+
+                # Clean up output (some methods return extra text)
+                if location and "not found" not in location.lower():
+                    # Extract just the path if there's extra text
+                    # Example: "bash is /bin/bash" -> "/bin/bash"
+                    if " " in location:
+                        parts = location.split()
+                        for part in parts:
+                            if part.startswith("/"):
+                                location = part
+                                break
+
+                    # Validate it's an actual path
+                    if location.startswith("/"):
+                        self.__detection_method = method
+                        logger.info(
+                            f"🔎 Working detection method found: {self.__detection_method}"
+                        )
+                        self.__command_location_cache[command] = location
+                        logger.trace(
+                            f"💾 Cached command location: {command} -> {location}"
+                        )
+                        return location
+
+            except Exception:
+                continue  # Try next method
+
+        logger.warning(f"No detection method worked for command: {command}")
+        # Cache empty result to avoid repeated failed lookups
+        self.__command_location_cache[command] = ""
+        return ""
+
     def __parse_busybox_commands(self, output: str) -> set[str]:
         """
         Parses the output of `busybox --help` to extract available command names.
@@ -222,27 +325,6 @@ class LinuxHelper(base.OSHelperBase):
 
         return commands
 
-    def busybox_wrap(self, full_command: str) -> str:
-        """
-        Wrap a full command with /bin/busybox if its base command is supported.
-        Args:
-            full_command (str): A complete shell command, e.g., "ls -la /tmp"
-        Returns:
-            str: Wrapped command using busybox or fallback with command -v
-        """
-        if not self.__is_busybox_present:
-            return full_command
-
-        parts = full_command.strip().split()
-        if not parts:
-            return full_command
-
-        base_cmd = parts[0]
-        if base_cmd in self.__busybox_commands:
-            return f"/bin/busybox {full_command}"
-
-        return f"$(command -v {base_cmd}) {' '.join(parts[1:])}"
-
     # Properties
 
     @property
@@ -259,3 +341,24 @@ class LinuxHelper(base.OSHelperBase):
             self.__is_busybox_present = self.check_busybox()
 
         return self.__is_busybox_present
+
+    @property
+    def command_location_cache(self) -> dict:
+        """Returns the command location cache dictionary."""
+        return self.__command_location_cache
+
+    def clear_command_cache(self, command: str = None) -> None:
+        """
+        Clears the command location cache.
+
+        Args:
+            command: If provided, clears only this command from cache.
+                    If None, clears the entire cache.
+        """
+        if command:
+            if command in self.__command_location_cache:
+                del self.__command_location_cache[command]
+                logger.debug(f"🗑️ Cleared cache for command: {command}")
+        else:
+            self.__command_location_cache.clear()
+            logger.debug("🗑️ Cleared entire command location cache")

@@ -17,7 +17,8 @@ class InternetCheckAction(BaseAction):
         logger.info(f"📡 Testing ICMP (ping to {ip})")
         ping_cmd = None
 
-        ping_path = self._executor.remote_execute("command -v ping")
+        ping_path = self._executor.os_helper.get_command_location("ping")
+
         if ping_path:
             ping_cmd = f"{ping_path.strip()} -c 1 -W 2 {ip}"
         elif (
@@ -43,13 +44,13 @@ class InternetCheckAction(BaseAction):
         tool = None
         use_flags = ""
 
-        if getent_path := self._executor.remote_execute("command -v getent"):
+        if getent_path := self._executor.os_helper.get_command_location("getent"):
             tool = getent_path.strip()
             use_flags = "hosts"
 
-        elif nslookup_path := self._executor.remote_execute("command -v nslookup"):
+        elif nslookup_path := self._executor.os_helper.get_command_location("nslookup"):
             tool = nslookup_path.strip()
-        elif host_path := self._executor.remote_execute("command -v host"):
+        elif host_path := self._executor.os_helper.get_command_location("host"):
             tool = host_path.strip()
         else:
             logger.warning("⚠️ No usable DNS utility found.")
@@ -76,10 +77,10 @@ class InternetCheckAction(BaseAction):
         tool = None
         use_flags = ""
 
-        if curl_path := self._executor.remote_execute("command -v curl"):
+        if curl_path := self._executor.os_helper.get_command_location("curl"):
             tool = curl_path.strip()
             use_flags = "-Ik"
-        elif wget_path := self._executor.remote_execute("command -v wget"):
+        elif wget_path := self._executor.os_helper.get_command_location("wget"):
             tool = wget_path.strip()
             use_flags = "--spider"
         elif (

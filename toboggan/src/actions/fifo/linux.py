@@ -36,16 +36,17 @@ class FifoAction(NamedPipe):
         logger.info(f"🌀 FiFo will use shell: {self._shell}")
 
     def setup(self):
-        # Use busybox-wrapped mkfifo
-        mkfifo_cmd = self.__os_helper.busybox_wrap(f"mkfifo {self._stdin}")
+        mkfifo_path = self._executor.os_helper.get_command_location("mkfifo")
+        mkfifo_cmd = f"{mkfifo_path} {self._stdin}"
         self._executor.remote_execute(mkfifo_cmd)
 
-        # Use busybox-wrapped tail
-        tail_cmd = self.__os_helper.busybox_wrap(f"tail -f {self._stdin}")
+        tail_path = self._executor.os_helper.get_command_location("tail")
+        tail_cmd = f"{tail_path} -f {self._stdin}"
         full_cmd = f"{tail_cmd}|{self._shell} > {self._stdout} 2>&1 &"
         self._executor.remote_execute(full_cmd)
 
         self.__stop_thread = False
+        self.__read_thread = None
 
     def run(self):
         self.__read_thread = threading.Thread(
@@ -62,21 +63,21 @@ class FifoAction(NamedPipe):
             self.__read_thread.join()
 
     def execute(self, command: str):
-        echo_cmd = self.__os_helper.busybox_wrap(f"echo '{command}' > {self._stdin}")
-        self._executor.remote_execute(echo_cmd)
+        echo_path = self._executor.os_helper.get_command_location("echo")
+        forward_command = f"{echo_path} '{command}' > {self._stdin}"
+
+        self._executor.remote_execute(forward_command)
 
     def __poll_output(self) -> None:
-        # BusyBox-friendly polling commands
+
+        sed_path = self._executor.os_helper.get_command_location("sed")
+        tail_path = self._executor.os_helper.get_command_location("tail")
+        dd_path = self._executor.os_helper.get_command_location("dd")
+
         poll_commands = [
-            self.__os_helper.busybox_wrap(
-                f"sed -n p {self._stdout}; : > {self._stdout}"
-            ),
-            self.__os_helper.busybox_wrap(
-                f"tail -n +1 {self._stdout}; : > {self._stdout}"
-            ),
-            self.__os_helper.busybox_wrap(
-                f"dd if={self._stdout} bs=4096 2>/dev/null; : > {self._stdout}"
-            ),
+            f"{sed_path} -n p {self._stdout}; : > {self._stdout}",
+            f"{tail_path} -n +1 {self._stdout}; : > {self._stdout}",
+            f"{dd_path} if={self._stdout} bs=4096 2>/dev/null; : > {self._stdout}",
         ]
 
         while not self.__stop_thread:

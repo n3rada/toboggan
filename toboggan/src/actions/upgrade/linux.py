@@ -26,21 +26,21 @@ class UpgradeAction(BaseAction):
 
         logger.info(f"🔄 Attempting to upgrade shell to: {used_shell}")
 
-        if script_path := self._executor.remote_execute("command -v script"):
+        if script_path := self._executor.os_helper.get_command_location("script"):
             logger.info(f"✅ Found script at: {script_path}")
             self._executor.os_helper.fifo_execute(
                 command=f"SHELL={used_shell} script -q /dev/null"
             )
             return
 
-        if expect_path := self._executor.remote_execute("command -v expect"):
+        if expect_path := self._executor.os_helper.get_command_location("expect"):
             logger.info(f"✅ Found expect at: {expect_path}")
             self._executor.os_helper.fifo_execute(
                 command=f"expect -c 'spawn {used_shell}; interact'"
             )
             return
 
-        if python_path := self._executor.remote_execute("command -v python3"):
+        if python_path := self._executor.os_helper.get_command_location("python3"):
             logger.info(f"✅ Found Python3 at: {python_path}")
             random_token = common.generate_fixed_length_token(4)
             self._executor.os_helper.fifo_execute(
