@@ -166,6 +166,14 @@ def build_parser() -> argparse.ArgumentParser:
         required=False,
         help="Specify the target working directory (must be an absolute path to a directory).",
     )
+    system_group.add_argument(
+        "--paths",
+        type=str,
+        nargs="+",
+        default=None,
+        required=False,
+        help="Custom paths to search for commands (e.g., /opt/bin /usr/local/bin). These are checked before standard detection methods.",
+    )
 
     advanced_group = parser.add_argument_group(
         "Advanced Options", "Additional advanced or debugging options."
@@ -313,6 +321,7 @@ def main() -> int:
             target_os=args.os,
             base64_wrapping=args.base64,
             camouflage=args.camouflage,
+            custom_paths=args.paths,
         )
     except RuntimeError:
         return 1

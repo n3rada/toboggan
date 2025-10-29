@@ -16,7 +16,7 @@ class LinuxHelper(base.OSHelperBase):
     Unix-specific operations like handling binaries and shell paths.
     """
 
-    def __init__(self, executor):
+    def __init__(self, executor, custom_paths: list = None):
         super().__init__(executor)
         self.__named_pipe_instance = None
 
@@ -27,6 +27,14 @@ class LinuxHelper(base.OSHelperBase):
 
         # Cache for command locations to avoid redundant lookups
         self.__command_location_cache = {}
+
+        # Custom paths to check first before using standard detection methods
+        self.__custom_paths = custom_paths or []
+
+        if self.__custom_paths:
+            logger.info(
+                f"📂 Custom command paths configured: {', '.join(self.__custom_paths)}"
+            )
 
         logger.debug("Initialized LinuxHelper.")
 
@@ -207,10 +215,11 @@ class LinuxHelper(base.OSHelperBase):
         Retrieves the full path of a command using multiple detection methods.
 
         Tries multiple methods for maximum compatibility across different Unix-like systems:
-        1. busybox wrap (if applicable)
-        2. command -v (POSIX standard)
-        3. which (common utility)
-        4. type (shell built-in)
+        1. Custom paths (if provided via --paths)
+        2. busybox wrap (if applicable)
+        3. command -v (POSIX standard)
+        4. which (common utility)
+        5. type (shell built-in)
 
         This ensures compatibility with:
         - Standard Linux/Unix systems
@@ -231,6 +240,30 @@ class LinuxHelper(base.OSHelperBase):
                 f"💾 Command location retrieved from cache: {command} -> {self.__command_location_cache[command]}"
             )
             return self.__command_location_cache[command]
+
+        # Try custom paths first if provided
+        if self.__custom_paths:
+            for custom_path in self.__custom_paths:
+                # Ensure path ends with /
+                if not custom_path.endswith("/"):
+                    custom_path += "/"
+
+                full_path = f"{custom_path}{command}"
+
+                # Check if the command exists at this custom path
+                try:
+                    check_result = self._executor.remote_execute(
+                        f"test -x {full_path} && echo exists", debug=False
+                    ).strip()
+
+                    if check_result == "exists":
+                        self.__command_location_cache[command] = full_path
+                        logger.trace(
+                            f"💾 Cached command from custom path: {command} -> {full_path}"
+                        )
+                        return full_path
+                except Exception:
+                    continue  # Try next custom path
 
         # Wrap a full command with /bin/busybox if its base command is supported.
         if self.__is_busybox_present:
@@ -270,7 +303,11 @@ class LinuxHelper(base.OSHelperBase):
                 ).strip()
 
                 # Clean up output (some methods return extra text)
-                if location and "not found" not in location.lower():
+                if (
+                    location
+                    and "not found" not in location.lower()
+                    or "Pas de" in location.lower()
+                ):
                     # Extract just the path if there's extra text
                     # Example: "bash is /bin/bash" -> "/bin/bash"
                     if " " in location:

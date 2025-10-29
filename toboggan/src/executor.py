@@ -25,6 +25,7 @@ class Executor(metaclass=SingletonMeta):
         target_os: str = None,
         base64_wrapping: bool = False,
         camouflage: bool = False,
+        custom_paths: list = None,
     ):
         if execute_method is None:
             raise ValueError("Executor should have an execute callable method.")
@@ -54,7 +55,7 @@ class Executor(metaclass=SingletonMeta):
 
         # Attach the appropriate OS Helper
         if self.__os == "linux":
-            self._os_helper = LinuxHelper(self)
+            self._os_helper = LinuxHelper(self, custom_paths=custom_paths)
         else:
             self._os_helper = WindowsHelper(self)
 
