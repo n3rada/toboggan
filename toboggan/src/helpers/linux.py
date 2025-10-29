@@ -296,6 +296,8 @@ class LinuxHelper(base.OSHelperBase):
         if self.__detection_method in detection_methods:
             detection_methods.remove(self.__detection_method)
 
+        wrong_detection_words = ["not found", "pas de", f"{command}:"]
+
         for method in detection_methods:
             try:
                 location = self._executor.remote_execute(
@@ -303,10 +305,8 @@ class LinuxHelper(base.OSHelperBase):
                 ).strip()
 
                 # Clean up output (some methods return extra text)
-                if (
-                    location
-                    and "not found" not in location.lower()
-                    or "Pas de" in location.lower()
+                if location and not any(
+                    word in location.lower() for word in wrong_detection_words
                 ):
                     # Extract just the path if there's extra text
                     # Example: "bash is /bin/bash" -> "/bin/bash"
