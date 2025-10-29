@@ -141,14 +141,16 @@ class FifoAction(NamedPipe):
 
     def __poll_output(self) -> None:
 
+        cat_path = self._executor.os_helper.get_command_location("cat")
         sed_path = self._executor.os_helper.get_command_location("sed")
         tail_path = self._executor.os_helper.get_command_location("tail")
         dd_path = self._executor.os_helper.get_command_location("dd")
 
         poll_commands = [
-            f"{sed_path} -n p {self._stdout}; : > {self._stdout}",
-            f"{tail_path} -n +1 {self._stdout}; : > {self._stdout}",
-            f"{dd_path} if={self._stdout} bs=4096 2>/dev/null; : > {self._stdout}",
+            f"{cat_path} {self._stdout} && > {self._stdout}",
+            f"{sed_path} -n p {self._stdout} && > {self._stdout}",
+            f"{tail_path} -n +1 {self._stdout} && > {self._stdout}",
+            f"{dd_path} if={self._stdout} bs=4096 2>/dev/null && > {self._stdout}",
         ]
 
         while not self.__stop_thread:
@@ -156,19 +158,20 @@ class FifoAction(NamedPipe):
             # Apply jitter to avoid burst collisions
             time.sleep(random.uniform(self._read_interval, self._read_interval * 1.5))
 
-            stdout_pathput = self._executor.remote_execute(
+            # Simplest: read and truncate in one command using shell redirection
+            stdout_output = self._executor.remote_execute(
                 random.choice(poll_commands),
                 debug=False,
             )
 
-            if stdout_pathput:
+            if stdout_output:
                 if self.tty:
-                    print(stdout_pathput, end="", flush=True)
+                    print(stdout_output, end="", flush=True)
                     continue
 
-                if self._executor.os_helper.is_shell_prompt_in(stdout_pathput):
+                if self._executor.os_helper.is_shell_prompt_in(stdout_output):
                     self.tty = True
-                    print(stdout_pathput, end=" ", flush=True)
+                    print(stdout_output, end=" ", flush=True)
                 else:
                     self.tty = False
-                    print(stdout_pathput)
+                    print(stdout_output)
