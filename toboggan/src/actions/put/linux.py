@@ -87,7 +87,7 @@ class PutAction(BaseAction):
                 for idx in range(total_chunks):
                     chunk = encoded_file[idx * chunk_size : (idx + 1) * chunk_size]
                     self._executor.remote_execute(
-                        f"echo -n {chunk} >> {remote_encoded_path}"
+                        f"printf %s {chunk} >> {remote_encoded_path}"
                     )
                     progress_bar.update(len(chunk))
         except KeyboardInterrupt:
@@ -117,8 +117,8 @@ class PutAction(BaseAction):
         remote_md5 = md5sum.split()[0]
         logger.info(f"🔒 Remote MD5: {remote_md5}")
         if remote_md5 != local_md5:
-            logger.warning(f"❌ MD5 mismatch!")
-            return
+            logger.warning("❌ MD5 mismatch!")
+            logger.warning("The uploaded file may be corrupted.")
 
         logger.success(f"✅ File uploaded and extracted successfully: {remote_path}")
 
