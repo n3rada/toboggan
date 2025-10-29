@@ -120,8 +120,7 @@ class Executor(metaclass=SingletonMeta):
         """
 
         if not command:
-            if debug:
-                logger.warning("⚠️ Attempted to execute an empty command. Skipping.")
+            logger.trace("⚠️ Attempted to execute an empty command. Skipping.")
             return ""
 
         if debug:
