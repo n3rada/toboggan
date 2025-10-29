@@ -290,7 +290,9 @@ class Terminal:
                         if len(raw_args) > 1:
                             self.__handle_paths_add(raw_args[1:])
                         else:
-                            logger.error("❌ No paths provided. Usage: !paths add /path1 /path2 or !paths add /path1:/path2")
+                            logger.error(
+                                "❌ No paths provided. Usage: !paths add /path1 /path2 or !paths add /path1:/path2"
+                            )
                     elif raw_args and raw_args[0] in ["clear", "c"]:
                         # Clear cache
                         self.__handle_paths_clear()
@@ -503,9 +505,7 @@ class Terminal:
                 lines.append(f"{YELLOW}ℹ{RESET} No commands cached yet")
 
             lines.append("")
-            lines.append(
-                f"{DIM}Usage: !paths [add <paths>] [clear]{RESET}"
-            )
+            lines.append(f"{DIM}Usage: !paths [add <paths>] [clear]{RESET}")
             lines.append(
                 f"{DIM}  - !paths add /opt/bin /usr/local/bin   # Add space-separated paths{RESET}"
             )
@@ -540,8 +540,8 @@ class Terminal:
         new_paths = []
         for arg in path_args:
             # Support both space-separated and colon-separated paths
-            if ':' in arg:
-                new_paths.extend([p.strip() for p in arg.split(':') if p.strip()])
+            if ":" in arg:
+                new_paths.extend([p.strip() for p in arg.split(":") if p.strip()])
             else:
                 new_paths.append(arg.strip())
 
