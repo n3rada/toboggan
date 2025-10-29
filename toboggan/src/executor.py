@@ -138,14 +138,12 @@ class Executor(metaclass=SingletonMeta):
         # Apply obfuscation if enabled
         if not bypass_camouflage and self.__camouflage:
             command = self.__camouflage_action.run(command)
-            if debug:
-                logger.debug(f"🔒 Obfuscated command for execution: {command}")
+            logger.trace(f"🔒 Obfuscated command for execution: {command}")
 
         # Apply Base64 encoding if enabled
         if self.__base64_wrapping:
             command = base64.b64encode(command.encode()).decode()
-            if debug:
-                logger.debug(f"📦 Base64-encoded command: {command}")
+            logger.trace(f"📦 Base64-encoded command: {command}")
 
         for attempt in range(3):
             try:
@@ -199,15 +197,13 @@ class Executor(metaclass=SingletonMeta):
         if not result:
             return ""
 
-        if debug:
-            logger.debug(f"📩 Received raw output: {result!r}")
+        logger.trace(f"📩 Received raw output: {result!r}")
 
         # Attempt to de-obfuscate the result if obfuscation was used
         if not bypass_camouflage and self.__camouflage:
             try:
                 result = self.__uncamouflage_action.run(result)
-                if debug:
-                    logger.debug(f"🔓 De-obfuscated output: {result!r}")
+                logger.trace(f"🔓 De-obfuscated output: {result!r}")
             except ValueError:
                 if debug:
                     logger.error(
