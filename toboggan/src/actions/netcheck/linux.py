@@ -27,7 +27,9 @@ class InternetCheckAction(BaseAction):
             ping_cmd = f"/bin/busybox ping -c 1 -W 2 {ip}"
 
         if ping_cmd:
-            ping_result = self._executor.remote_execute(ping_cmd, timeout=5)
+            ping_result = self._executor.remote_execute(
+                ping_cmd, timeout=5, retry=False
+            )
             if ping_result and "1 packets transmitted" in ping_result:
                 logger.success(f"✅ ICMP ping to {ip} succeeded.")
             else:
@@ -55,7 +57,7 @@ class InternetCheckAction(BaseAction):
         if tool:
             logger.info(f"⚙️ Using {tool}")
             dns_result = self._executor.remote_execute(
-                f"{tool} {use_flags} {hostname}", timeout=10
+                f"{tool} {use_flags} {hostname}", timeout=10, retry=False
             )
 
             logger.debug(f"🔎 DNS result: {dns_result.strip()}")
