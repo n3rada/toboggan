@@ -1,13 +1,8 @@
 🛝 Slide into post-exploitation from RCE with ease. Toboggan wraps your remote command execution into a upgradable dumb shell, sliding directly into post-exploitation phase. It allows you to fastly launch a `mkfifo` forward-shell inside a targeted Linux environment.
 
 <p align="center">
-    <img width="150" src="./media/toboggan-coin-nobg.png" alt="Toboggan Logo">
-</p>
-
-<p align="center">
     <img src="./media/example.png" alt="example">
 </p>
-
 
 ## Installation
 
