@@ -7,7 +7,7 @@ import base64
 from loguru import logger
 
 # Local application/library specific imports
-from toboggan.utils.methods import SingletonMeta
+from toboggan.utils.common import SingletonMeta
 from toboggan.core import action
 from toboggan.core import target
 from toboggan.core.helpers.unix import LinuxHelper

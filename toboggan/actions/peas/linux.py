@@ -7,7 +7,7 @@ from loguru import logger
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.actions.put.linux import PutAction
-from toboggan.utils.methods import generate_fixed_length_token
+from toboggan.utils.common import generate_fixed_length_token
 
 
 class LinPEASAction(BaseAction):

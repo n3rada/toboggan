@@ -3,7 +3,7 @@ from loguru import logger
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
-from toboggan.utils import methods
+from toboggan.utils import common
 
 
 class UpgradeAction(BaseAction):
@@ -42,7 +42,7 @@ class UpgradeAction(BaseAction):
 
         if python_path := self._executor.remote_execute("command -v python3"):
             logger.info(f"✅ Found Python3 at: {python_path}")
-            random_token = methods.generate_fixed_length_token(4)
+            random_token = common.generate_fixed_length_token(4)
             self._executor.os_helper.fifo_execute(
                 command=f"{python_path} -c 'import os,pty,signal; [signal.signal({random_token}, signal.SIG_DFL) for {random_token} in (signal.SIGTTOU, signal.SIGTTIN, signal.SIGTSTP)]; pty.spawn(\"{used_shell}\")'"
             )

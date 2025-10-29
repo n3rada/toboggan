@@ -7,7 +7,7 @@ from loguru import logger
 
 # Local application/library specific imports
 from toboggan.core.helpers import base
-from toboggan.utils import methods
+from toboggan.utils import common
 from toboggan.core.action import NamedPipe
 
 
@@ -57,8 +57,8 @@ class LinuxHelper(base.OSHelperBase):
     def format_working_directory(self) -> str:
         """Generate a temp directory path."""
 
-        random_hex = methods.generate_fixed_length_token(length=32)
-        random_suffix = methods.generate_fixed_length_token(length=6).upper()
+        random_hex = common.generate_fixed_length_token(length=32)
+        random_suffix = common.generate_fixed_length_token(length=6).upper()
         return f"/tmp/systemd-private-{random_hex}-upower.service-{random_suffix}"
 
     def random_system_file_name(

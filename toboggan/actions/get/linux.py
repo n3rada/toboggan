@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
-from toboggan.utils import methods
+from toboggan.utils import common
 
 
 class GetAction(BaseAction):
@@ -57,7 +57,7 @@ class GetAction(BaseAction):
         logger.info(f"💾 File will be saved to: {save_path}")
 
         # Step 2: Compress and Base64-encode the remote file
-        random_file_name = methods.generate_fixed_length_token(6) + ".tar.gz"
+        random_file_name = common.generate_fixed_length_token(6) + ".tar.gz"
         remote_archive = f"{self._executor.working_directory}/{random_file_name}"
         remote_base64_path = f"{remote_archive}.b64"
 

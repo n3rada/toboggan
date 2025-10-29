@@ -15,7 +15,7 @@ from toboggan import __version__
 from toboggan.utils import logbook
 from toboggan.core import executor
 from toboggan.core import terminal
-from toboggan.utils import methods
+from toboggan.utils import common
 from toboggan.utils import banner
 
 # Directory where built-in handlers are stored
@@ -202,7 +202,7 @@ def main() -> int:
     logbook.setup_logging(level=env.get("LOG_LEVEL", "INFO"))
 
     if args.proxy:
-        if not methods.is_valid_proxy(args.proxy):
+        if not common.is_valid_proxy(args.proxy):
             logger.warning("⚠️ Provided proxy may be malformed or unsupported.")
             return 1
 
@@ -285,7 +285,7 @@ def main() -> int:
 
     # Validate working directory if provided
     if args.working_directory:
-        if not methods.is_valid_directory_path(args.working_directory):
+        if not common.is_valid_directory_path(args.working_directory):
             logger.error(f"❌ Invalid working directory path: {args.working_directory}")
             return 1
 
@@ -308,13 +308,13 @@ def main() -> int:
 
     # Validate and set stdin/stdout paths if provided
     if args.stdin:
-        if methods.is_valid_file_path(args.stdin):
+        if common.is_valid_file_path(args.stdin):
             # It's a file path
             command_executor.os_helper.stdin_path = args.stdin
-        elif methods.is_valid_directory_path(args.stdin):
+        elif common.is_valid_directory_path(args.stdin):
             # It's a directory, generate filename
             base_dir = args.stdin.rstrip("/")
-            file_name = methods.generate_uuid()
+            file_name = common.generate_uuid()
             stdin_path = f"{base_dir}/{file_name}"
             command_executor.os_helper.stdin_path = stdin_path
             logger.info(f"📝 Generated FIFO stdin path: {stdin_path}")
@@ -323,13 +323,13 @@ def main() -> int:
             return 1
 
     if args.stdout:
-        if methods.is_valid_file_path(args.stdout):
+        if common.is_valid_file_path(args.stdout):
             # It's a file path
             command_executor.os_helper.stdout_path = args.stdout
-        elif methods.is_valid_directory_path(args.stdout):
+        elif common.is_valid_directory_path(args.stdout):
             # It's a directory, generate filename
             base_dir = args.stdout.rstrip("/")
-            file_name = methods.generate_uuid()
+            file_name = common.generate_uuid()
             stdout_path = f"{base_dir}/{file_name}"
             command_executor.os_helper.stdout_path = stdout_path
             logger.info(f"📝 Generated FIFO stdout path: {stdout_path}")

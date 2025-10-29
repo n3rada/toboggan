@@ -1,6 +1,7 @@
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
-from toboggan.utils import methods
+from toboggan.utils import common
+
 
 class HistoryAction(BaseAction):
     DESCRIPTION = "Retrieve all users' shell command history"
@@ -17,6 +18,8 @@ class HistoryAction(BaseAction):
         if self._os_helper.shell_type == "powershell":
             command = powershell_command
         else:
-            command = f"powershell -e {methods.base64_for_powershell(powershell_command)}"
-        
+            command = (
+                f"powershell -e {common.base64_for_powershell(powershell_command)}"
+            )
+
         return self._executor.remote_execute(command)
