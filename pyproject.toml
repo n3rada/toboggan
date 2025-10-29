@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "toboggan"
-version = "1.0.0"
+version = "0.9.0"
 description = "Bring intelligence to any remote command execution (RCE)."
 authors = [
     {name = "n3rada"}
