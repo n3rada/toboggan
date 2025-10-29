@@ -335,6 +335,7 @@ def main() -> int:
     if args.stdin:
         if common.is_valid_file_path(args.stdin):
             # It's a file path
+            logger.info(f"📄 Using FIFO stdin file path: {args.stdin}")
             command_executor.os_helper.stdin_path = args.stdin
         elif common.is_valid_directory_path(args.stdin):
             # It's a directory, generate filename
@@ -350,6 +351,7 @@ def main() -> int:
     if args.stdout:
         if common.is_valid_file_path(args.stdout):
             # It's a file path
+            logger.info(f"📄 Using FIFO stdout file path: {args.stdout}")
             command_executor.os_helper.stdout_path = args.stdout
         elif common.is_valid_directory_path(args.stdout):
             # It's a directory, generate filename

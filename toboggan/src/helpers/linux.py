@@ -253,10 +253,10 @@ class LinuxHelper(base.OSHelperBase):
                 # Check if the command exists at this custom path
                 try:
                     check_result = self._executor.remote_execute(
-                        f"test -x {full_path} && echo exists", debug=False
+                        f"test -x {full_path} && echo E", debug=False
                     ).strip()
 
-                    if check_result == "exists":
+                    if check_result == "E":
                         self.__command_location_cache[command] = full_path
                         logger.trace(
                             f"💾 Cached command from custom path: {command} -> {full_path}"
