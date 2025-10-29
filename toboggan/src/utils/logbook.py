@@ -10,25 +10,39 @@ def _format_message(record):
     """Custom formatter with compact symbols and colors."""
     level_name = record["level"].name
 
+    # Modern color palette (hex colors for better terminal support)
+    trace_brown = "#8b7355"
+    debug_blue = "#6c9bd1"
+    info_white = "#ecf0f1"
+    success_green = "#52c88a"
+    warning_orange = "#f39c12"
+    error_red = "#e74c3c"
+    critical_magenta = "#c71585"
+    time_gray = "#a5a5a5"
+
     # Map levels to symbols and colors
     symbols = {
-        "TRACE": ("<dim>[*]</dim>", "dim"),
-        "DEBUG": ("<dim>[*]</dim>", "dim"),
-        "INFO": ("<white>[i]</white>", "white"),
-        "SUCCESS": ("<green>[+]</green>", "green"),
-        "WARNING": ("<yellow>[!]</yellow>", "yellow"),
-        "ERROR": ("<red>[-]</red>", "red"),
-        "CRITICAL": ("<red><bold>[X]</bold></red>", "red"),
+        "TRACE": (f"<fg {trace_brown}>[*]</fg {trace_brown}>", trace_brown),
+        "DEBUG": (f"<fg {debug_blue}>[•]</fg {debug_blue}>", debug_blue),
+        "INFO": (f"<fg {info_white}>[i]</fg {info_white}>", info_white),
+        "SUCCESS": (f"<fg {success_green}>[✓]</fg {success_green}>", success_green),
+        "WARNING": (f"<fg {warning_orange}>[!]</fg {warning_orange}>", warning_orange),
+        "ERROR": (f"<fg {error_red}>[✗]</fg {error_red}>", error_red),
+        "CRITICAL": (
+            f"<fg {critical_magenta}><bold>[⚠]</bold></fg {critical_magenta}>",
+            critical_magenta,
+        ),
     }
 
     symbol, color = symbols.get(level_name, ("[?]", "white"))
 
     # Professional format: full UTC timestamp + symbol + message
+    # Note: We must return a string template, not format it yet
     return (
-        "<dim>{time:YYYY-MM-DD HH:mm:ss.SSS!UTC} (UTC)</dim> "
+        f"<fg {time_gray}>{{time:YYYY-MM-DD HH:mm:ss.SSS!UTC}} (UTC)</fg {time_gray}> "
         f"{symbol} "
-        f"<{color}>{{message}}</{color}>\n"
-        "{exception}"
+        f"<fg {color}>{{message}}</fg {color}>"
+        "\n{exception}"
     )
 
 
@@ -83,7 +97,7 @@ def setup_logging(level: str = "INFO"):
     # --- File handler (rotating, UTC timestamps)
     log_dir = _xdg_state_dir()
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / "toboggan.src.log"
+    log_file = log_dir / "toboggan.log"
 
     # Configurable rotation & retention
     max_bytes = os.getenv("TOBOGGAN_LOG_MAX_BYTES", "10 MB")
