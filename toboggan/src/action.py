@@ -45,13 +45,11 @@ class NamedPipe(BaseAction):
         super().__init__(executor)
 
         if stdout_path is None:
-            logger.info(f"stdout pipe not provided, generating random name.")
             self._stdout = self._executor.os_helper.random_system_file_name()
         else:
             self._stdout = stdout_path
 
         if stdin_path is None:
-            logger.info(f"stdin pipe not provided, generating random name.")
             self._stdin = self._executor.os_helper.random_system_file_name()
         else:
             self._stdin = stdin_path
