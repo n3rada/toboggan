@@ -114,7 +114,7 @@ class ActionsManager:
 
         self.__os = target_os
 
-        self.__system_actions_path = Path(__file__).parent.parent / "actions"
+        self.__system_actions_path = Path(__file__).parent / "actions"
         logger.debug(f"System actions path: {self.__system_actions_path}")
 
         self.__user_actions_path = self.__get_user_module_dir()
