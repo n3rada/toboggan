@@ -10,7 +10,7 @@ from loguru import logger
 from toboggan.src.utils.common import SingletonMeta
 from toboggan.src import action
 from toboggan.src import target
-from toboggan.src.helpers.unix import LinuxHelper
+from toboggan.src.helpers.linux import LinuxHelper
 from toboggan.src.helpers.windows import WindowsHelper
 from toboggan.src.helpers.base import OSHelperBase
 
