@@ -54,8 +54,8 @@ class NamedPipe(BaseAction):
         else:
             self._stdin = stdin_path
 
-        logger.info(f"Using stdin: {self._stdin}")
-        logger.info(f"Using stdout: {self._stdout}")
+        logger.info(f"Using stdin file: {self._stdin}")
+        logger.info(f"Using stdout file: {self._stdout}")
 
         self._read_interval = float(read_interval)
 
@@ -92,7 +92,8 @@ class NamedPipe(BaseAction):
         self._stop()
 
         logger.info("Killing running session")
-        self._executor.remote_execute(f"/usr/bin/pkill -TERM -f {self._stdin}")
+        pkill_path = self._executor.os_helper.get_command_location("pkill")
+        self._executor.remote_execute(f"{pkill_path} -TERM -f {self._stdin}")
 
     @abstractmethod
     def _stop(self):

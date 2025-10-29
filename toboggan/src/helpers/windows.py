@@ -19,6 +19,12 @@ class WindowsHelper(base.OSHelperBase):
         self.__shell_type = self.__detect_shell_type()
         logger.debug(f"Initialized WindowsHelper (shell: {self.__shell_type})")
 
+    def get_hostname(self) -> str:
+        return self._executor.remote_execute(command="hostname").strip()
+
+    def get_current_user(self) -> str:
+        return self._executor.remote_execute(command="whoami").strip()
+
     def get_current_path(self) -> str:
         """
         Get current working directory using shell-specific commands.

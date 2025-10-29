@@ -38,6 +38,13 @@ class LinuxHelper(base.OSHelperBase):
 
         logger.debug("Initialized LinuxHelper.")
 
+    def get_current_user(self):
+        whoami_path = self.get_command_location("whoami")
+        return self._executor.remote_execute(command=whoami_path).strip()
+
+    def get_hostname(self) -> str:
+        return self._executor.remote_execute(command="hostname").strip()
+
     def fifo_execute(self, command: str) -> None:
         self.__named_pipe_instance.execute(command)
 

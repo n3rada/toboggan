@@ -26,6 +26,14 @@ class OSHelperBase(ABC):
     def format_working_directory(self) -> str:
         raise NotImplementedError()
 
+    @abstractmethod
+    def get_hostname(self) -> str:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_current_user(self) -> str:
+        raise NotImplementedError()
+
     @property
     def stdin_path(self) -> str:
         return self._stdin_path

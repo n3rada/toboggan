@@ -77,8 +77,8 @@ class Executor(metaclass=SingletonMeta):
 
         self.__target = target.Target(
             os=self.__os,
-            user=self.remote_execute(command="whoami").strip(),
-            hostname=self.remote_execute(command="hostname").strip(),
+            user=self._os_helper.get_current_user(),
+            hostname=self._os_helper.get_hostname(),
             pwd=self._os_helper.get_current_path(),
         )
 
