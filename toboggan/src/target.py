@@ -1,4 +1,10 @@
 class Target:
+    """Represents information about a remote target system.
+
+    This class stores and manages information about the remote system being accessed,
+    including OS type, user, hostname, working directory, and system architecture.
+    """
+
     def __init__(
         self,
         os: str,
@@ -7,15 +13,30 @@ class Target:
         pwd: str = None,
         system_info: str = None,
     ):
+        """Initialize a Target instance with system information.
+
+        Args:
+            os: The operating system type ('linux' or 'windows').
+            user: The username on the remote system. Set to None if retrieval failed
+                  (detected by error keywords like 'not found').
+            hostname: The hostname of the remote system. Set to None if retrieval failed.
+            pwd: The present working directory on the remote system.
+            system_info: System information string (e.g., from 'uname -a') used to
+                        deduce the architecture.
+        """
         self.os = os
 
-        if ["whoami:", "not found", "introuvable"] in user.lower():
-            user = None
+        if user and any(
+            err in user.lower() for err in ["whoami:", "not found", "introuvable"]
+        ):
+            self.user = None
         else:
             self.user = user
 
-        if ["hostname:", "not found", "introuvable"] in hostname.lower():
-            hostname = None
+        if hostname and any(
+            err in hostname.lower() for err in ["hostname:", "not found", "introuvable"]
+        ):
+            self.hostname = None
         else:
             self.hostname = hostname
 
