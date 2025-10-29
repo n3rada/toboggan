@@ -1,3 +1,7 @@
+# External library imports
+from loguru import logger
+
+# Local application/library specific imports
 from toboggan.core.action import BaseAction
 
 
@@ -7,10 +11,10 @@ class InternetCheckAction(BaseAction):
     )
 
     def run(self, ip: str = "9.9.9.9", hostname: str = "www.office.com") -> str:
-        self._logger.info("🌐 Outbound Connectivity Check")
+        logger.info("🌐 Outbound Connectivity Check")
 
         # Step 1: ICMP Ping
-        self._logger.info(f"📡 Testing ICMP (ping to {ip})")
+        logger.info(f"📡 Testing ICMP (ping to {ip})")
         if self._os_helper.shell_type == "powershell":
             ping_cmd = f"tnc {ip} -Count 1 -InformationLevel Quiet"
         else:
@@ -19,15 +23,17 @@ class InternetCheckAction(BaseAction):
         ping_result = self._executor.remote_execute(ping_cmd, timeout=5)
         if ping_result:
             if "True" in ping_result or "bytes=32" in ping_result:
-                self._logger.success(f"✅ ICMP ping to {ip} succeeded.")
+                logger.success(f"✅ ICMP ping to {ip} succeeded.")
             else:
-                self._logger.warning("❌ ICMP ping failed or no response.")
+                logger.warning("❌ ICMP ping failed or no response.")
 
         # Step 2: DNS Resolution
-        self._logger.info(f"🧠 Testing DNS resolution over: {hostname}")
-        
+        logger.info(f"🧠 Testing DNS resolution over: {hostname}")
+
         if self._os_helper.shell_type == "powershell":
-            dns_cmd = f"resolve-dnsname {hostname} -Type A -EA 0 | select -exp IPAddress"
+            dns_cmd = (
+                f"resolve-dnsname {hostname} -Type A -EA 0 | select -exp IPAddress"
+            )
         else:
             # More reliable nslookup command for CMD with timeout and specific DNS server
             dns_cmd = f"nslookup -timeout=2 {hostname} 8.8.8.8"
@@ -38,17 +44,17 @@ class InternetCheckAction(BaseAction):
                 success = len(dns_result.strip()) > 0
             else:
                 success = "Name:" in dns_result or "Address:" in dns_result
-            
+
             if success:
-                self._logger.success("✅ DNS resolution succeeded.")
-                self._logger.debug(f"🔎 DNS result:\n {dns_result.strip()}")
+                logger.success("✅ DNS resolution succeeded.")
+                logger.debug(f"🔎 DNS result:\n {dns_result.strip()}")
             else:
-                self._logger.error("❌ DNS resolution failed")
+                logger.error("❌ DNS resolution failed")
         else:
-            self._logger.error("❌ No response from DNS query")
+            logger.error("❌ No response from DNS query")
 
         # Step 3: HTTP/HTTPS
-        self._logger.info("📦 Checking outbound TCP HTTP(S) access")
+        logger.info("📦 Checking outbound TCP HTTP(S) access")
         url = f"https://{hostname}"
 
         if self._os_helper.shell_type == "powershell":
@@ -59,8 +65,8 @@ class InternetCheckAction(BaseAction):
             web_cmd = f"powershell -nop -c \"$ProgressPreference='SilentlyContinue'; try {{ $web=New-Object Net.WebClient; $web.DownloadString('{url}'); 'Success' }} catch {{ 'Failed' }}\""
 
         web_result = self._executor.remote_execute(web_cmd, timeout=15, retry=False)
-        
+
         if web_result and "Success" in web_result:
-            self._logger.success(f"✅ Successfully connected to {url}")
+            logger.success(f"✅ Successfully connected to {url}")
         else:
-            self._logger.error(f"❌ Failed to connect to {url}")
+            logger.error(f"❌ Failed to connect to {url}")

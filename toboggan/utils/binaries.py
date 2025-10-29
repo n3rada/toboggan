@@ -5,10 +5,8 @@ import tarfile
 from pathlib import Path
 
 # External library imports
+from loguru import logger
 import httpx
-
-# Local library imports
-from toboggan.core import logbook
 
 
 class BinaryFetcher:
@@ -25,7 +23,6 @@ class BinaryFetcher:
 
     def __init__(self, os: str = "linux", arch: str = "x86-64"):
         self.BASE_DIR.mkdir(parents=True, exist_ok=True)
-        self._logger = logbook.get_logger()
 
         self._os = os.lower()
         self._arch = arch.lower()
@@ -79,7 +76,7 @@ class BinaryFetcher:
             )
 
             # Step 3: Download the binary
-            self._logger.info(f"⬇️ Downloading kubectl {version} → {destination}")
+            logger.info(f"⬇️ Downloading kubectl {version} → {destination}")
             bin_resp = httpx.get(binary_url, timeout=30.0, verify=False)
             bin_resp.raise_for_status()
 
@@ -87,11 +84,11 @@ class BinaryFetcher:
             destination.write_bytes(bin_resp.content)
             destination.chmod(0o755)
 
-            self._logger.success(f"✅ kubectl saved to: {destination}")
+            logger.success(f"✅ kubectl saved to: {destination}")
             return destination
 
         except httpx.HTTPError as exc:
-            self._logger.error(f"❌ Failed to download kubectl: {exc}")
+            logger.error(f"❌ Failed to download kubectl: {exc}")
             return None
 
     def _fetch_curl(self) -> Path | None:
@@ -114,7 +111,7 @@ class BinaryFetcher:
             latest_tag_url = resp.headers["location"]
             tag = latest_tag_url.rstrip("/").split("/")[-1]
 
-            self._logger.info(f"Latest cURL tag: {tag}")
+            logger.info(f"Latest cURL tag: {tag}")
 
             if self._os == "windows":
                 filename = f"curl-windows-{self._arch}-{tag}.tar.xz"
@@ -142,11 +139,11 @@ class BinaryFetcher:
                             extracted = Path(tmpdir) / member.name
                             destination.write_bytes(extracted.read_bytes())
                             destination.chmod(0o755)
-                            self._logger.success(f"✅ cURL saved to: {destination}")
+                            logger.success(f"✅ cURL saved to: {destination}")
                             return destination
 
                 raise FileNotFoundError("curl binary not found in archive.")
 
         except Exception as e:
-            self._logger.error(f"❌ Failed to fetch curl: {e}")
+            logger.error(f"❌ Failed to fetch curl: {e}")
             return None

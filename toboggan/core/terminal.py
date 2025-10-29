@@ -7,6 +7,7 @@ import tempfile
 from typing import Iterable
 
 # External library imports
+from loguru import logger
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import ThreadedAutoSuggest, AutoSuggestFromHistory
 from prompt_toolkit.history import ThreadedHistory, InMemoryHistory, FileHistory
@@ -15,7 +16,7 @@ from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.document import Document
 
 # Local library imports
-from toboggan.core import logbook
+from toboggan.utils import logbook
 from toboggan.core.executor import Executor
 from toboggan.core.action import NamedPipe
 
@@ -83,10 +84,8 @@ class TobogganCompleter(Completer):
 
 class Terminal:
     def __init__(self, executor: Executor, prefix="!", history: bool = False):
-        self._logger = logbook.get_logger()
-
         if history:
-            self._logger.info("💾 Persistent command history enabled.")
+            logger.info("💾 Persistent command history enabled.")
 
             # Create temp directory for history files
             self.__temp_dir = Path(tempfile.gettempdir()) / "toboggan"
@@ -104,13 +103,13 @@ class Terminal:
             try:
                 os.chmod(self.__history_file, 0o600)
             except PermissionError as e:
-                self._logger.warning(
+                logger.warning(
                     f"⚠️ Could not set secure permissions on history file: {e}"
                 )
 
             history_backend = ThreadedHistory(FileHistory(str(self.__history_file)))
         else:
-            self._logger.info("🗑️ In-memory command history enabled.")
+            logger.info("🗑️ In-memory command history enabled.")
             history_backend = ThreadedHistory(InMemoryHistory())  # in-memory history
 
         # Create prompt session with completer
@@ -134,7 +133,7 @@ class Terminal:
         result = None
         user_input = ""
 
-        self._logger.info(
+        logger.info(
             f"🔧 Prefix set to '{self.__prefix}' — use '{self.__prefix}h' for available commands."
         )
 
@@ -149,7 +148,7 @@ class Terminal:
                     # If there's text in the buffer, just clear it and continue
                     continue
 
-                self._logger.warning("Keyboard interruption received.")
+                logger.warning("Keyboard interruption received.")
 
                 if (
                     self.__target.os == "linux"
@@ -161,7 +160,7 @@ class Terminal:
 
                 break
             except Exception as exc:
-                self._logger.warning(f"Exception occured: {exc}")
+                logger.warning(f"Exception occured: {exc}")
                 continue
             else:
                 if not user_input.startswith(self.__prefix):
@@ -177,7 +176,7 @@ class Terminal:
                             print(result)
                     except KeyboardInterrupt:
                         print("\r", end="", flush=True)  # Clear the ^C
-                        self._logger.warning(
+                        logger.warning(
                             "Keyboard interruption received during remote command execution."
                         )
 
@@ -188,7 +187,7 @@ class Terminal:
                         user_input[len(self.__prefix) :].strip()
                     )
                 except ValueError as e:
-                    self._logger.error(f"❌ Command parsing failed: {e}")
+                    logger.error(f"❌ Command parsing failed: {e}")
                     continue
 
                 if not command_parts:
@@ -197,7 +196,7 @@ class Terminal:
                 command = command_parts[0].lower().replace("-", "_")
 
                 if command in ["e", "ex", "exit"]:
-                    self._logger.info("🛝 Sliding back up the toboggan.")
+                    logger.info("🛝 Sliding back up the toboggan.")
                     break
 
                 if command in ["help", "h"]:
@@ -258,17 +257,14 @@ class Terminal:
                             i += 1
 
                         if raw_args:
-                            self._logger.info(
-                                f"▶️ Running '{command}' with args: {raw_args}"
-                            )
+                            logger.info(f"▶️ Running '{command}' with args: {raw_args}")
                         else:
-                            self._logger.info(f"▶️ Running '{command}'")
+                            logger.info(f"▶️ Running '{command}'")
 
                         try:
                             if issubclass(action_class, NamedPipe):
                                 self.__executor.os_helper.start_named_pipe(
-                                    action_class=action_class,
-                                    **keyword_args
+                                    action_class=action_class, **keyword_args
                                 )
                                 continue
 
@@ -282,12 +278,12 @@ class Terminal:
                                 action_output = action.run()
 
                         except TypeError as exc:
-                            self._logger.warning(
+                            logger.warning(
                                 f"⚠️ Incorrect arguments for '{command}': {exc}"
                             )
                             continue
                         except Exception as exc:
-                            self._logger.error(f"❌ Action '{command}' failed: {exc}")
+                            logger.error(f"❌ Action '{command}' failed: {exc}")
                             continue
 
                         if action_output is not None:
@@ -295,7 +291,7 @@ class Terminal:
 
                         continue
 
-                self._logger.error(
+                logger.error(
                     f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
                 )
 

@@ -4,6 +4,7 @@ import re
 import os
 
 # Third party library imports
+from loguru import logger
 from Cryptodome.Cipher import AES
 from Cryptodome.Util.Padding import pad
 
@@ -44,11 +45,11 @@ class HideAction(BaseAction):
         if self.__openssl_path:
             self.__openssl_path = self.__openssl_path.strip()
             self._AES_KEY, self._AES_IV = generate_key_iv()
-            self._logger.info("🔑 OpenSSL detected, AES encryption enabled.")
-            self._logger.debug(f"🔐 AES Key: {self._AES_KEY}")
-            self._logger.debug(f"🔐 AES IV: {self._AES_IV}")
+            logger.info("🔑 OpenSSL detected, AES encryption enabled.")
+            logger.debug(f"🔐 AES Key: {self._AES_KEY}")
+            logger.debug(f"🔐 AES IV: {self._AES_IV}")
         else:
-            self._logger.warning(
+            logger.warning(
                 "⚠️ OpenSSL not found on target, falling back to base64 obfuscation."
             )
 

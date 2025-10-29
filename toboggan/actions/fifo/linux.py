@@ -2,8 +2,12 @@ import threading
 import time
 import random
 
+# External library imports
+from loguru import logger
+
+# Local application/library specific imports
 from toboggan.core.action import NamedPipe
-from toboggan.utils import methods
+
 
 class FifoAction(NamedPipe):
 
@@ -12,12 +16,12 @@ class FifoAction(NamedPipe):
     def __init__(
         self,
         executor,
-        read_interval: float=0.4,
+        read_interval: float = 0.4,
     ):
         # Get stdin/stdout from os_helper
         stdin_path = executor.os_helper.stdin_path
         stdout_path = executor.os_helper.stdout_path
-        
+
         super().__init__(executor, read_interval, stdin_path, stdout_path)
 
         self.__os_helper = executor.os_helper
@@ -29,7 +33,7 @@ class FifoAction(NamedPipe):
 
         self._shell = self._executor.shell
 
-        self._logger.info(f"🌀 FiFo will use shell: {self._shell}")
+        logger.info(f"🌀 FiFo will use shell: {self._shell}")
 
     def setup(self):
         # Use busybox-wrapped mkfifo

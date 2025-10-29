@@ -1,3 +1,6 @@
+# External library imports
+from loguru import logger
+
 # Local library imports
 from toboggan.core.action import BaseAction
 
@@ -28,17 +31,17 @@ class PathAction(BaseAction):
             raw_path = self._executor.remote_execute(command="/bin/echo $PATH").strip()
 
             if not raw_path:
-                self._logger.warning("⚠️ No PATH variable found or command failed.")
+                logger.warning("⚠️ No PATH variable found or command failed.")
                 return
 
             path_entries = raw_path.split(":")
             unique_paths = list(dict.fromkeys(path_entries))  # Preserves order
 
-            self._logger.info("📂 Remote PATH variable lookup order:")
+            logger.info("📂 Remote PATH variable lookup order:")
             for index, entry in enumerate(unique_paths, start=1):
                 print(f"   {index}. {entry}")
 
-            self._logger.debug(f"Full PATH string: {raw_path!r}")
+            logger.debug(f"Full PATH string: {raw_path!r}")
 
         except Exception as exc:
-            self._logger.error(f"❌ Failed to read remote PATH variable: {exc}")
+            logger.error(f"❌ Failed to read remote PATH variable: {exc}")

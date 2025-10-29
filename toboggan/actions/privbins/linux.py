@@ -1,3 +1,6 @@
+# External library imports
+from loguru import logger
+
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 
@@ -12,7 +15,7 @@ class PrivBinsAction(BaseAction):
         Fetches and displays all privileged binaries (SUID & SGID) on the system.
         Prints each section separately.
         """
-        self._logger.info("🔍 Scanning for SUID binaries (Execute as Root)")
+        logger.info("🔍 Scanning for SUID binaries (Execute as Root)")
 
         suid_output = self._executor.remote_execute(
             "find / -perm -u=s -type f 2>/dev/null"
@@ -21,9 +24,9 @@ class PrivBinsAction(BaseAction):
         if suid_output.strip():
             print("\n".join(suid_output.strip().split("\n")))
         else:
-            self._logger.warning("No SUID Binaries Found or Insufficient Permissions.")
+            logger.warning("No SUID Binaries Found or Insufficient Permissions.")
 
-        self._logger.info("🔍 Scanning for SGID binaries (Execute as Group Owner)")
+        logger.info("🔍 Scanning for SGID binaries (Execute as Group Owner)")
 
         sgid_output = self._executor.remote_execute(
             "find / -perm -g=s -type f 2>/dev/null"
@@ -32,4 +35,4 @@ class PrivBinsAction(BaseAction):
         if sgid_output.strip():
             print("\n".join(sgid_output.strip().split("\n")))
         else:
-            self._logger.warning("No SGID Binaries Found or Insufficient Permissions.")
+            logger.warning("No SGID Binaries Found or Insufficient Permissions.")

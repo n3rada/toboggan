@@ -1,8 +1,5 @@
 from abc import ABC, abstractmethod
 
-# Local imports
-from toboggan.core import logbook
-
 
 class OSHelperBase(ABC):
     """
@@ -14,7 +11,6 @@ class OSHelperBase(ABC):
         executor,
     ):
         self._executor = executor
-        self._logger = logbook.get_logger()
         self._stdin_path = None
         self._stdout_path = None
 

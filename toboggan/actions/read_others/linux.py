@@ -1,5 +1,7 @@
-# toboggan/actions/read_others.py
+# External library imports
+from loguru import logger
 
+# Local application/library specific imports
 from toboggan.core.action import BaseAction
 
 
@@ -25,9 +27,7 @@ class ReadableOtherHomes(BaseAction):
         result = self._executor.remote_execute(command=command).strip()
 
         if result:
-            self._logger.info(
-                "🧾 Readable files found in other users' home directories:"
-            )
+            logger.info("🧾 Readable files found in other users' home directories:")
             directory_map = {}
 
             for file_path in result.split("\n"):
@@ -41,6 +41,4 @@ class ReadableOtherHomes(BaseAction):
                 for file in sorted(files):
                     print(f"\t   - {file}")
         else:
-            self._logger.warning(
-                "🔒 No readable files found in other users' directories."
-            )
+            logger.warning("🔒 No readable files found in other users' directories.")

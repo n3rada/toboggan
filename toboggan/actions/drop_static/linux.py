@@ -1,3 +1,7 @@
+# External library imports
+from loguru import logger
+
+# Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.actions.drop_bin.linux import DropBinary
 from toboggan.utils.binaries import BinaryFetcher
@@ -8,9 +12,9 @@ class DropStaticBinary(BaseAction):
 
     def run(self, name: str = None, remote_path: str = None) -> None:
         if not name:
-            self._logger.warning("⚠️ No binary name provided.")
+            logger.warning("⚠️ No binary name provided.")
             available = BinaryFetcher.list_available()
-            self._logger.info("📦 Available static binaries:")
+            logger.info("📦 Available static binaries:")
             for b in available:
                 print(f"  • {b}")
             return
@@ -22,11 +26,11 @@ class DropStaticBinary(BaseAction):
             fetcher = BinaryFetcher(os=os, arch=arch)
             local_path = fetcher.get(name)
         except Exception as e:
-            self._logger.error(f"❌ Failed to fetch binary: {e}")
+            logger.error(f"❌ Failed to fetch binary: {e}")
             return
 
         if not local_path or not local_path.exists():
-            self._logger.error("❌ Binary download failed or path invalid.")
+            logger.error("❌ Binary download failed or path invalid.")
             return
 
         DropBinary(self._executor).run(

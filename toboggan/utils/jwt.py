@@ -5,8 +5,8 @@ import json
 import base64
 from datetime import datetime, timezone
 
-# Local library imports
-from toboggan.core import logbook
+# External library imports
+from loguru import logger
 
 
 def parse_jwt(token: str) -> tuple[dict, dict, bytes]:
@@ -29,12 +29,10 @@ class TokenReader:
     def __init__(self, access_token: str):
         self._access_token = access_token
 
-        self._logger = logbook.get_logger()
-
         try:
             self._header, self._payload, self._signature = parse_jwt(access_token)
         except Exception as e:
-            self._logger.error(f"❌ Failed to parse JWT: {e}")
+            logger.error(f"❌ Failed to parse JWT: {e}")
             raise
 
         self._expires_on = self._payload.get("exp")
@@ -43,7 +41,7 @@ class TokenReader:
 
         exp_datetime = self.expiration_datetime
         human_date = exp_datetime.strftime("%A %d %b %Y, %H:%M:%S %Z")
-        self._logger.info(f"🔐 JWT initialized, expires at {human_date}.")
+        logger.info(f"🔐 JWT initialized, expires at {human_date}.")
 
     @property
     def audience(self) -> str:

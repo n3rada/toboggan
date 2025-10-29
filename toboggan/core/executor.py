@@ -3,8 +3,10 @@ import random
 import time
 import base64
 
+# External library imports
+from loguru import logger
+
 # Local application/library specific imports
-from toboggan.core import logbook
 from toboggan.utils.methods import SingletonMeta
 from toboggan.core import action
 from toboggan.core import target
@@ -24,8 +26,6 @@ class Executor(metaclass=SingletonMeta):
         base64_wrapping: bool = False,
         camouflage: bool = False,
     ):
-        self._logger = logbook.get_logger()
-
         if execute_method is None:
             raise ValueError("Executor should have an execute callable method.")
 
@@ -44,7 +44,7 @@ class Executor(metaclass=SingletonMeta):
             self.__os = self.__guess_os()
         else:
             self.__os = target_os
-            self._logger.info(f"🖥️ OS set to {target_os}")
+            logger.info(f"🖥️ OS set to {target_os}")
 
         self._shell = shell
         self._shell_validated = False  # Shell validation flag
@@ -121,21 +121,17 @@ class Executor(metaclass=SingletonMeta):
 
         if not command:
             if debug:
-                self._logger.warning(
-                    "⚠️ Attempted to execute an empty command. Skipping."
-                )
+                logger.warning("⚠️ Attempted to execute an empty command. Skipping.")
             return ""
 
         if debug:
-            self._logger.debug(f"Executing: {command}")
+            logger.debug(f"Executing: {command}")
 
         # Adjust timeout based on avg response time, even if passed explicitly
         if self._avg_response_time is not None and timeout is not None:
             timeout = max(timeout, self._avg_response_time * 1.5)
             if debug:
-                self._logger.debug(
-                    f"⏱️ Timeout adjusted to {timeout:.2f}s based on avg RTT"
-                )
+                logger.debug(f"⏱️ Timeout adjusted to {timeout:.2f}s based on avg RTT")
 
         result = ""
 
@@ -143,13 +139,13 @@ class Executor(metaclass=SingletonMeta):
         if not bypass_camouflage and self.__camouflage:
             command = self.__camouflage_action.run(command)
             if debug:
-                self._logger.debug(f"🔒 Obfuscated command for execution: {command}")
+                logger.debug(f"🔒 Obfuscated command for execution: {command}")
 
         # Apply Base64 encoding if enabled
         if self.__base64_wrapping:
             command = base64.b64encode(command.encode()).decode()
             if debug:
-                self._logger.debug(f"📦 Base64-encoded command: {command}")
+                logger.debug(f"📦 Base64-encoded command: {command}")
 
         for attempt in range(3):
             try:
@@ -169,28 +165,26 @@ class Executor(metaclass=SingletonMeta):
 
                 if self._initial_execution_successful is False:
                     self._initial_execution_successful = True
-                    self._logger.success("✅ Remote target is reachable.")
+                    logger.success("✅ Remote target is reachable.")
 
                 break  # Exit retry loop on success
 
             except Exception as exc:
 
                 if self._initial_execution_successful is False:
-                    self._logger.error(f"❌ Failed initial execution check: {exc}")
+                    logger.error(f"❌ Failed initial execution check: {exc}")
                     raise RuntimeError(
                         "Unable to communicate with remote target. Aborting."
                     )
 
                 if debug:
-                    self._logger.warning(
+                    logger.warning(
                         f"❌ Execution failed (Attempt {attempt+1}/3): {exc}"
                     )
 
                 if not retry:
                     if debug:
-                        self._logger.error(
-                            "⏹ Retrying is disabled. Returning empty result."
-                        )
+                        logger.error("⏹ Retrying is disabled. Returning empty result.")
                     if raise_on_failure:
                         raise exc
 
@@ -199,26 +193,24 @@ class Executor(metaclass=SingletonMeta):
                 # Apply exponential backoff with jitter
                 sleep_time = (2**attempt) + (random.randint(0, 1000) / 1000)
                 if debug:
-                    self._logger.warning(
-                        f"⏳ Retrying after {sleep_time:.2f} seconds..."
-                    )
+                    logger.warning(f"⏳ Retrying after {sleep_time:.2f} seconds...")
                 time.sleep(sleep_time)
 
         if not result:
             return ""
 
         if debug:
-            self._logger.debug(f"📩 Received raw output: {result!r}")
+            logger.debug(f"📩 Received raw output: {result!r}")
 
         # Attempt to de-obfuscate the result if obfuscation was used
         if not bypass_camouflage and self.__camouflage:
             try:
                 result = self.__uncamouflage_action.run(result)
                 if debug:
-                    self._logger.debug(f"🔓 De-obfuscated output: {result!r}")
+                    logger.debug(f"🔓 De-obfuscated output: {result!r}")
             except ValueError:
                 if debug:
-                    self._logger.error(
+                    logger.error(
                         f"⚠️ Failed to de-obfuscate command output.\n"
                         f"   • Original Command: {command!r}\n"
                         f"   • Received Output: {result!r}"
@@ -239,7 +231,7 @@ class Executor(metaclass=SingletonMeta):
         try:
             self.remote_execute(f"rm -r {self._working_directory}")
         except Exception as exc:
-            self._logger.warning(f"⚠️ Failed to delete remote working directory: {exc}")
+            logger.warning(f"⚠️ Failed to delete remote working directory: {exc}")
 
     def calculate_max_chunk_size(self, min_size=1024, max_size=262144) -> int:
         """
@@ -259,7 +251,7 @@ class Executor(metaclass=SingletonMeta):
         junk = "A" * junk_size
         cmd = f"echo {junk}"
 
-        self._logger.info(f"📏 Trying maximum size: {max_size} bytes")
+        logger.info(f"📏 Trying maximum size: {max_size} bytes")
 
         try:
             self.remote_execute(
@@ -269,13 +261,13 @@ class Executor(metaclass=SingletonMeta):
                 raise_on_failure=True,
                 debug=False,
             )
-            self._logger.success(f"✅ Maximum size {max_size} bytes works!")
+            logger.success(f"✅ Maximum size {max_size} bytes works!")
             return max_size
         except Exception:
-            self._logger.info("❌ Maximum size failed, falling back to binary search")
+            logger.info("❌ Maximum size failed, falling back to binary search")
 
         # Fall back to binary search if maximum size failed
-        self._logger.info(
+        logger.info(
             f"🔢 Binary search range: {min_size} to {max_size} bytes (1024-aligned)"
         )
 
@@ -289,7 +281,7 @@ class Executor(metaclass=SingletonMeta):
             junk = "A" * junk_size
             cmd = f"echo {junk}"
 
-            self._logger.info(f"📏 Trying size: {mid} bytes")
+            logger.info(f"📏 Trying size: {mid} bytes")
 
             try:
                 self.remote_execute(
@@ -299,30 +291,28 @@ class Executor(metaclass=SingletonMeta):
                     raise_on_failure=True,
                     debug=False,
                 )
-                self._logger.info(f"✅ Success at {mid} bytes")
+                logger.info(f"✅ Success at {mid} bytes")
                 best = mid
                 low = mid + 1024
             except Exception:
-                self._logger.info(f"❌ Failed at {mid} bytes")
+                logger.info(f"❌ Failed at {mid} bytes")
                 high = mid - 1024
 
-            self._logger.debug(
-                f"🔁 Search range: low={low}, high={high}, best={best}"
-            )
+            logger.debug(f"🔁 Search range: low={low}, high={high}, best={best}")
 
-        self._logger.success(f"📏 Final maximum command size: {best} bytes")
+        logger.success(f"📏 Final maximum command size: {best} bytes")
         return best
 
     # Private methods
 
     def __guess_os(self) -> str:
-        self._logger.info("🔍 Guessing remote OS")
+        logger.info("🔍 Guessing remote OS")
 
         if self.remote_execute(command="uname").strip():
-            self._logger.info("🖥️ Assuming Linux OS.")
+            logger.info("🖥️ Assuming Linux OS.")
             return "linux"
 
-        self._logger.info("🖥️ Assuming Windows OS.")
+        logger.info("🖥️ Assuming Windows OS.")
         return "windows"
 
     def __validate_shell(self) -> bool:
@@ -342,7 +332,7 @@ class Executor(metaclass=SingletonMeta):
         if isinstance(self._os_helper, WindowsHelper):
             return True  # Assume PowerShell is valid for Windows
 
-        validation_command = f'command -v {self._shell}'
+        validation_command = f"command -v {self._shell}"
 
         try:
             output = (
@@ -357,17 +347,15 @@ class Executor(metaclass=SingletonMeta):
                 .lower()
             )
         except Exception as exc:
-            self._logger.warning(f"⚠️ Failed to test shell '{self._shell}': {exc}")
+            logger.warning(f"⚠️ Failed to test shell '{self._shell}': {exc}")
             output = ""
 
         if not output or "not found" in output or "no such file" in output:
-            self._logger.error(f"❌ Remote shell '{self._shell}' appears invalid.")
+            logger.error(f"❌ Remote shell '{self._shell}' appears invalid.")
             self._shell_validated = False
             return False
 
-        self._logger.info(
-            f"💾 Remote shell: '{self._shell}' — verified and ready."
-        )
+        logger.info(f"💾 Remote shell: '{self._shell}' — verified and ready.")
         self._shell_validated = True
         return True
 
@@ -403,7 +391,7 @@ class Executor(metaclass=SingletonMeta):
             )
 
             self.remote_execute(command=f"mkdir -p {self._working_directory}")
-            self._logger.info(
+            logger.info(
                 f"📂 Remote working directory initialized: {self._working_directory}"
             )
 
@@ -449,11 +437,11 @@ class Executor(metaclass=SingletonMeta):
                 if isinstance(self._os_helper, LinuxHelper):
                     if linux_shells:
                         next_shell = linux_shells.pop(0)
-                        self._logger.info(f"🔄 Falling back to {next_shell}")
+                        logger.info(f"🔄 Falling back to {next_shell}")
                         self.shell = next_shell
                         continue
                     else:
-                        self._logger.error("❌ No valid shell found on Linux target.")
+                        logger.error("❌ No valid shell found on Linux target.")
                         raise RuntimeError("No valid shell found on Linux target.")
 
         return self._shell
@@ -494,7 +482,7 @@ class Executor(metaclass=SingletonMeta):
             raise ValueError("Chunk size must be a positive integer.")
 
         if size % 1024 != 0:
-            self._logger.warning(
+            logger.warning(
                 f"Chunk size {size} is not a multiple of 1024. Rounding down to nearest 1024."
             )
             size = (size // 1024) * 1024
@@ -509,10 +497,10 @@ class Executor(metaclass=SingletonMeta):
                 debug=False,
             )
         except Exception:
-            self._logger.error(
+            logger.error(
                 f"❌ Chunk size of {size} bytes does not work on the remote system."
             )
             return
 
         self._chunk_max_size = size
-        self._logger.info(f"📏 Chunk max size set to: {self._chunk_max_size} bytes")
+        logger.info(f"📏 Chunk max size set to: {self._chunk_max_size} bytes")

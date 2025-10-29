@@ -1,3 +1,7 @@
+# External library imports
+from loguru import logger
+
+# Local application/library specific imports
 from toboggan.core.action import BaseAction
 
 
@@ -7,10 +11,10 @@ class InternetCheckAction(BaseAction):
     )
 
     def run(self, ip: str = "9.9.9.9", hostname: str = "www.office.com") -> str:
-        self._logger.info("🌐 Outbound Connectivity Check")
+        logger.info("🌐 Outbound Connectivity Check")
 
         # Step 1: ICMP Ping
-        self._logger.info(f"📡 Testing ICMP (ping to {ip})")
+        logger.info(f"📡 Testing ICMP (ping to {ip})")
         ping_cmd = None
 
         ping_path = self._executor.remote_execute("command -v ping")
@@ -25,14 +29,14 @@ class InternetCheckAction(BaseAction):
         if ping_cmd:
             ping_result = self._executor.remote_execute(ping_cmd, timeout=5)
             if ping_result and "1 packets transmitted" in ping_result:
-                self._logger.success(f"✅ ICMP ping to {ip} succeeded.")
+                logger.success(f"✅ ICMP ping to {ip} succeeded.")
             else:
-                self._logger.warning("❌ ICMP ping failed or no response.")
+                logger.warning("❌ ICMP ping failed or no response.")
         else:
-            self._logger.warning("⚠️ No usable ping binary found.")
+            logger.warning("⚠️ No usable ping binary found.")
 
         # Step 2: DNS Resolution
-        self._logger.info(f"🧠 Testing DNS resolution over: {hostname}")
+        logger.info(f"🧠 Testing DNS resolution over: {hostname}")
 
         tool = None
         use_flags = ""
@@ -46,26 +50,26 @@ class InternetCheckAction(BaseAction):
         elif host_path := self._executor.remote_execute("command -v host"):
             tool = host_path.strip()
         else:
-            self._logger.warning("⚠️ No usable DNS utility found.")
+            logger.warning("⚠️ No usable DNS utility found.")
 
         if tool:
-            self._logger.info(f"⚙️ Using {tool}")
+            logger.info(f"⚙️ Using {tool}")
             dns_result = self._executor.remote_execute(
                 f"{tool} {use_flags} {hostname}", timeout=10
             )
 
-            self._logger.debug(f"🔎 DNS result: {dns_result.strip()}")
+            logger.debug(f"🔎 DNS result: {dns_result.strip()}")
 
             if dns_result and any(
                 keyword in dns_result.lower()
                 for keyword in [hostname.lower(), "canonical name", "has address"]
             ):
-                self._logger.success("✅ DNS resolution succeeded.")
+                logger.success("✅ DNS resolution succeeded.")
             else:
-                self._logger.error("❌ DNS resolution failed or no response.")
+                logger.error("❌ DNS resolution failed or no response.")
 
         # Step 3: HTTP/HTTPS
-        self._logger.info("📦 Checking outbound TCP HTTP(S) access")
+        logger.info("📦 Checking outbound TCP HTTP(S) access")
 
         tool = None
         use_flags = ""
@@ -84,9 +88,9 @@ class InternetCheckAction(BaseAction):
             use_flags = "--spider"
 
         if not tool:
-            self._logger.error("❌ No suitable HTTP tool found (curl/wget).")
+            logger.error("❌ No suitable HTTP tool found (curl/wget).")
         else:
-            self._logger.info(f"⚙️ Using {tool}")
+            logger.info(f"⚙️ Using {tool}")
             cmd = f"{tool} {use_flags} {hostname}"
             result = self._executor.remote_execute(cmd, timeout=10, retry=False)
             if (
@@ -95,6 +99,6 @@ class InternetCheckAction(BaseAction):
                 or "not resolve" in result.lower()
                 or "not found" in result.lower()
             ):
-                self._logger.error(f"❌ Could not reach {hostname}")
+                logger.error(f"❌ Could not reach {hostname}")
             else:
-                self._logger.success(f"✅ Reached {hostname}")
+                logger.success(f"✅ Reached {hostname}")

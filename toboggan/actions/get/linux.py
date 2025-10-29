@@ -5,11 +5,13 @@ from pathlib import Path
 import tempfile
 
 # Third party library imports
+from loguru import logger
 from tqdm import tqdm
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.utils import methods
+
 
 class GetAction(BaseAction):
     """Handles remote file retrieval."""
@@ -36,10 +38,10 @@ class GetAction(BaseAction):
         ).strip()
 
         if can_read != "R":
-            self._logger.error(f"❌ No read permission for {remote_path}.")
+            logger.error(f"❌ No read permission for {remote_path}.")
             return
 
-        self._logger.info(f"📂 File is accessible: {remote_path}")
+        logger.info(f"📂 File is accessible: {remote_path}")
 
         # Determine final local path
         if local_path is None:
@@ -52,7 +54,7 @@ class GetAction(BaseAction):
         else:
             save_path = local_path
 
-        self._logger.info(f"💾 File will be saved to: {save_path}")
+        logger.info(f"💾 File will be saved to: {save_path}")
 
         # Step 2: Compress and Base64-encode the remote file
         random_file_name = methods.generate_fixed_length_token(6) + ".tar.gz"
@@ -69,14 +71,14 @@ class GetAction(BaseAction):
             command=f"wc -c {remote_base64_path}"
         ).strip()
         if not wc_output:
-            self._logger.error(f"❌ Failed to retrieve file size for: {remote_path}")
+            logger.error(f"❌ Failed to retrieve file size for: {remote_path}")
             self._executor.remote_execute(command=f"rm -f {remote_base64_path}")
             return False
 
         total_encoded_size = int(wc_output.split()[0])
         total_chunks = (total_encoded_size + chunk_size - 1) // chunk_size
 
-        self._logger.info(
+        logger.info(
             f"⬇️ Downloading {remote_path} ({total_chunks} chunks) to {save_path}.tar.gz"
         )
 
@@ -99,9 +101,9 @@ class GetAction(BaseAction):
                         temp_file.write(chunk.encode())
                         progress_bar.update(len(chunk))
                     except Exception as exc:
-                        self._logger.warning(f"⚠️ Error writing chunk {idx + 1}: {exc}")
+                        logger.warning(f"⚠️ Error writing chunk {idx + 1}: {exc}")
                 else:
-                    self._logger.warning(f"⚠️ Missing chunk {idx + 1}, skipping.")
+                    logger.warning(f"⚠️ Missing chunk {idx + 1}, skipping.")
 
         # Step 5: Decode and extract
         self._executor.remote_execute(command=f"rm -f {remote_base64_path}")
@@ -116,11 +118,9 @@ class GetAction(BaseAction):
             with tarfile.open(temp_tar_path, "r:gz") as tar:
                 tar.extractall(path=local_path)
 
-            self._logger.success(
-                f"✅ File download and extraction completed: {local_path}"
-            )
+            logger.success(f"✅ File download and extraction completed: {local_path}")
         except Exception as exc:
-            self._logger.error(f"❌ Failed to decode and extract file: {exc}")
+            logger.error(f"❌ Failed to decode and extract file: {exc}")
             return
         finally:
             Path(temp_download_path).unlink(missing_ok=True)

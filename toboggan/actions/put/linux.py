@@ -4,6 +4,7 @@ import hashlib
 from pathlib import Path
 
 # Related third-party imports
+from loguru import logger
 from tqdm import tqdm
 
 # Local application/library specific imports
@@ -27,14 +28,14 @@ class PutAction(BaseAction):
         """
         local_file = Path(local_path)
         if not local_file.exists() or not local_file.is_file():
-            self._logger.error(f"❌ Local file does not exist: {local_path}")
+            logger.error(f"❌ Local file does not exist: {local_path}")
             return
 
         # Default remote path to current working directory if not provided
         if not remote_path:
             remote_path = f"{self._executor.target.pwd}/{local_file.name}"
 
-        self._logger.info(f"📤 Uploading {local_path} to {remote_path}")
+        logger.info(f"📤 Uploading {local_path} to {remote_path}")
 
         # Define remote encoded path early
         remote_encoded_path = (
@@ -52,7 +53,7 @@ class PutAction(BaseAction):
         test_command = f"touch {test_file} && echo O && rm -f {test_file} || echo F"
 
         if self._executor.remote_execute(test_command) != "O":
-            self._logger.error(
+            logger.error(
                 f"❌ Cannot write to remote directory: {upper_directory}. "
                 "Please check permissions or specify a different path."
             )
@@ -64,18 +65,18 @@ class PutAction(BaseAction):
 
         # Calculate local MD5 of original file
         local_md5 = hashlib.md5(raw_bytes).hexdigest()
-        self._logger.info(f"🔒 Local MD5: {local_md5}")
+        logger.info(f"🔒 Local MD5: {local_md5}")
 
         chunk_size = self._executor.chunk_max_size
         encoded_size = len(encoded_file)
         total_chunks = (encoded_size + chunk_size - 1) // chunk_size
 
-        self._logger.info(
+        logger.info(
             f"📦 Encoded file size: {encoded_size} bytes ({total_chunks} chunks)"
         )
 
         # Step 2: Upload in chunks
-        self._logger.info(
+        logger.info(
             f"📤 Uploading {local_file.name} in chunks inside: {self._executor.working_directory}"
         )
 
@@ -90,14 +91,14 @@ class PutAction(BaseAction):
                     )
                     progress_bar.update(len(chunk))
         except KeyboardInterrupt:
-            self._logger.warning("⚠️ Upload interrupted by user. Cleaning up...")
+            logger.warning("⚠️ Upload interrupted by user. Cleaning up...")
             self._executor.remote_execute(f"rm -f {remote_encoded_path}")
             return
 
-        self._logger.success(f"📂 Remote encoded file path: {remote_encoded_path}")
+        logger.success(f"📂 Remote encoded file path: {remote_encoded_path}")
 
         # Step 3: Decode and decompress remotely
-        self._logger.info(f"📂 Decoding and extracting remotely to {remote_path}")
+        logger.info(f"📂 Decoding and extracting remotely to {remote_path}")
         self._executor.remote_execute(
             f"base64 -d {remote_encoded_path} | dd of={remote_path} bs=1024",
             retry=True,
@@ -110,17 +111,15 @@ class PutAction(BaseAction):
         md5sum = self._executor.remote_execute(f"md5sum {remote_path}").strip()
 
         if not md5sum:
-            self._logger.error(f"❌ Failed to create the file at {remote_path}.")
+            logger.error(f"❌ Failed to create the file at {remote_path}.")
             return
 
         remote_md5 = md5sum.split()[0]
-        self._logger.info(f"🔒 Remote MD5: {remote_md5}")
+        logger.info(f"🔒 Remote MD5: {remote_md5}")
         if remote_md5 != local_md5:
-            self._logger.warning(f"❌ MD5 mismatch!")
+            logger.warning(f"❌ MD5 mismatch!")
             return
 
-        self._logger.success(
-            f"✅ File uploaded and extracted successfully: {remote_path}"
-        )
+        logger.success(f"✅ File uploaded and extracted successfully: {remote_path}")
 
         return remote_path

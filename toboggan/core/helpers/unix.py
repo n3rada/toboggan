@@ -2,9 +2,14 @@ import secrets
 import random
 import re
 
+# External library imports
+from loguru import logger
+
+# Local application/library specific imports
 from toboggan.core.helpers import base
 from toboggan.utils import methods
 from toboggan.core.action import NamedPipe
+
 
 class LinuxHelper(base.OSHelperBase):
     """
@@ -18,7 +23,7 @@ class LinuxHelper(base.OSHelperBase):
         self.__is_busybox_present = None
         self.__busybox_commands = set()
 
-        self._logger.debug("Initialized LinuxHelper.")
+        logger.debug("Initialized LinuxHelper.")
 
     def fifo_execute(self, command: str) -> None:
         self.__named_pipe_instance.execute(command)
@@ -26,17 +31,17 @@ class LinuxHelper(base.OSHelperBase):
     def start_named_pipe(self, action_class, **kwargs) -> None:
         """Starts a NamedPipe action and keeps track of it."""
         if not issubclass(action_class, NamedPipe):
-            self._logger.error(f"❌ {action_class.__name__} is not a NamedPipe action.")
+            logger.error(f"❌ {action_class.__name__} is not a NamedPipe action.")
             return
 
         try:
             self.__named_pipe_instance = action_class(self._executor, **kwargs)
             self.__named_pipe_instance.setup()
             self.__named_pipe_instance.run()
-            self._logger.success(f"✅ Named pipe {action_class.__name__} started!")
+            logger.success(f"✅ Named pipe {action_class.__name__} started!")
 
         except Exception as e:
-            self._logger.error(f"⚠️ Failed to start named pipe: {e}")
+            logger.error(f"⚠️ Failed to start named pipe: {e}")
             self.__named_pipe_instance = None
 
     def stop_named_pipe(self):
@@ -142,7 +147,7 @@ class LinuxHelper(base.OSHelperBase):
             name = f".{name}"
 
         random_system_file_name = f"{directory}{name}"
-        self._logger.debug(f"Generated random system file name: {random_system_file_name}")
+        logger.debug(f"Generated random system file name: {random_system_file_name}")
 
         return random_system_file_name
 
@@ -175,21 +180,21 @@ class LinuxHelper(base.OSHelperBase):
         Returns:
             bool: True if BusyBox is found, False otherwise.
         """
-        self._logger.info("🔍 Checking for BusyBox presence on the target system.")
+        logger.info("🔍 Checking for BusyBox presence on the target system.")
         try:
             result = self._executor.remote_execute(command="/bin/busybox", debug=False)
 
             if result and "Currently defined functions:" in result:
                 self.__is_busybox_present = True
                 self.__busybox_commands = self.__parse_busybox_commands(result)
-                self._logger.success("📦 BusyBox detected and command list parsed.")
+                logger.success("📦 BusyBox detected and command list parsed.")
                 return True
 
-            self._logger.warning("⚠️ BusyBox not found or output not recognized.")
+            logger.warning("⚠️ BusyBox not found or output not recognized.")
             self.__is_busybox_present = False
             return False
         except Exception as exc:
-            self._logger.error(f"❌ Error while checking BusyBox: {exc}")
+            logger.error(f"❌ Error while checking BusyBox: {exc}")
             return False
 
     def __parse_busybox_commands(self, output: str) -> set[str]:

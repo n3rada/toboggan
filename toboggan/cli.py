@@ -6,12 +6,13 @@ import time
 from pathlib import Path
 
 # External library imports
+from loguru import logger
 from modwrap import ModuleWrapper
 import httpx
 
 # Local library imports
 from toboggan import __version__
-from toboggan.core import logbook
+from toboggan.utils import logbook
 from toboggan.core import executor
 from toboggan.core import terminal
 from toboggan.utils import methods
@@ -198,7 +199,7 @@ def main() -> int:
     if args.debug:
         env["LOG_LEVEL"] = "DEBUG"
 
-    logger = logbook.get_logger()
+    logbook.setup_logging(level=env.get("LOG_LEVEL", "INFO"))
 
     if args.proxy:
         if not methods.is_valid_proxy(args.proxy):
