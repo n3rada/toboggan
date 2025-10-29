@@ -304,8 +304,10 @@ class Executor(metaclass=SingletonMeta):
     def __guess_os(self) -> str:
         logger.info("🔍 Guessing remote OS")
 
-        if self.remote_execute(command="uname").strip():
-            logger.info("🖥️ Assuming Linux OS.")
+        uname_output = self.remote_execute(command="uname", retry=False).strip().lower()
+
+        if uname_output and "not recognized" not in uname_output:
+            logger.info("🖥️ Detected Linux OS via uname.")
             return "linux"
 
         logger.info("🖥️ Assuming Windows OS.")
