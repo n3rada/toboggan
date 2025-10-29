@@ -34,6 +34,7 @@ class TobogganCompleter(Completer):
             "help": "Show help message",
             "chunksize": "Probe or manually set the max command size",
             "debug": "Toggle debug mode on/off",
+            "trace": "Toggle trace mode on/off",
             "paths": "Show custom paths and command location cache",
         }
 
@@ -189,14 +190,18 @@ class Terminal:
                 user_input = self.__prompt_session.prompt(message=self.__prompt())
                 if not user_input:
                     continue
+            except EOFError:
+                # Control-D pressed
+                self._exit()
+                break
             except KeyboardInterrupt:
                 if self.__prompt_session.app.current_buffer.text:
                     continue
 
                 if self._exit():
                     break
-                else:
-                    continue
+
+                continue
 
             except Exception as exc:
                 logger.warning(f"Exception occured: {exc}")
@@ -238,8 +243,8 @@ class Terminal:
                 if command in ["e", "ex", "exit"]:
                     if self._exit():
                         break
-                    else:
-                        continue
+
+                    continue
 
                 if command in ["help", "h"]:
                     print(self.__get_help())
