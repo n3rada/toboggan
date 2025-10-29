@@ -114,8 +114,9 @@ toboggan -m ~/phpexploit.py --fifo
 
 Toboggan will create a FIFO-based communication channel, allowing you to interact with the remote system in a more dynamic way (e.g., using `sudo -l`).
 
->[!WARNING] Ctrl+C not forwarded
-> Control characters only work in real TTY/PTY environments.
+> [!WARNING]
+> Ctrl+C not forwarded. Control characters only work in real TTY/PTY environments.
+
 
 ## 🛠️ Bring Your Own Actions (BYOA)
 
