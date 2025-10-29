@@ -8,8 +8,17 @@ class Target:
         system_info: str = None,
     ):
         self.os = os
-        self.user = user
-        self.hostname = hostname
+
+        if ["whoami:", "not found", "introuvable"] in user.lower():
+            user = None
+        else:
+            self.user = user
+
+        if ["hostname:", "not found", "introuvable"] in hostname.lower():
+            hostname = None
+        else:
+            self.hostname = hostname
+
         self.pwd = pwd
         self._system_info = system_info
         self._architecture = None
