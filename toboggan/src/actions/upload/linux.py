@@ -32,16 +32,18 @@ class UploadAction(BaseAction):
             logger.error(f"❌ Local file does not exist: {local_path}")
             return
 
+        current_working_directory = self._executor.target.pwd.rstrip("/")
+
         # Default remote path to current working directory if not provided
         if not remote_path:
-            remote_path = f"{self._executor.target.pwd}/{local_file.name}"
+            remote_path = f"{current_working_directory}/{local_file.name}"
         else:
 
             if remote_path.startswith("./"):
                 remote_path = remote_path.lstrip("./")
 
             if not remote_path.startswith("/"):
-                remote_path = f"{self._executor.target.pwd}/{remote_path}"
+                remote_path = f"{current_working_directory}/{remote_path}"
 
             # If remote_path looks like a directory (ends with /), append filename
             if remote_path.endswith("/"):
