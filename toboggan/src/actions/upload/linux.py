@@ -24,6 +24,7 @@ class UploadAction(BaseAction):
         Args:
             local_path (str): Path to the local file.
             remote_path (str, optional): Destination path on the remote system.
+                                         Can be a directory or full file path.
                                          Defaults to the current working directory.
         """
         local_file = Path(local_path)
@@ -34,34 +35,27 @@ class UploadAction(BaseAction):
         # Default remote path to current working directory if not provided
         if not remote_path:
             remote_path = f"{self._executor.target.pwd}/{local_file.name}"
+        else:
+
+            if remote_path.startswith("./"):
+                remote_path = remote_path.lstrip("./")
+
+            if not remote_path.startswith("/"):
+                remote_path = f"{self._executor.target.pwd}/{remote_path}"
+
+            # If remote_path looks like a directory (ends with /), append filename
+            if remote_path.endswith("/"):
+                remote_path = f"{remote_path.rstrip('/')}/{local_file.name}"
 
         logger.info(f"📤 Uploading {local_path} to {remote_path}")
 
         # Define remote encoded path early
         remote_encoded_path = (
-            f"{self._executor.working_directory}/{local_file.name}.b64"
+            f"{self._executor.working_directory}/{generate_fixed_length_token(24)}"
         )
 
         # Clean up any leftover encoded file from previous runs
         self._executor.remote_execute(f"rm -f {remote_encoded_path}")
-
-        # Ensure remote path is writable
-        upper_directory = Path(remote_path).parent
-
-        test_file = f"{upper_directory}/{generate_fixed_length_token(5)}"
-
-        touch_path = self._executor.os_helper.get_command_location("touch")
-
-        test_command = (
-            f"{touch_path} {test_file} && echo O && rm -f {test_file} || echo F"
-        )
-
-        if self._executor.remote_execute(test_command) != "O":
-            logger.error(
-                f"❌ Cannot write to remote directory: {upper_directory}. "
-                "Please check permissions or specify a different path."
-            )
-            return
 
         # Step 1: Compress & base64 encode the file
         raw_bytes = local_file.read_bytes()
@@ -125,7 +119,9 @@ class UploadAction(BaseAction):
         if remote_md5 != local_md5:
             logger.warning("❌ MD5 mismatch!")
             logger.warning("The uploaded file may be corrupted.")
+        else:
+            logger.success("✅ MD5 checksum matched.")
 
         logger.success(f"✅ File uploaded and extracted successfully: {remote_path}")
 
-        return remote_path
+        return
