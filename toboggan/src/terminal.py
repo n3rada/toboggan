@@ -348,9 +348,9 @@ class Terminal:
                             i += 1
 
                         if raw_args:
-                            logger.info(f"▶️ Running '{command}' with args: {raw_args}")
+                            logger.debug(f"▶️ Running '{command}' with args: {raw_args}")
                         else:
-                            logger.info(f"▶️ Running '{command}'")
+                            logger.debug(f"▶️ Running '{command}'")
 
                         try:
                             if issubclass(action_class, NamedPipe):
