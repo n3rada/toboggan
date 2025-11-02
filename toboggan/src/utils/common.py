@@ -8,8 +8,6 @@ import uuid
 from urllib.parse import urlparse
 
 # Third party library imports
-from prompt_toolkit import shortcuts
-from prompt_toolkit.styles import Style
 
 
 class SingletonMeta(type):
@@ -69,24 +67,6 @@ def random_float_in_range(
     rand_int = secrets.randbelow(precision)
     normalized_float = min_value + (max_value - min_value) * (rand_int / precision)
     return normalized_float
-
-
-def yes_no_query(query: str, title: str = "Hey! Listen!") -> bool:
-
-    message_box = shortcuts.yes_no_dialog(
-        title=title,
-        text=query,
-        style=Style.from_dict(
-            {
-                "dialog": "bg:#feda5c",
-                "dialog frame.label": "bg:#ffffff #000000",
-                "dialog.body": "bg:#000000 #00ff00",
-                "dialog shadow": "bg:#00aa00",
-            }
-        ),
-    )
-
-    return message_box.run()
 
 
 def is_valid_directory_path(path: str) -> bool:
