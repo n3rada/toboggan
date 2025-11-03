@@ -415,5 +415,4 @@ def main() -> int:
         logger.exception("Unhandled exception occurred")
         return 1
 
-    logger.success("Toboggan execution completed.")
     return 0
