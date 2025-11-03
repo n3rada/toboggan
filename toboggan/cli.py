@@ -410,7 +410,7 @@ def main() -> int:
                 read_interval=args.read_interval,
             )
 
-        remote_terminal.start()
+        return remote_terminal.start()
     except Exception:
         logger.exception("Unhandled exception occurred")
         return 1
