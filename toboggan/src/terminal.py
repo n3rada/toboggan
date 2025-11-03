@@ -171,12 +171,15 @@ class Terminal:
         return True
 
     # Public Methods
-    def start(self) -> None:
+    def start(self) -> int:
         """Start the interactive terminal session.
 
         Runs the main command loop, handling user input, executing commands,
         and dispatching to appropriate handlers (built-in commands, actions, or remote execution).
         Continues until the user exits or an unrecoverable error occurs.
+
+        Returns:
+            int: Exit code (0 for normal exit or EOF/Control-D, 130 for SIGINT/Control-C)
         """
         result = None
         user_input = ""
@@ -191,15 +194,16 @@ class Terminal:
                 if not user_input:
                     continue
             except EOFError:
-                # Control-D pressed
+                # Control-D pressed - normal exit
                 self._exit()
-                break
+                return 0
             except KeyboardInterrupt:
+                # Control-C pressed - check if buffer has text first
                 if self.__prompt_session.app.current_buffer.text:
                     continue
 
                 if self._exit():
-                    break
+                    return 130  # SIGINT exit code
 
                 continue
 
@@ -242,7 +246,7 @@ class Terminal:
 
                 if command in ["e", "ex", "exit"]:
                     if self._exit():
-                        break
+                        return 0
 
                     continue
 
@@ -385,6 +389,8 @@ class Terminal:
                 logger.error(
                     f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
                 )
+
+        return 0
 
     # Private methods
 
