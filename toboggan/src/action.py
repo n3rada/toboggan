@@ -4,11 +4,9 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-
 # Third party library imports
 from loguru import logger
 from modwrap import ModuleWrapper
-
 
 class BaseAction(ABC):
     """Base class for all modules in Toboggan"""
