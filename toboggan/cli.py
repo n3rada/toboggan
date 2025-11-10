@@ -193,11 +193,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     advanced_group.add_argument(
+        "--trace",
+        action="store_true",
+        help="Enable TRACE logging (shortcut for --log-level TRACE).",
+    )
+
+    advanced_group.add_argument(
         "--log-level",
         type=str,
         choices=["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         default=None,
-        help="Set the logging level explicitly (overrides --debug).",
+        help="Set the logging level explicitly.",
     )
 
     return parser
@@ -215,11 +221,13 @@ def main() -> int:
         parser.print_help()
         return 1
 
-    # Determine log level: --log-level takes precedence, then --debug, then default INFO
+    # Determine log level: --log-level takes precedence, then --debug, then --trace, then default INFO
     if args.log_level:
         log_level = args.log_level
     elif args.debug:
         log_level = "DEBUG"
+    elif args.trace:
+        log_level = "TRACE"
     else:
         log_level = "INFO"
 
