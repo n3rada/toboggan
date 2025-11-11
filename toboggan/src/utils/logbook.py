@@ -138,7 +138,7 @@ def setup_logging(level: str = "INFO"):
         enqueue=True,  # Thread-safe
     )
 
-    logger.success(f"Logger initialized at level {level}")
+    logger.trace(f"Logger initialized at level {level}")
     logger.trace(
         f"Log file: {log_file} (rotation {max_bytes}, retention {retention_days} days)"
     )
