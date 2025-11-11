@@ -21,8 +21,8 @@ from toboggan.src.executor import Executor
 from toboggan.src.action import NamedPipe
 
 
-class TobogganCompleter(Completer):
-    """Completer for Toboggan terminal commands and actions."""
+class TerminalCompleter(Completer):
+    """Completer for terminal commands and actions."""
 
     def __init__(self, prefix: str, executor: Executor):
         self.prefix = prefix
@@ -143,7 +143,7 @@ class Terminal:
             wrap_lines=True,
             auto_suggest=ThreadedAutoSuggest(auto_suggest=AutoSuggestFromHistory()),
             history=history_backend,
-            completer=TobogganCompleter(prefix, executor),
+            completer=TerminalCompleter(prefix, executor),
         )
 
         self.__target = executor.target
