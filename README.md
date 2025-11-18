@@ -24,6 +24,11 @@ If you want-it to use system site packages, pass `--system-site-packages` when i
 pipx install --system-site-packages 'git+https://github.com/n3rada/toboggan.git'
 ```
 
+Or you can directly inject the dependency inside `toboggan`:
+```shell
+pipx inject psycopg2 toboggan
+```
+
 ## 🔍 What is an RCE Python Module?
 
 A Remote Code Execution (RCE) module is a Python script that defines how commands are sent to and executed on a remote system. Toboggan uses this module to wrap and streamline post-exploitation command execution.
