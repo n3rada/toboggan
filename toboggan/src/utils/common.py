@@ -5,7 +5,6 @@ import base64
 import io
 import gzip
 import uuid
-from urllib.parse import urlparse
 
 # Third party library imports
 
@@ -24,12 +23,6 @@ class SingletonMeta(type):
             instance = super().__call__(*args, **kwargs)
             cls._instances[cls] = instance
         return cls._instances[cls]
-
-
-def is_valid_proxy(url):
-    parsed = urlparse(url)
-    return parsed.scheme in {"http", "https", "socks4", "socks5"} and parsed.hostname
-
 
 def base64_for_powershell(command: str) -> str:
     # Encode the command as UTF-16LE, PowerShell's default encoding
