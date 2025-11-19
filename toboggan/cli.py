@@ -234,16 +234,19 @@ def main() -> int:
     logbook.setup_logging(level=log_level)
 
     if args.proxy:
-        if not common.is_valid_proxy(args.proxy):
-            logger.warning("⚠️ Provided proxy may be malformed or unsupported.")
+        if not args.proxy.startswith(("http://", "https://")):
+            logger.error("Invalid proxy format.")
             return 1
 
-        os.environ["http_proxy"] = args.proxy
-        os.environ["https_proxy"] = args.proxy
-        os.environ["HTTP_PROXY"] = args.proxy
-        os.environ["HTTPS_PROXY"] = args.proxy
-        os.environ["ALL_PROXY"] = args.proxy
-        os.environ["all_proxy"] = args.proxy
+        for k in [
+            "http_proxy",
+            "https_proxy",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "ALL_PROXY",
+            "all_proxy",
+        ]:
+            os.environ[k] = args.proxy
 
         logger.info(f"🌐 Proxy set to {args.proxy}")
 
