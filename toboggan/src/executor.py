@@ -84,6 +84,152 @@ class Executor(metaclass=SingletonMeta):
 
     # Dunders
 
+    # Properties
+    @property
+    def target(self) -> target.Target:
+        return self.__target
+
+    @property
+    def action_manager(self) -> action.ActionsManager:
+        return self.__action_manager
+
+    @property
+    def has_working_directory(self) -> bool:
+        return (
+            hasattr(self, "_working_directory") and self._working_directory is not None
+        )
+
+    @property
+    def working_directory(self) -> str:
+        """
+        Lazily initializes and returns the working directory.
+        Creates the remote directory only when accessed the first time.
+        """
+        if not self.has_working_directory:
+            self._working_directory = (
+                self._provided_working_directory
+                if (
+                    hasattr(self, "_provided_working_directory")
+                    and self._provided_working_directory is not None
+                )
+                else self._os_helper.format_working_directory()
+            )
+
+            self.remote_execute(command=f"mkdir -p {self._working_directory}")
+            logger.info(
+                f"📂 Remote working directory initialized: {self._working_directory}"
+            )
+
+        return self._working_directory
+
+    @property
+    def os_helper(self) -> OSHelperBase:
+        return self._os_helper
+
+    @property
+    def shell(self) -> str:
+        """
+        Returns the current shell to be used for remote command execution.
+
+        This property determines and validates the appropriate shell for the remote target,
+        depending on the operating system. For Linux targets, it tries a list of common shells
+        in order, falling back if validation fails. For Windows, it defaults to PowerShell.
+
+        The shell is validated by attempting to locate it on the
+        remote system.
+
+        Raises:
+            RuntimeError: If no valid shell can be found or validated on a Linux target.
+
+        Returns:
+            str: The name of the validated shell to use for remote execution.
+        """
+
+        linux_shells = ["$0", "zsh", "bash", "sh"]
+
+        if not self._shell:
+            if isinstance(self._os_helper, LinuxHelper):
+                # Try first one
+                self.shell = linux_shells.pop(0)
+
+            elif isinstance(self._os_helper, WindowsHelper):
+                self.shell = "powershell"
+                self._shell_validated = True  # Assume PowerShell is valid
+
+        while not self._shell_validated:
+
+            if not self.__validate_shell():
+                if isinstance(self._os_helper, LinuxHelper):
+                    if linux_shells:
+                        next_shell = linux_shells.pop(0)
+                        logger.info(f"🔄 Falling back to {next_shell}")
+                        self.shell = next_shell
+                        continue
+                    else:
+                        logger.error("❌ No valid shell found on Linux target.")
+                        raise RuntimeError("No valid shell found on Linux target.")
+
+        return self._shell
+
+    @shell.setter
+    def shell(self, shell: str) -> None:
+        """
+        Sets the shell to be used for remote command execution.
+
+        This setter updates the shell used by the Executor for running remote commands.
+        It also resets the shell validation flag, so the next access to the shell property
+        will trigger validation of the new shell.
+
+        Args:
+            shell (str): The name or path of the shell to use for remote execution (e.g., 'bash', 'zsh', 'powershell').
+        """
+        self._shell = shell
+        self._shell_validated = False  # Reset validation flag
+
+    @property
+    def is_ready(self) -> bool:
+        return self._initial_execution_successful
+
+    @property
+    def avg_response_time(self) -> float | None:
+        """Rolling average of response time for remote commands."""
+        return self._avg_response_time
+
+    @property
+    def chunk_max_size(self) -> int:
+        """Maximum size of a chunk for remote command execution."""
+        return self._chunk_max_size
+
+    @chunk_max_size.setter
+    def chunk_max_size(self, size: int) -> None:
+        """Set the maximum size of a chunk for remote command execution."""
+        if size <= 0:
+            raise ValueError("Chunk size must be a positive integer.")
+
+        if size % 1024 != 0:
+            logger.warning(
+                f"Chunk size {size} is not a multiple of 1024. Rounding down to nearest 1024."
+            )
+            size = (size // 1024) * 1024
+
+        try:
+            self.remote_execute(
+                f"echo {'A' * (size - len('echo') - 1)}",
+                # -1 for space
+                timeout=5,
+                retry=False,
+                raise_on_failure=True,
+                debug=False,
+            )
+        except Exception:
+            logger.error(
+                f"❌ Chunk size of {size} bytes does not work on the remote system."
+            )
+            return
+
+        self._chunk_max_size = size
+        logger.info(f"📏 Chunk max size set to: {self._chunk_max_size} bytes")
+
     # Public methods
 
     def one_shot_execute(self, command: str = None, debug: bool = False) -> None:
@@ -369,149 +515,3 @@ class Executor(metaclass=SingletonMeta):
         logger.error(f"❌ Remote shell '{self._shell}' could not be validated.")
         self._shell_validated = False
         return False
-
-    # Properties
-    @property
-    def target(self) -> target.Target:
-        return self.__target
-
-    @property
-    def action_manager(self) -> action.ActionsManager:
-        return self.__action_manager
-
-    @property
-    def has_working_directory(self) -> bool:
-        return (
-            hasattr(self, "_working_directory") and self._working_directory is not None
-        )
-
-    @property
-    def working_directory(self) -> str:
-        """
-        Lazily initializes and returns the working directory.
-        Creates the remote directory only when accessed the first time.
-        """
-        if not self.has_working_directory:
-            self._working_directory = (
-                self._provided_working_directory
-                if (
-                    hasattr(self, "_provided_working_directory")
-                    and self._provided_working_directory is not None
-                )
-                else self._os_helper.format_working_directory()
-            )
-
-            self.remote_execute(command=f"mkdir -p {self._working_directory}")
-            logger.info(
-                f"📂 Remote working directory initialized: {self._working_directory}"
-            )
-
-        return self._working_directory
-
-    @property
-    def os_helper(self) -> OSHelperBase:
-        return self._os_helper
-
-    @property
-    def shell(self) -> str:
-        """
-        Returns the current shell to be used for remote command execution.
-
-        This property determines and validates the appropriate shell for the remote target,
-        depending on the operating system. For Linux targets, it tries a list of common shells
-        in order, falling back if validation fails. For Windows, it defaults to PowerShell.
-
-        The shell is validated by attempting to locate it on the
-        remote system.
-
-        Raises:
-            RuntimeError: If no valid shell can be found or validated on a Linux target.
-
-        Returns:
-            str: The name of the validated shell to use for remote execution.
-        """
-
-        linux_shells = ["$0", "zsh", "bash", "sh"]
-
-        if not self._shell:
-            if isinstance(self._os_helper, LinuxHelper):
-                # Try first one
-                self.shell = linux_shells.pop(0)
-
-            elif isinstance(self._os_helper, WindowsHelper):
-                self.shell = "powershell"
-                self._shell_validated = True  # Assume PowerShell is valid
-
-        while not self._shell_validated:
-
-            if not self.__validate_shell():
-                if isinstance(self._os_helper, LinuxHelper):
-                    if linux_shells:
-                        next_shell = linux_shells.pop(0)
-                        logger.info(f"🔄 Falling back to {next_shell}")
-                        self.shell = next_shell
-                        continue
-                    else:
-                        logger.error("❌ No valid shell found on Linux target.")
-                        raise RuntimeError("No valid shell found on Linux target.")
-
-        return self._shell
-
-    @shell.setter
-    def shell(self, shell: str) -> None:
-        """
-        Sets the shell to be used for remote command execution.
-
-        This setter updates the shell used by the Executor for running remote commands.
-        It also resets the shell validation flag, so the next access to the shell property
-        will trigger validation of the new shell.
-
-        Args:
-            shell (str): The name or path of the shell to use for remote execution (e.g., 'bash', 'zsh', 'powershell').
-        """
-        self._shell = shell
-        self._shell_validated = False  # Reset validation flag
-
-    @property
-    def is_ready(self) -> bool:
-        return self._initial_execution_successful
-
-    @property
-    def avg_response_time(self) -> float | None:
-        """Rolling average of response time for remote commands."""
-        return self._avg_response_time
-
-    @property
-    def chunk_max_size(self) -> int:
-        """Maximum size of a chunk for remote command execution."""
-        return self._chunk_max_size
-
-    @chunk_max_size.setter
-    def chunk_max_size(self, size: int) -> None:
-        """Set the maximum size of a chunk for remote command execution."""
-        if size <= 0:
-            raise ValueError("Chunk size must be a positive integer.")
-
-        if size % 1024 != 0:
-            logger.warning(
-                f"Chunk size {size} is not a multiple of 1024. Rounding down to nearest 1024."
-            )
-            size = (size // 1024) * 1024
-
-        try:
-            self.remote_execute(
-                f"echo {'A' * (size - len('echo') - 1)}",
-                # -1 for space
-                timeout=5,
-                retry=False,
-                raise_on_failure=True,
-                debug=False,
-            )
-        except Exception:
-            logger.error(
-                f"❌ Chunk size of {size} bytes does not work on the remote system."
-            )
-            return
-
-        self._chunk_max_size = size
-        logger.info(f"📏 Chunk max size set to: {self._chunk_max_size} bytes")
