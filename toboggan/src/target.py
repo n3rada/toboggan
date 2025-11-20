@@ -5,6 +5,7 @@ class Target:
     including OS type, user, hostname, working directory, and system architecture.
     """
 
+    # Constructor
     def __init__(
         self,
         os: str,
@@ -47,6 +48,24 @@ class Target:
         if system_info:
             self._update_architecture()
 
+    # Properties
+    @property
+    def system_info(self) -> str | None:
+        return self._system_info
+
+    @system_info.setter
+    def system_info(self, value: str | None):
+        """Setter for system_info, updates architecture."""
+        self._system_info = value
+        self._update_architecture()
+
+    @property
+    def architecture(self) -> str | None:
+        return self._architecture
+
+    # Public methods
+
+    # Protected methods
     def _update_architecture(self):
         """Deduces architecture from system information."""
         if not self._system_info:
@@ -64,16 +83,4 @@ class Target:
         else:
             self._architecture = None  # Unknown
 
-    @property
-    def system_info(self) -> str | None:
-        return self._system_info
 
-    @system_info.setter
-    def system_info(self, value: str | None):
-        """Setter for system_info, updates architecture."""
-        self._system_info = value
-        self._update_architecture()
-
-    @property
-    def architecture(self) -> str | None:
-        return self._architecture
