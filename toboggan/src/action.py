@@ -74,6 +74,7 @@ class NamedPipe(BaseAction):
             f"📡 Approx. requests: {req_per_sec:.2f}/sec | {req_per_min:.0f}/min"
         )
 
+    # Abstract methods
     @abstractmethod
     def setup(self, read_interval: float = 0.4, session_identifier: str = None):
         """Every NamedPipe action must implement this method"""
@@ -83,20 +84,22 @@ class NamedPipe(BaseAction):
     def execute(self, command: str):
         """Every NamedPipe action must implement this method"""
         pass
-
-    def stop(self):
-        logger.info("Stopping named pipe")
-        self._stop()
-
+        
     @abstractmethod
     def _stop(self):
         """Every NamedPipe action must implement this method"""
         pass
+        
+    # Public methods
+    def stop(self):
+        logger.info("Stopping named pipe")
+        self._stop()
 
 
 class ActionsManager:
     """Dynamically loads and manages Toboggan actions from system and user directories."""
 
+    # Constructor
     def __init__(self, target_os: str = "linux"):
 
         if target_os not in ["linux", "windows"]:
@@ -112,6 +115,11 @@ class ActionsManager:
         self.__user_actions_path = self.__get_user_module_dir()
         logger.debug(f"User actions path: {self.__user_actions_path}")
 
+    # Dunders
+
+    # Properties
+
+    # Public methods
     def get_actions(self) -> dict:
         ignored_actions = {"hide", "unhide"}
         actions = {}
@@ -150,32 +158,6 @@ class ActionsManager:
                     logger.warning(f"⚠️ Skipping action '{action_name}': {exc}")
 
         return actions
-
-    def __extract_parameters(self, wrapper: ModuleWrapper) -> list:
-
-        try:
-            # Get the class that inherits from BaseAction
-            action_cls = wrapper.get_class(must_inherit=BaseAction)
-            if not action_cls:
-                logger.warning(f"⚠️ No action class found in {wrapper.name}")
-                return []
-
-            class_name = action_cls.__name__
-            method_name = "__init__" if issubclass(action_cls, NamedPipe) else "run"
-            signature = wrapper.get_signature(f"{class_name}.{method_name}")
-
-            return [
-                (
-                    f"{param} ({value['default']})"
-                    if value["default"] is not None
-                    else param
-                )
-                for param, value in signature.items()
-            ]
-
-        except Exception as exc:
-            logger.warning(f"⚠ Failed to extract parameters from {wrapper.name}: {exc}")
-            return []
 
     def get_action(self, name: str) -> BaseAction:
         """
@@ -236,6 +218,33 @@ class ActionsManager:
             logger.error(f"❌ Failed to load module: {file_path.name} ({exc})")
 
         return None
+
+    # Private methods
+    def __extract_parameters(self, wrapper: ModuleWrapper) -> list:
+        try:
+            # Get the class that inherits from BaseAction
+            action_cls = wrapper.get_class(must_inherit=BaseAction)
+            if not action_cls:
+                logger.warning(f"⚠️ No action class found in {wrapper.name}")
+                return []
+
+            class_name = action_cls.__name__
+            method_name = "__init__" if issubclass(action_cls, NamedPipe) else "run"
+            signature = wrapper.get_signature(f"{class_name}.{method_name}")
+
+            return [
+                (
+                    f"{param} ({value['default']})"
+                    if value["default"] is not None
+                    else param
+                )
+                for param, value in signature.items()
+            ]
+
+        except Exception as exc:
+            logger.warning(f"⚠ Failed to extract parameters from {wrapper.name}: {exc}")
+            return []
+
 
     def __get_user_module_dir(self) -> Path:
         """Get the user action directory (XDG for Linux/macOS, LOCALAPPDATA for Windows)."""
