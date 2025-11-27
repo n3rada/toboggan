@@ -8,6 +8,9 @@ from typing import Iterable
 
 # External library imports
 from loguru import logger
+
+from modwrap import ModuleWrapper
+
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import ThreadedAutoSuggest, AutoSuggestFromHistory
 from prompt_toolkit.history import ThreadedHistory, InMemoryHistory, FileHistory
@@ -351,6 +354,11 @@ class Terminal:
                             positional_args.append(arg)
                             i += 1
 
+                        # Check for help flag
+                        if keyword_args.get("help") or keyword_args.get("h"):
+                            print(self.__get_action_help(command, action_class))
+                            continue
+
                         if raw_args:
                             logger.debug(f"▶️ Running '{command}' with args: {raw_args}")
                         else:
@@ -452,6 +460,138 @@ class Terminal:
             f"🔹 {ansi_ljust(f'{GREEN}exit{RESET}', max_action_length)} → "
             f"{CYAN}Exit the toboggan shell session.{RESET}"
         )
+
+        return "\n".join(lines)
+
+    def __get_action_help(self, action_name: str, action_class) -> str:
+        """Generate detailed help for a specific action.
+
+        Args:
+            action_name: Name of the action
+            action_class: The action class
+
+        Returns:
+            str: Formatted help text with parameters, types, defaults, and description.
+        """
+        # ANSI styles
+        BOLD = "\033[1m"
+        GREEN = "\033[92m"
+        CYAN = "\033[96m"
+        YELLOW = "\033[93m"
+        DIM = "\033[2m"
+        RESET = "\033[0m"
+
+        lines = []
+        lines.append(f"\n{BOLD}{GREEN}Action:{RESET} {action_name}")
+        lines.append(DIM + "-" * 70 + RESET)
+
+        # Get description
+        description = getattr(action_class, "DESCRIPTION", None)
+        if description:
+            lines.append(f"{BOLD}Description:{RESET}")
+            lines.append(f"  {CYAN}{description}{RESET}")
+            lines.append("")
+
+        # Get the action info from action manager
+        actions_dict = self.__executor.action_manager.get_actions()
+        action_info = actions_dict.get(action_name)
+
+        if not action_info:
+            lines.append(f"{YELLOW}⚠️  Could not retrieve action information{RESET}")
+            lines.append("")
+            lines.append(f"{BOLD}Usage:{RESET}")
+            lines.append(f"  {GREEN}!{action_name}{RESET} {DIM}[--param value ...]{RESET}")
+            lines.append(DIM + "-" * 70 + RESET)
+            return "\n".join(lines)
+
+        # Try to get detailed signature using modwrap
+        try:            
+            action_path = action_info["path"]
+            wrapper = ModuleWrapper(action_path)
+            
+            # Determine which method to get signature from
+            class_name = action_class.__name__
+            if issubclass(action_class, NamedPipe):
+                method_path = f"{class_name}.__init__"
+            else:
+                method_path = f"{class_name}.run"
+            
+            # Get detailed signature with types and defaults
+            signature = wrapper.get_signature(method_path)
+            
+            if signature:
+                lines.append(f"{BOLD}Parameters:{RESET}")
+                
+                for param_name, param_info in signature.items():
+                    param_type = param_info.get("type", "Any")
+                    default_value = param_info.get("default")
+                    
+                    if default_value is None and "default" not in param_info:
+                        # Required parameter (no default key means required)
+                        status = f"{GREEN}[required]{RESET}"
+                        lines.append(
+                            f"  {YELLOW}--{param_name}{RESET} {DIM}({param_type}){RESET} {status}"
+                        )
+                    else:
+                        # Optional parameter with default
+                        lines.append(
+                            f"  {YELLOW}--{param_name}{RESET} {DIM}({param_type}){RESET} "
+                            f"{DIM}[default: {default_value}]{RESET}"
+                        )
+                
+                lines.append("")
+            else:
+                lines.append(f"{DIM}  No parameters required{RESET}")
+                lines.append("")
+            
+            # Get docstring
+            try:
+                docstring = wrapper.get_doc(method_path)
+                
+                if docstring:
+                    lines.append(f"{BOLD}Details:{RESET}")
+                    # Indent each line of the docstring
+                    for line in docstring.split("\n"):
+                        if line.strip():
+                            lines.append(f"  {DIM}{line.strip()}{RESET}")
+                    lines.append("")
+            except Exception as e:
+                logger.debug(f"Could not extract docstring for {action_name}: {e}")
+
+        except Exception as e:
+            logger.debug(f"Could not use modwrap for {action_name}: {e}")
+            
+            # Fallback to basic parameter list from action_info
+            parameters = action_info.get("parameters", [])
+            
+            if parameters:
+                lines.append(f"{BOLD}Parameters:{RESET}")
+                
+                for param_str in parameters:
+                    # Parse parameter string format: "name (default)" or "name"
+                    if "(" in param_str and param_str.endswith(")"):
+                        # Has default value
+                        param_name = param_str[:param_str.index("(")].strip()
+                        default_value = param_str[param_str.index("(") + 1:-1].strip()
+                        
+                        lines.append(
+                            f"  {YELLOW}--{param_name}{RESET} {DIM}[default: {default_value}]{RESET}"
+                        )
+                    else:
+                        # Required parameter (no default)
+                        param_name = param_str.strip()
+                        status = f"{GREEN}[required]{RESET}"
+                        lines.append(f"  {YELLOW}--{param_name}{RESET} {status}")
+                
+                lines.append("")
+            else:
+                lines.append(f"{DIM}  No parameters required{RESET}")
+                lines.append("")
+
+        # Usage example
+        lines.append(f"{BOLD}Usage:{RESET}")
+        lines.append(f"  {GREEN}!{action_name}{RESET} {DIM}[--param value ...]{RESET}")
+        lines.append(DIM + "-" * 70 + RESET)
 
         return "\n".join(lines)
 
