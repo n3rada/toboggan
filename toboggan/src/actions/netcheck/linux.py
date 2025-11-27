@@ -16,17 +16,9 @@ class InternetCheckAction(BaseAction):
         # Step 1: ICMP Ping
         logger.info(f"📡 Testing ICMP (ping to {ip})")
         ping_cmd = None
-
         ping_path = self._executor.os_helper.get_command_location("ping")
-
-        if ping_path:
-            ping_cmd = f"{ping_path.strip()} -c 1 -W 2 {ip}"
-        elif (
-            self._executor.os_helper.is_busybox_present
-            and "ping" in self._executor.os_helper.busybox_commands
-        ):
-            ping_cmd = f"/bin/busybox ping -c 1 -W 2 {ip}"
-
+        ping_cmd = f"{ping_path.strip()} -c 1 -W 2 {ip}"
+        
         if ping_cmd:
             ping_result = self._executor.remote_execute(
                 ping_cmd, timeout=5, retry=False
@@ -79,15 +71,9 @@ class InternetCheckAction(BaseAction):
 
         if curl_path := self._executor.os_helper.get_command_location("curl"):
             tool = curl_path.strip()
-            use_flags = "-Ik"
+            use_flags = "-m 5 -Iks"
         elif wget_path := self._executor.os_helper.get_command_location("wget"):
             tool = wget_path.strip()
-            use_flags = "--spider"
-        elif (
-            self._executor.os_helper.is_busybox_present
-            and "wget" in self._executor.os_helper.busybox_commands
-        ):
-            tool = "/bin/busybox wget"
             use_flags = "--spider"
 
         if not tool:
