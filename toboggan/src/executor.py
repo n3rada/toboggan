@@ -32,7 +32,7 @@ class Executor(metaclass=SingletonMeta):
 
         self.__execute = execute_method
         self.__base64_wrapping = base64_wrapping
-        self.__camouflage = False
+        self.__obfuscation = False
 
         self._initial_execution_successful = (
             False  # Will become True only if remote is reachable
@@ -67,13 +67,13 @@ class Executor(metaclass=SingletonMeta):
         self._working_directory = None
 
         if camouflage:
-            self.__camouflage_action = self.__action_manager.get_action("hide")(
+            self.__obfuscation_action = self.__action_manager.get_action("hide")(
                 executor=self
             )
             self.__uncamouflage_action = self.__action_manager.get_action("unhide")(
                 executor=self
             )
-            self.__camouflage = True
+            self.__obfuscation = True
 
         self.__target = target.Target(
             os=self.__os,
@@ -250,7 +250,7 @@ class Executor(metaclass=SingletonMeta):
         retry: bool = True,
         raise_on_failure: bool = False,
         debug: bool = True,
-        bypass_camouflage: bool = False,
+        bypass_obfuscation: bool = False,
     ) -> str:
         """
         Executes the specified command within the module.
@@ -260,7 +260,7 @@ class Executor(metaclass=SingletonMeta):
             timeout (float, optional): Timeout for command execution.
             retry (bool, optional): Whether to retry on failure.
             debug (bool, optional): Enable or disable debug logging for this execution.
-            bypass_camouflage (bool, optional): Bypass camouflage check.
+            bypass_obfuscation (bool, optional): Bypass camouflage check.
 
         Returns:
             str: The output of the executed command, if successful.
@@ -282,8 +282,8 @@ class Executor(metaclass=SingletonMeta):
         result = ""
 
         # Apply obfuscation if enabled
-        if not bypass_camouflage and self.__camouflage:
-            command = self.__camouflage_action.run(command)
+        if not bypass_obfuscation and self.__obfuscation:
+            command = self.__obfuscation_action.run(command)
             logger.trace(f"🔒 Obfuscated command for execution: {command}")
 
         # Apply Base64 encoding if enabled
@@ -346,7 +346,7 @@ class Executor(metaclass=SingletonMeta):
         logger.trace(f"📩 Received raw output: {result!r}")
 
         # Attempt to de-obfuscate the result if obfuscation was used
-        if not bypass_camouflage and self.__camouflage:
+        if not bypass_obfuscation and self.__obfuscation:
             try:
                 result = self.__uncamouflage_action.run(result)
                 logger.trace(f"🔓 De-obfuscated output: {result!r}")
@@ -489,7 +489,7 @@ class Executor(metaclass=SingletonMeta):
                         timeout=10,
                         retry=False,
                         debug=False,
-                        bypass_camouflage=True,
+                        bypass_obfuscation=True,
                     )
                     .strip()
                     .lower()
