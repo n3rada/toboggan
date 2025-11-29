@@ -6,6 +6,16 @@ from toboggan.src.action import BaseAction
 
 
 class UnHideAction(BaseAction):
+    """
+    Reverse the HideAction obfuscation transformation.
+
+    **IMPORTANT**: This action performs local Python-based decoding and does NOT
+    execute any commands on the remote system. It only uses pure Python operations
+    (string reversal and base64 decoding) to decode command output.
+
+    Requirements:
+        - None (all operations are performed locally in Python)
+    """
     DESCRIPTION = (
         "Reverse the HideAction transformation (rev → base64 → gzip decompress)."
     )

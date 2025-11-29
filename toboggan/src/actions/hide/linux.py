@@ -37,6 +37,17 @@ def encrypt_command(command: str, key_hex: str, iv_hex: str) -> str:
 
 
 class HideAction(BaseAction):
+    """
+    Obfuscate and execute commands using AES-256-CBC encryption or base64 encoding.
+
+    **IMPORTANT**: This action is initialized during executor setup, before obfuscation
+    is enabled. Only openssl path is looked up during __init__ to avoid circular dependency.
+    Basic commands (echo, base64) are used directly without path lookup.
+
+    Requirements:
+        - Remote system must have: echo, base64 (standard on all Unix systems)
+        - Optional: openssl (for AES encryption, falls back to base64 if missing)
+    """
     DESCRIPTION = (
         "Obfuscate and execute a command using OpenSSL or base64-based wrapping."
     )
@@ -44,6 +55,8 @@ class HideAction(BaseAction):
     def __init__(self, executor):
         super().__init__(executor)
 
+        # Only lookup openssl path during init (before obfuscation is enabled)
+        # Use basic command names for echo and base64 (available in PATH on all systems)
         self.__openssl_path = self._executor.os_helper.get_command_location("openssl")
 
         if self.__openssl_path:
@@ -62,25 +75,26 @@ class HideAction(BaseAction):
         if re.search(r"(1?>>?|2>>&?|>>?|[0-9]+>&[0-9]+)", command) is None:
             command += " 2>&1"
 
-        base64_location = self._os_helper.get_command_location("base64")
-        echo_location = self._os_helper.get_command_location("echo")
+        # Use basic command names (available in PATH on all Unix systems)
+        base64_cmd = "base64"
+        echo_cmd = "echo"
 
         if self.__openssl_path:
             encrypted = encrypt_command(command, self._AES_KEY, self._AES_IV)
             decrypt_pipeline = (
-                f"{echo_location} '{encrypted}'|{base64_location} -d|"
+                f"{echo_cmd} '{encrypted}'|{base64_cmd} -d|"
                 f"{self.__openssl_path} enc -aes-256-cbc -d -K {self._AES_KEY} -iv {self._AES_IV}|{self._executor.shell}"
             )
         else:
             # fallback: just base64 + decode
             encoded = base64.b64encode(command.encode()).decode()
-            decrypt_pipeline = f"{echo_location} '{encoded}'|{base64_location} -d|{self._executor.shell}"
+            decrypt_pipeline = f"{echo_cmd} '{encoded}'|{base64_cmd} -d|{self._executor.shell}"
 
         # Obfuscate further: base64 + reverse + base64 encode all
         obfuscated = base64.urlsafe_b64encode(
-            f"{decrypt_pipeline}|{base64_location} -w0|rev".encode()
+            f"{decrypt_pipeline}|{base64_cmd} -w0|rev".encode()
         ).decode()
 
-        final_cmd = f"{echo_location} {obfuscated}|{base64_location} -d|{self._executor.shell}"
+        final_cmd = f"{echo_cmd} {obfuscated}|{base64_cmd} -d|{self._executor.shell}"
 
         return final_cmd
