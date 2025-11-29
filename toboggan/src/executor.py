@@ -73,12 +73,13 @@ class Executor(metaclass=SingletonMeta):
             self.__obfuscation_action = self.__action_manager.get_action("hide")(
                 executor=self
             )
+
             self.__unobfuscation_action = self.__action_manager.get_action("unhide")(
                 executor=self
             )
 
-            # Now enable obfuscation after both actions are initialized
             self.__obfuscation = True
+            logger.success("✅ Obfuscation enabled")
         else:
             self.__obfuscation = False
 
@@ -151,8 +152,6 @@ class Executor(metaclass=SingletonMeta):
         Returns:
             str: The name of the validated shell to use for remote execution.
         """
-
-        logger.trace("🔍 Determining and validating remote shell")
 
         linux_shells = ["$0", "zsh", "bash", "sh"]
 
@@ -293,7 +292,6 @@ class Executor(metaclass=SingletonMeta):
         # Apply obfuscation if enabled
         if not bypass_obfuscation and self.__obfuscation:
             command = self.__obfuscation_action.run(command)
-            logger.trace(f"🔒 Obfuscated command for execution: {command}")
 
         # Apply Base64 encoding if enabled
         if self.__base64_wrapping:
