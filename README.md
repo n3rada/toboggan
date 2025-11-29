@@ -4,7 +4,7 @@
     <img src="./media/example.png" alt="example">
 </p>
 
-## Installation
+## 📦 Installation
 
 Installing Toboggan is simple. You can install it directly from the repository:
 
@@ -62,7 +62,7 @@ Your `execute()` function must handle all quirks of the target system.
 
 The goal is for Toboggan to call your `execute()` function with any arbitrary command and get the correct output, as if you typed it in a shell.
 
-## Execution
+## 🧸 Usage
 
 Once installed, you can execute it using:
 ```shell
@@ -75,7 +75,6 @@ toboggan -m ~/phpexploit.py --camouflage --fifo --os "linux"
 ```
 
 It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `linux` (`--os`) remote system and obfuscating all commands (`--camouflage`) using the [hide.py](./toboggan/actions/hide/unix.py) actions.
-
 
 ### Wrap a shell command
 
@@ -120,7 +119,6 @@ Toboggan will create a FIFO-based communication channel, allowing you to interac
 > [!WARNING]
 > Ctrl+C not forwarded. Control characters only work in real TTY/PTY environments.
 
-
 ## 🛠️ Bring Your Own Actions (BYOA)
 
 Actions in Toboggan are modular plugins that allow you to extend its functionality. Actions can automate common post-exploitation tasks, such as downloading files, executing scripts, or setting up persistent access. Custom actions should be placed in `~/.local/share/toboggan/actions` (Linux) or `%APPDATA%\toboggan\actions` (Windows).
@@ -135,3 +133,8 @@ It is specifically crafted to be used in controlled environments, such as:
 - Penetration Testing or Red Team engagements with customer consent.
 
 Misuse of this project may result in legal action. Please use this tool responsibly and in compliance with applicable laws and regulations.
+
+## ⚖️ Legal Notice
+Any unauthorized use of this tool in real-world environments or against systems without explicit permission from the system owner is strictly prohibited and may violate legal and ethical standards. The creators and contributors of this tool are not responsible for any misuse or damage caused.
+
+Use responsibly and ethically. Always respect the law and obtain proper authorization.
