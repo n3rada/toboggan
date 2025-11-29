@@ -354,7 +354,7 @@ def main() -> int:
             shell=args.shell,
             target_os=args.os,
             base64_wrapping=args.base64,
-            camouflage=args.obfuscate,
+            obfuscation=args.obfuscate,
             custom_paths=custom_paths if custom_paths else None,
         )
     except RuntimeError as e:
