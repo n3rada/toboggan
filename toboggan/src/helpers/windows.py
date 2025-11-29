@@ -17,7 +17,7 @@ class WindowsHelper(base.OSHelperBase):
     def __init__(self, executor):
         super().__init__(executor)
         self.__shell_type = self.__detect_shell_type()
-        logger.debug(f"Initialized WindowsHelper (shell: {self.__shell_type})")
+        logger.trace(f"Initialized WindowsHelper (shell: {self.__shell_type})")
 
     def get_hostname(self) -> str:
         return self._executor.remote_execute(command="hostname").strip()

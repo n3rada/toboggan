@@ -36,7 +36,7 @@ class LinuxHelper(base.OSHelperBase):
                 f"📂 Custom command paths configured: {', '.join(self.__custom_paths)}"
             )
 
-        logger.debug("Initialized LinuxHelper.")
+        logger.trace("Initialized LinuxHelper.")
 
     def get_current_user(self):
         whoami_path = self.get_command_location("whoami")
