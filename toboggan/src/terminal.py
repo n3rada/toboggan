@@ -354,6 +354,12 @@ class Terminal:
                                     i += 1
                                 continue
 
+                            # Handle -h (short flag for help)
+                            if arg == "-h":
+                                keyword_args["h"] = True
+                                i += 1
+                                continue
+
                             # Handle positional argument
                             positional_args.append(arg)
                             i += 1
