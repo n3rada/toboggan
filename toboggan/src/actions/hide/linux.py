@@ -1,3 +1,5 @@
+# toboggan/src/actions/hide/linux.py
+
 # Built-in imports
 import base64
 import re
@@ -60,22 +62,25 @@ class HideAction(BaseAction):
         if re.search(r"(1?>>?|2>>&?|>>?|[0-9]+>&[0-9]+)", command) is None:
             command += " 2>&1"
 
+        base64_location = self._os_helper.get_command_location("base64")
+        echo_location = self._os_helper.get_command_location("echo")
+
         if self.__openssl_path:
             encrypted = encrypt_command(command, self._AES_KEY, self._AES_IV)
             decrypt_pipeline = (
-                f"echo '{encrypted}'|base64 -d|"
+                f"{echo_location} '{encrypted}'|{base64_location} -d|"
                 f"{self.__openssl_path} enc -aes-256-cbc -d -K {self._AES_KEY} -iv {self._AES_IV}|{self._executor.shell}"
             )
         else:
             # fallback: just base64 + decode
             encoded = base64.b64encode(command.encode()).decode()
-            decrypt_pipeline = f"echo '{encoded}'|base64 -d|{self._executor.shell}"
+            decrypt_pipeline = f"{echo_location} '{encoded}'|{base64_location} -d|{self._executor.shell}"
 
         # Obfuscate further: base64 + reverse + base64 encode all
         obfuscated = base64.urlsafe_b64encode(
-            f"{decrypt_pipeline}|base64 -w0|rev".encode()
+            f"{decrypt_pipeline}|{base64_location} -w0|rev".encode()
         ).decode()
 
-        final_cmd = f"echo {obfuscated}|base64 -d|{self._executor.shell}"
+        final_cmd = f"{echo_location} {obfuscated}|{base64_location} -d|{self._executor.shell}"
 
         return final_cmd
