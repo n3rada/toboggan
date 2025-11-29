@@ -66,12 +66,12 @@ The goal is for Toboggan to call your `execute()` function with any arbitrary co
 
 Once installed, you can execute it using:
 ```shell
-toboggan -m ~/phpexploit.py
+toboggan ~/phpexploit.py
 ```
 
 When you are knowing what you are doing, you can also do:
 ```shell
-toboggan -m ~/phpexploit.py --obfuscation --fifo --os "linux"
+toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
 ```
 
 It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `linux` (`--os`) remote system and obfuscating all commands (`--obfuscation`) using the [hide.py](./toboggan/actions/hide/unix.py) actions.
@@ -88,19 +88,19 @@ toboggan --exec-wrapper 'curl -s --path-as-is -d "echo Content-Type: text/plain;
 You can forward to your favorite proxifier such as [`Squid`](https://www.squid-cache.org/) server using the `--proxy` parameter:
 
 ```shell
-toboggan -m ~/phpexploit.py --proxy http://squideu.<something>.io:3128
+toboggan ~/phpexploit.py --proxy http://squideu.<something>.io:3128
 ```
 
 ### BurpSuite
 
 To route traffic through Burp Suite:
 ```shell
-toboggan -m ~/phpexploit.py --proxy
+toboggan ~/phpexploit.py --proxy
 ```
 
 You can also directly import a Burp saved request that contains the `||cmd||` placeholder:
 ```shell
-toboggan -r brequest
+toboggan --request brequest
 ```
 
 ## 🏗️ Making Dumb Shells Smarter
@@ -111,7 +111,7 @@ Toboggan uses named pipes (FIFO - First In, First Out) for inter-process communi
 
 This allows Toboggan to simulate pseudo-TTY behavior, even in restricted environments behind firewalls. To enable named pipe mode, use the `--fifo` flag:
 ```shell
-toboggan -m ~/phpexploit.py --fifo
+toboggan ~/phpexploit.py --fifo
 ```
 
 Toboggan will create a FIFO-based communication channel, allowing you to interact with the remote system in a more dynamic way (e.g., using `sudo -l`).
