@@ -28,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="toboggan",
         add_help=True,
         description="Bring intelligence to any remote command execution (RCE) vector.",
-        epilog=f"""\nExample usage:\n    - toboggan -m rce.py --os linux --camouflage\n\nFor more information, visit: https://github.com/n3rada/toboggan""",
+        epilog=f"""For more information, visit: https://github.com/n3rada/toboggan""",
         allow_abbrev=True,
         exit_on_error=True,
     )
@@ -78,10 +78,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     execution_group.add_argument(
-        "--camouflage",
+        "-O",
+        "--obfuscate",
         action="store_true",
         required=False,
-        help="Wrap the command using a hide/unhide action to evade detection.",
+        help="Obfuscate commands using AES encryption or base64 encoding to evade detection.",
     )
 
     source_group = execution_group.add_mutually_exclusive_group(required=True)
@@ -353,10 +354,14 @@ def main() -> int:
             shell=args.shell,
             target_os=args.os,
             base64_wrapping=args.base64,
-            camouflage=args.camouflage,
+            camouflage=args.obfuscate,
             custom_paths=custom_paths if custom_paths else None,
         )
-    except RuntimeError:
+    except RuntimeError as e:
+        logger.error(f"❌ Failed to initialize executor: {e}")
+        return 1
+    except Exception as e:
+        logger.exception("❌ Unexpected error during executor initialization")
         return 1
 
     logger.info(
@@ -405,6 +410,8 @@ def main() -> int:
             log_level=log_level,
         )
 
+        logger.debug("✅ Terminal initialized successfully")
+
         if args.fifo:
             logger.info(
                 "🤏 Making your dumb shell semi-interactive using 'fifo' action."
@@ -421,9 +428,8 @@ def main() -> int:
                 read_interval=args.read_interval,
             )
 
+        logger.debug("🚀 Starting terminal session")
         return remote_terminal.start()
     except Exception:
         logger.exception("Unhandled exception occurred")
         return 1
-
-    return 0
