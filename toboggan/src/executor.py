@@ -24,7 +24,7 @@ class Executor(metaclass=SingletonMeta):
         working_directory: str = None,
         target_os: str = None,
         base64_wrapping: bool = False,
-        camouflage: bool = False,
+        obfuscation: bool = False,
         custom_paths: list = None,
     ):
         if execute_method is None:
@@ -66,14 +66,21 @@ class Executor(metaclass=SingletonMeta):
         self._provided_working_directory = working_directory
         self._working_directory = None
 
-        if camouflage:
+        if obfuscation:
+            # Temporarily disable obfuscation during action initialization
+            self.__obfuscation = False
+
             self.__obfuscation_action = self.__action_manager.get_action("hide")(
                 executor=self
             )
-            self.__uncamouflage_action = self.__action_manager.get_action("unhide")(
+            self.__unobfuscation_action = self.__action_manager.get_action("unhide")(
                 executor=self
             )
+
+            # Now enable obfuscation after both actions are initialized
             self.__obfuscation = True
+        else:
+            self.__obfuscation = False
 
         self.__target = target.Target(
             os=self.__os,
@@ -145,6 +152,8 @@ class Executor(metaclass=SingletonMeta):
             str: The name of the validated shell to use for remote execution.
         """
 
+        logger.trace("🔍 Determining and validating remote shell")
+
         linux_shells = ["$0", "zsh", "bash", "sh"]
 
         if not self._shell:
@@ -157,7 +166,7 @@ class Executor(metaclass=SingletonMeta):
                 self._shell_validated = True  # Assume PowerShell is valid
 
         while not self._shell_validated:
-
+            logger.trace(f"🔍 Validating shell: {self._shell}")
             if not self.__validate_shell():
                 if isinstance(self._os_helper, LinuxHelper):
                     if linux_shells:
@@ -165,9 +174,9 @@ class Executor(metaclass=SingletonMeta):
                         logger.info(f"🔄 Falling back to {next_shell}")
                         self.shell = next_shell
                         continue
-                    else:
-                        logger.error("❌ No valid shell found on Linux target.")
-                        raise RuntimeError("No valid shell found on Linux target.")
+
+                    logger.error("❌ No valid shell found on Linux target.")
+                    raise RuntimeError("No valid shell found on Linux target.")
 
         return self._shell
 
@@ -260,7 +269,7 @@ class Executor(metaclass=SingletonMeta):
             timeout (float, optional): Timeout for command execution.
             retry (bool, optional): Whether to retry on failure.
             debug (bool, optional): Enable or disable debug logging for this execution.
-            bypass_obfuscation (bool, optional): Bypass camouflage check.
+            bypass_obfuscation (bool, optional): Bypass obfuscation check.
 
         Returns:
             str: The output of the executed command, if successful.
@@ -348,7 +357,7 @@ class Executor(metaclass=SingletonMeta):
         # Attempt to de-obfuscate the result if obfuscation was used
         if not bypass_obfuscation and self.__obfuscation:
             try:
-                result = self.__uncamouflage_action.run(result)
+                result = self.__unobfuscation_action.run(result)
                 logger.trace(f"🔓 De-obfuscated output: {result!r}")
             except ValueError:
                 if debug:
