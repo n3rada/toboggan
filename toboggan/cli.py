@@ -85,7 +85,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Obfuscate commands using AES encryption or base64 encoding to evade detection.",
     )
 
-    source_group = execution_group.add_mutually_exclusive_group(required=True)
+    # Positional argument for module (most common use case)
+    parser.add_argument(
+        "module",
+        type=str,
+        nargs="?",
+        default=None,
+        help="Python module implementing the 'execute(command, timeout)' function.",
+    )
+
+    # Alternative execution sources (mutually exclusive with positional module)
+    source_group = execution_group.add_mutually_exclusive_group(required=False)
 
     source_group.add_argument(
         "--exec-wrapper",
@@ -97,12 +107,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--request",
         type=str,
         help="Burp request template file with placeholder ||cmd||.",
-    )
-    source_group.add_argument(
-        "-m",
-        "--module",
-        type=str,
-        help="Python module implementing the 'execute(command, timeout)' function.",
     )
 
     # Named Pipe Settings
@@ -275,6 +279,21 @@ def main() -> int:
 
     execution_module = None
 
+    # Check for mutually exclusive options
+    source_count = sum([
+        bool(args.module),
+        bool(args.exec_wrapper),
+        bool(args.request)
+    ])
+
+    if source_count == 0:
+        logger.error("❌ No execution source provided. Specify a module, --exec-wrapper, or --request.")
+        return 1
+
+    if source_count > 1:
+        logger.error("❌ Multiple execution sources provided. Use only one: module (positional), --exec-wrapper, or --request.")
+        return 1
+
     if args.exec_wrapper:
         logger.info(f"Using OS command wrapper: '{args.exec_wrapper}'.")
         wrapper = ModuleWrapper(BUILTIN_DIR / "os_command.py")
@@ -311,10 +330,6 @@ def main() -> int:
             return 1
 
         execution_module = wrapper.module
-
-    else:
-        logger.error("No module provided. I cannot slide on anything.")
-        return 1
 
     if args.base64:
         logger.info("🔐 Base64 encoding enabled for all commands.")
