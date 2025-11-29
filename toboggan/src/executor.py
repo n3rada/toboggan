@@ -457,14 +457,24 @@ class Executor(metaclass=SingletonMeta):
     def __guess_os(self) -> str:
         logger.info("🔍 Guessing remote OS")
 
-        uname_output = self.remote_execute(command="uname", retry=False).strip().lower()
+        ls_output = self.remote_execute(command="ls /", retry=False).strip().lower()
 
-        if uname_output and "not recognized" not in uname_output:
-            logger.info("🖥️ Detected Linux OS via uname.")
-            return "linux"
+        if ls_output:
+            if ("bin" in ls_output or "etc" in ls_output):
+                logger.info("🖥️ Detected Linux OS via ls /.")
+                return "linux"
+            if "windows" in ls_output or "program files" in ls_output:
+                logger.info("🖥️ Detected Windows OS via ls /.")
+                return "windows"
 
-        logger.info("🖥️ Assuming Windows OS.")
-        return "windows"
+        ver_output = self.remote_execute(command="ver", retry=False).strip().lower()
+
+        if ver_output and "microsoft" in ver_output:
+            logger.info("🖥️ Detected Windows OS via ver.")
+            return "windows"
+
+        logger.info("🖥️ Assuming Linux OS.")
+        return "linux"
 
     def __validate_shell(self) -> bool:
         """
