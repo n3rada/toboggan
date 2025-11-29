@@ -28,8 +28,8 @@ class TerminalCompleter(Completer):
     """Completer for terminal commands and actions."""
 
     def __init__(self, prefix: str, executor: Executor):
-        self.prefix = prefix
-        self.executor = executor
+        self._prefix = prefix
+        self._executor = executor
 
         # Built-in commands with descriptions
         self.builtins = {
@@ -47,14 +47,14 @@ class TerminalCompleter(Completer):
         text = document.text_before_cursor
 
         # If text is empty or doesn't start with prefix, no completions
-        if not text or not text.startswith(self.prefix):
+        if not text or not text.startswith(self._prefix):
             return
 
         # Remove prefix for processing
-        text = text[len(self.prefix) :].lstrip()
+        text = text[len(self._prefix) :].lstrip()
 
         # Get all available actions
-        available_actions = self.executor.action_manager.get_actions()
+        available_actions = self._executor.action_manager.get_actions()
 
         # If no text entered yet, suggest all commands and actions
         if not text:
@@ -331,6 +331,8 @@ class Terminal:
                             # Handle --key=value
                             if arg.startswith("--") and "=" in arg:
                                 key, value = arg[2:].split("=", 1)
+                                # Convert hyphens to underscores for Python parameter names
+                                key = key.replace("-", "_")
                                 keyword_args[key] = value
                                 i += 1
                                 continue
@@ -338,6 +340,8 @@ class Terminal:
                             # Handle --key value
                             if arg.startswith("--"):
                                 key = arg[2:]
+                                # Convert hyphens to underscores for Python parameter names
+                                key = key.replace("-", "_")
 
                                 # If next token exists and is not another --flag, treat it as value
                                 if i + 1 < len(raw_args) and not raw_args[
@@ -353,6 +357,13 @@ class Terminal:
                             # Handle positional argument
                             positional_args.append(arg)
                             i += 1
+
+                        # Filter out 'executor' from keyword_args - it's injected automatically
+                        if "executor" in keyword_args:
+                            logger.warning(
+                                "⚠️ Ignoring '--executor' parameter (automatically provided)"
+                            )
+                            keyword_args.pop("executor")
 
                         # Check for help flag
                         if keyword_args.get("help") or keyword_args.get("h"):
@@ -505,49 +516,60 @@ class Terminal:
             return "\n".join(lines)
 
         # Try to get detailed signature using modwrap
-        try:            
+        try:
             action_path = action_info["path"]
             wrapper = ModuleWrapper(action_path)
-            
+
             # Determine which method to get signature from
             class_name = action_class.__name__
             if issubclass(action_class, NamedPipe):
                 method_path = f"{class_name}.__init__"
             else:
                 method_path = f"{class_name}.run"
-            
+
             # Get detailed signature with types and defaults
             signature = wrapper.get_signature(method_path)
-            
+
             if signature:
                 lines.append(f"{BOLD}Parameters:{RESET}")
-                
+
+                has_params = False
                 for param_name, param_info in signature.items():
+                    # Skip 'executor' parameter - it's injected automatically
+                    if param_name == "executor":
+                        continue
+
+                    has_params = True
+                    # Convert underscores to hyphens for CLI convention
+                    cli_param_name = param_name.replace("_", "-")
                     param_type = param_info.get("type", "Any")
                     default_value = param_info.get("default")
-                    
+
                     if default_value is None and "default" not in param_info:
                         # Required parameter (no default key means required)
                         status = f"{GREEN}[required]{RESET}"
                         lines.append(
-                            f"  {YELLOW}--{param_name}{RESET} {DIM}({param_type}){RESET} {status}"
+                            f"  {YELLOW}--{cli_param_name}{RESET} {DIM}({param_type}){RESET} {status}"
                         )
                     else:
                         # Optional parameter with default
                         lines.append(
-                            f"  {YELLOW}--{param_name}{RESET} {DIM}({param_type}){RESET} "
+                            f"  {YELLOW}--{cli_param_name}{RESET} {DIM}({param_type}){RESET} "
                             f"{DIM}[default: {default_value}]{RESET}"
                         )
-                
+
+                if not has_params:
+                    lines.append(f"{DIM}  No parameters required{RESET}")
+
                 lines.append("")
             else:
                 lines.append(f"{DIM}  No parameters required{RESET}")
                 lines.append("")
-            
+
             # Get docstring
             try:
                 docstring = wrapper.get_doc(method_path)
-                
+
                 if docstring:
                     lines.append(f"{BOLD}Details:{RESET}")
                     # Indent each line of the docstring
@@ -560,29 +582,49 @@ class Terminal:
 
         except Exception as e:
             logger.debug(f"Could not use modwrap for {action_name}: {e}")
-            
+
             # Fallback to basic parameter list from action_info
             parameters = action_info.get("parameters", [])
-            
+
             if parameters:
                 lines.append(f"{BOLD}Parameters:{RESET}")
-                
+
+                has_params = False
                 for param_str in parameters:
                     # Parse parameter string format: "name (default)" or "name"
                     if "(" in param_str and param_str.endswith(")"):
                         # Has default value
                         param_name = param_str[:param_str.index("(")].strip()
+
+                        # Skip 'executor' parameter
+                        if param_name == "executor":
+                            continue
+
+                        has_params = True
+                        # Convert underscores to hyphens for CLI convention
+                        cli_param_name = param_name.replace("_", "-")
                         default_value = param_str[param_str.index("(") + 1:-1].strip()
-                        
+
                         lines.append(
-                            f"  {YELLOW}--{param_name}{RESET} {DIM}[default: {default_value}]{RESET}"
+                            f"  {YELLOW}--{cli_param_name}{RESET} {DIM}[default: {default_value}]{RESET}"
                         )
                     else:
                         # Required parameter (no default)
                         param_name = param_str.strip()
+
+                        # Skip 'executor' parameter
+                        if param_name == "executor":
+                            continue
+
+                        has_params = True
+                        # Convert underscores to hyphens for CLI convention
+                        cli_param_name = param_name.replace("_", "-")
                         status = f"{GREEN}[required]{RESET}"
-                        lines.append(f"  {YELLOW}--{param_name}{RESET} {status}")
-                
+                        lines.append(f"  {YELLOW}--{cli_param_name}{RESET} {status}")
+
+                if not has_params:
+                    lines.append(f"{DIM}  No parameters required{RESET}")
+
                 lines.append("")
             else:
                 lines.append(f"{DIM}  No parameters required{RESET}")
