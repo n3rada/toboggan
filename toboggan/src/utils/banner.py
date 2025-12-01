@@ -1,4 +1,4 @@
-# toboggan/utils/banner.py
+# toboggan/src/utils/banner.py
 
 # Local library imports
 from toboggan import __version__ as version
