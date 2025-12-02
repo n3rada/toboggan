@@ -4,8 +4,8 @@ import json
 from loguru import logger
 
 # Local application/library specific imports
-from toboggan.src.action import BaseAction
-from toboggan.src.utils.jwt import TokenReader
+from .core.action import BaseAction
+from .core.utils.jwt import TokenReader
 
 
 class KubeCheckAction(BaseAction):

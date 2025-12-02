@@ -1,6 +1,6 @@
 # Local application/library specific imports
-from toboggan.src.action import BaseAction
-from toboggan.src.utils import common
+from .core.action import BaseAction
+from .core.utils import common
 
 
 class HistoryAction(BaseAction):

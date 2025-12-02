@@ -21,9 +21,9 @@ from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.document import Document
 
 # Local library imports
-from toboggan.src.utils import logbook
-from toboggan.src.executor import Executor
-from toboggan.src.action import NamedPipe
+from .core.utils import logbook
+from .core.executor import Executor
+from .core.action import NamedPipe
 
 
 class TerminalCompleter(Completer):

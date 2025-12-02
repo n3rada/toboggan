@@ -2,7 +2,7 @@
 from loguru import logger
 
 # Local library imports
-from toboggan.src.action import BaseAction
+from .core.action import BaseAction
 
 
 class PathAction(BaseAction):

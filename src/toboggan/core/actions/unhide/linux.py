@@ -2,7 +2,7 @@
 
 import base64
 
-from toboggan.src.action import BaseAction
+from .core.action import BaseAction
 
 
 class UnHideAction(BaseAction):

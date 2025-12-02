@@ -5,8 +5,8 @@ from pathlib import Path
 from loguru import logger
 
 # Local library imports
-from toboggan.src.action import BaseAction
-from toboggan.src.actions.upload.linux import UploadAction
+from .core.action import BaseAction
+from .core.actions.upload.linux import UploadAction
 
 
 class DropBinary(BaseAction):

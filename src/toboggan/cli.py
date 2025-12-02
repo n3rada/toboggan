@@ -13,12 +13,12 @@ from modwrap import ModuleWrapper
 import httpx
 
 # Local library imports
-from toboggan import __version__
-from toboggan.src.utils import logbook
-from toboggan.src import executor
-from toboggan.src import terminal
-from toboggan.src.utils import common
-from toboggan.src.utils import banner
+from . import __version__
+from .core.utils import logbook
+from .core import executor
+from .core import terminal
+from .core.utils import common
+from .core.utils import banner
 
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"

@@ -6,7 +6,7 @@ import re
 from loguru import logger
 
 # Local application/library specific imports
-from toboggan.src.helpers import base
+from .core.helpers import base
 
 
 class WindowsHelper(base.OSHelperBase):

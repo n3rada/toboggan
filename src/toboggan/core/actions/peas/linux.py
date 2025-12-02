@@ -5,9 +5,9 @@ from pathlib import Path
 from loguru import logger
 
 # Local application/library specific imports
-from toboggan.src.action import BaseAction
-from toboggan.src.actions.upload.linux import UploadAction
-from toboggan.src.utils.common import generate_fixed_length_token
+from .core.action import BaseAction
+from .core.actions.upload.linux import UploadAction
+from .core.utils.common import generate_fixed_length_token
 
 
 class LinPEASAction(BaseAction):

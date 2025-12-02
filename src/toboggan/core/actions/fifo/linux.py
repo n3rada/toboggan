@@ -6,7 +6,7 @@ import random
 from loguru import logger
 
 # Local application/library specific imports
-from toboggan.src.action import NamedPipe
+from .core.action import NamedPipe
 
 
 class FifoAction(NamedPipe):

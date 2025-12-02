@@ -6,9 +6,9 @@ import re
 from loguru import logger
 
 # Local application/library specific imports
-from toboggan.src.helpers import base
-from toboggan.src.utils import common
-from toboggan.src.action import NamedPipe
+from .core.helpers import base
+from .core.utils import common
+from .core.action import NamedPipe
 
 
 class LinuxHelper(base.OSHelperBase):

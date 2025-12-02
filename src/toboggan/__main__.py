@@ -3,7 +3,7 @@
 import sys
 
 # Local library imports
-from toboggan import cli
+from . import cli
 
 if __name__ == "__main__":
     sys.exit(cli.main())

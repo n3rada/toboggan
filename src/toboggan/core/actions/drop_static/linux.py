@@ -2,9 +2,9 @@
 from loguru import logger
 
 # Local application/library specific imports
-from toboggan.src.action import BaseAction
-from toboggan.src.actions.drop_bin.linux import DropBinary
-from toboggan.src.utils.binaries import BinaryFetcher
+from .core.action import BaseAction
+from .core.actions.drop_bin.linux import DropBinary
+from .core.utils.binaries import BinaryFetcher
 
 
 class DropStaticBinary(BaseAction):

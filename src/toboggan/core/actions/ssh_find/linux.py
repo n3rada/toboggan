@@ -1,4 +1,4 @@
-from toboggan.src.action import BaseAction
+from .core.action import BaseAction
 
 
 class FindSshKeysAction(BaseAction):

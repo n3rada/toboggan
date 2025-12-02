@@ -7,12 +7,12 @@ import base64
 from loguru import logger
 
 # Local application/library specific imports
-from toboggan.src.utils.common import SingletonMeta
-from toboggan.src import action
-from toboggan.src import target
-from toboggan.src.helpers.linux import LinuxHelper
-from toboggan.src.helpers.windows import WindowsHelper
-from toboggan.src.helpers.base import OSHelperBase
+from .core.utils.common import SingletonMeta
+from .core import action
+from .core import target
+from .core.helpers.linux import LinuxHelper
+from .core.helpers.windows import WindowsHelper
+from .core.helpers.base import OSHelperBase
 
 
 class Executor(metaclass=SingletonMeta):

@@ -8,8 +8,8 @@ from loguru import logger
 from tqdm import tqdm
 
 # Local application/library specific imports
-from toboggan.src.action import BaseAction
-from toboggan.src.utils.common import generate_fixed_length_token
+from .core.action import BaseAction
+from .core.utils.common import generate_fixed_length_token
 
 
 class UploadAction(BaseAction):
