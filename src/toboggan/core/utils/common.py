@@ -1,4 +1,4 @@
-# toboggan/src/utils/common.py
+# toboggan/core/utils/common.py
 
 # Built-in imports
 import secrets
@@ -25,6 +25,7 @@ class SingletonMeta(type):
             instance = super().__call__(*args, **kwargs)
             cls._instances[cls] = instance
         return cls._instances[cls]
+
 
 def base64_for_powershell(command: str) -> str:
     # Encode the command as UTF-16LE, PowerShell's default encoding

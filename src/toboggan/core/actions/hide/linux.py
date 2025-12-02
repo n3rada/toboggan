@@ -1,4 +1,4 @@
-# toboggan/src/actions/hide/linux.py
+# toboggan/core/actions/hide/linux.py
 
 # Built-in imports
 import base64

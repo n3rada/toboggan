@@ -1,4 +1,4 @@
-# toboggan/src/terminal.py
+# toboggan/core/terminal.py
 
 # Built-in imports
 import shlex

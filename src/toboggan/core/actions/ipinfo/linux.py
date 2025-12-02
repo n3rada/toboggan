@@ -1,4 +1,4 @@
-# toboggan/src/actions/ipinfo/linux.py
+# toboggan/core/actions/ipinfo/linux.py
 
 # External library imports
 from loguru import logger

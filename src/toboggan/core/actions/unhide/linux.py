@@ -1,4 +1,4 @@
-# toboggan/src/actions/unhide/linux.py
+# toboggan/core/actions/unhide/linux.py
 
 import base64
 

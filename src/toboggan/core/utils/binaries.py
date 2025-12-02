@@ -1,4 +1,4 @@
-# toboggan/src/utils/binaries.py
+# toboggan/core/utils/binaries.py
 
 # Built-in imports
 import os

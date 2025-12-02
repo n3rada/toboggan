@@ -1,4 +1,4 @@
-# toboggan/src/utils/logbook.py
+# toboggan/core/utils/logbook.py
 
 """Logbook module for logging capabilities using Loguru.
 
