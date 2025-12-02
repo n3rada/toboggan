@@ -7,7 +7,7 @@ import base64
 from loguru import logger
 
 # Local application/library specific imports
-from .core.utils.common import SingletonMeta
+from .utils.common import SingletonMeta
 from .core import action
 from .core import target
 from .core.helpers.linux import LinuxHelper

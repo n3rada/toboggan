@@ -3,7 +3,7 @@ from loguru import logger
 
 # Local application/library specific imports
 from .core.action import BaseAction
-from .core.utils import common
+from .utils import common
 
 
 class UpgradeAction(BaseAction):

@@ -14,11 +14,11 @@ import httpx
 
 # Local library imports
 from . import __version__
-from .core.utils import logbook
+from .utils import logbook
 from .core import executor
 from .core import terminal
-from .core.utils import common
-from .core.utils import banner
+from .utils import common
+from .utils import banner
 
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"

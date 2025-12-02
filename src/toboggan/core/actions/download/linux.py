@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 # Local application/library specific imports
 from .core.action import BaseAction
-from .core.utils import common
+from .utils import common
 
 
 class DownloadAction(BaseAction):
