@@ -9,7 +9,7 @@ from loguru import logger
 # Local application/library specific imports
 from . import action
 from . import target
-from .utils.common import SingletonMeta
+from toboggan.core.utils.common import SingletonMeta
 from .helpers.linux import LinuxHelper
 from .helpers.windows import WindowsHelper
 from .helpers.base import OSHelperBase
@@ -460,7 +460,7 @@ class Executor(metaclass=SingletonMeta):
         ls_output = self.remote_execute(command="ls /", retry=False).strip().lower()
 
         if ls_output:
-            if ("bin" in ls_output or "etc" in ls_output):
+            if "bin" in ls_output or "etc" in ls_output:
                 logger.info("🖥️ Detected Linux OS via ls /.")
                 return "linux"
             if "windows" in ls_output or "program files" in ls_output:

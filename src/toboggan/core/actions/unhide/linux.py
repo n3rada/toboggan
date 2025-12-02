@@ -2,7 +2,7 @@
 
 import base64
 
-from .core.action import BaseAction
+from toboggan.core.action import BaseAction
 
 
 class UnHideAction(BaseAction):
@@ -16,6 +16,7 @@ class UnHideAction(BaseAction):
     Requirements:
         - None (all operations are performed locally in Python)
     """
+
     DESCRIPTION = (
         "Reverse the HideAction transformation (rev → base64 → gzip decompress)."
     )

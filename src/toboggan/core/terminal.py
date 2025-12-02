@@ -519,7 +519,9 @@ class Terminal:
             lines.append(f"{YELLOW}⚠️  Could not retrieve action information{RESET}")
             lines.append("")
             lines.append(f"{BOLD}Usage:{RESET}")
-            lines.append(f"  {GREEN}!{action_name}{RESET} {DIM}[--param value ..]{RESET}")
+            lines.append(
+                f"  {GREEN}!{action_name}{RESET} {DIM}[--param value ..]{RESET}"
+            )
             lines.append(DIM + "-" * 70 + RESET)
             return "\n".join(lines)
 
@@ -527,6 +529,8 @@ class Terminal:
         try:
             action_path = action_info["path"]
             wrapper = ModuleWrapper(action_path)
+
+            logger.trace(repr(wrapper))
 
             # Determine which method to get signature from
             class_name = action_class.__name__
@@ -602,7 +606,7 @@ class Terminal:
                     # Parse parameter string format: "name (default)" or "name"
                     if "(" in param_str and param_str.endswith(")"):
                         # Has default value
-                        param_name = param_str[:param_str.index("(")].strip()
+                        param_name = param_str[: param_str.index("(")].strip()
 
                         # Skip 'executor' parameter
                         if param_name == "executor":
@@ -611,7 +615,7 @@ class Terminal:
                         has_params = True
                         # Convert underscores to hyphens for CLI convention
                         cli_param_name = param_name.replace("_", "-")
-                        default_value = param_str[param_str.index("(") + 1:-1].strip()
+                        default_value = param_str[param_str.index("(") + 1 : -1].strip()
 
                         lines.append(
                             f"  {YELLOW}--{cli_param_name}{RESET} {DIM}[default: {default_value}]{RESET}"

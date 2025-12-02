@@ -10,6 +10,7 @@ from pathlib import Path
 from loguru import logger
 from modwrap import ModuleWrapper
 
+
 class BaseAction(ABC):
     """Base class for all modules in Toboggan"""
 
@@ -86,12 +87,12 @@ class NamedPipe(BaseAction):
     def execute(self, command: str):
         """Every NamedPipe action must implement this method"""
         pass
-        
+
     @abstractmethod
     def _stop(self):
         """Every NamedPipe action must implement this method"""
         pass
-        
+
     # Public methods
     def stop(self):
         logger.info("Stopping named pipe")
@@ -136,14 +137,23 @@ class ActionsManager:
                     continue
 
                 file_path = action_dir / f"{self.__os}.py"
+
                 if not file_path.exists():
                     continue
 
+                logger.trace(f"Found action: {action_name} at {file_path}")
+
                 try:
                     wrapper = ModuleWrapper(file_path)
+
+                    logger.trace(f"Wrapped action: {repr(wrapper)}")
+
                     cls = wrapper.get_class(must_inherit=BaseAction)
+
                     if not cls:
                         continue
+
+                    logger.trace(f"Found action class: {cls.__name__}")
 
                     parameters = self.__extract_parameters(wrapper)
                     description = getattr(cls, "DESCRIPTION", None)
@@ -156,8 +166,8 @@ class ActionsManager:
                     if description:
                         actions[action_name]["description"] = description
 
-                except Exception as exc:
-                    logger.warning(f"⚠️ Skipping action '{action_name}': {exc}")
+                except Exception:
+                    logger.exception(f"⚠️ Skipping action '{action_name}'")
 
         return actions
 
@@ -246,7 +256,6 @@ class ActionsManager:
         except Exception as exc:
             logger.warning(f"⚠ Failed to extract parameters from {wrapper.name}: {exc}")
             return []
-
 
     def __get_user_module_dir(self) -> Path:
         """Get the user action directory (XDG for Linux/macOS, LOCALAPPDATA for Windows)."""

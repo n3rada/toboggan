@@ -11,7 +11,7 @@ from Cryptodome.Cipher import AES
 from Cryptodome.Util.Padding import pad
 
 # Local application/library specific imports
-from .core.action import BaseAction
+from toboggan.core.action import BaseAction
 
 
 def generate_key_iv():
@@ -48,6 +48,7 @@ class HideAction(BaseAction):
         - Remote system must have: echo, base64 (standard on all Unix systems)
         - Optional: openssl (for AES encryption, falls back to base64 if missing)
     """
+
     DESCRIPTION = (
         "Obfuscate and execute a command using OpenSSL or base64-based wrapping."
     )
@@ -88,7 +89,9 @@ class HideAction(BaseAction):
         else:
             # fallback: just base64 + decode
             encoded = base64.b64encode(command.encode()).decode()
-            decrypt_pipeline = f"{echo_cmd} '{encoded}'|{base64_cmd} -d|{self._executor.shell}"
+            decrypt_pipeline = (
+                f"{echo_cmd} '{encoded}'|{base64_cmd} -d|{self._executor.shell}"
+            )
 
         # Obfuscate further: base64 + reverse + base64 encode all
         obfuscated = base64.urlsafe_b64encode(

@@ -2,7 +2,7 @@
 from loguru import logger
 
 # Local application/library specific imports
-from .core.action import BaseAction
+from toboggan.core.action import BaseAction
 
 
 class InternetCheckAction(BaseAction):
@@ -18,7 +18,7 @@ class InternetCheckAction(BaseAction):
         ping_cmd = None
         ping_path = self._executor.os_helper.get_command_location("ping")
         ping_cmd = f"{ping_path.strip()} -c 1 -W 2 {ip}"
-        
+
         if ping_cmd:
             ping_result = self._executor.remote_execute(
                 ping_cmd, timeout=5, retry=False

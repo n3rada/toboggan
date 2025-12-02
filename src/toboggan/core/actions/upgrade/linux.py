@@ -2,8 +2,8 @@
 from loguru import logger
 
 # Local application/library specific imports
-from .core.action import BaseAction
-from .utils import common
+from toboggan.core.action import BaseAction
+from toboggan.core.utils import common
 
 
 class UpgradeAction(BaseAction):
