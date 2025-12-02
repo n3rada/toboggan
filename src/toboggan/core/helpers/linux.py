@@ -8,7 +8,7 @@ from loguru import logger
 # Local application/library specific imports
 from . import base
 from ..utils import common
-from .core.action import NamedPipe
+from ..action import NamedPipe
 
 
 class LinuxHelper(base.OSHelperBase):
