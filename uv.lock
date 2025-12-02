@@ -107,11 +107,11 @@ wheels = [
 
 [[package]]
 name = "modwrap"
-version = "1.1.5"
+version = "1.1.6"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f8/12/739d32ca6fa77c5c41e8edbe72b953dd710bca74cd4ee8ff580eeb85a1b7/modwrap-1.1.5.tar.gz", hash = "sha256:f9a9082a3847c9138f0e78fca59b5a25761f2fe1d9d09a76b7fff538565a8656", size = 18753, upload-time = "2025-10-28T21:43:57.023Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/34/01e86fe2e55b342490cc53c8f809dd84714bd25e4bb97db10bc33d494942/modwrap-1.1.6.tar.gz", hash = "sha256:d1eba082515107d8b24173939e8367ddfdb53fb48cb013bda5b9de937400c135", size = 5262, upload-time = "2025-12-02T21:53:35.895Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7f/c2/96535869f27d2980c347c604a08e956cdb3a3cead88e80b3b8e4428980c0/modwrap-1.1.5-py3-none-any.whl", hash = "sha256:6edf207d64bfe9ab2381a15aff208fec02c7988d81267e5986c7e67f07cadbf1", size = 20110, upload-time = "2025-10-28T21:43:55.687Z" },
+    { url = "https://files.pythonhosted.org/packages/28/5e/e6ea67bd8839bdb7b4a283827cc032d94448dab430360480b89b9e1f04ed/modwrap-1.1.6-py3-none-any.whl", hash = "sha256:acd6830f8c51102536ba46bd192b920f6cc6e435f0637dfab04cc9816771fe99", size = 6413, upload-time = "2025-12-02T21:53:34.778Z" },
 ]
 
 [[package]]
@@ -183,7 +183,7 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.0" },
     { name = "loguru", specifier = ">=0.7.0,<1.0.0" },
-    { name = "modwrap", specifier = ">=1.1.4,<2.0.0" },
+    { name = "modwrap", specifier = ">=1.1.6" },
     { name = "prompt-toolkit", specifier = ">=3.0.20,<4.0.0" },
     { name = "pycryptodomex", specifier = ">=3.10.1,<4.0.0" },
     { name = "tqdm", specifier = ">=4.61.0,<5.0.0" },
