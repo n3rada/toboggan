@@ -6,7 +6,7 @@ import re
 from loguru import logger
 
 # Local application/library specific imports
-from .core.helpers import base
+from . import base
 
 
 class WindowsHelper(base.OSHelperBase):
