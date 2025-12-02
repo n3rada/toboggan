@@ -22,8 +22,8 @@ from prompt_toolkit.document import Document
 
 # Local library imports
 from .utils import logbook
-from ..executor import Executor
-from ..action import NamedPipe
+from .executor import Executor
+from .action import NamedPipe
 
 
 class TerminalCompleter(Completer):
@@ -519,7 +519,7 @@ class Terminal:
             lines.append(f"{YELLOW}⚠️  Could not retrieve action information{RESET}")
             lines.append("")
             lines.append(f"{BOLD}Usage:{RESET}")
-            lines.append(f"  {GREEN}!{action_name}{RESET} {DIM}[--param value ...]{RESET}")
+            lines.append(f"  {GREEN}!{action_name}{RESET} {DIM}[--param value ..]{RESET}")
             lines.append(DIM + "-" * 70 + RESET)
             return "\n".join(lines)
 
@@ -640,7 +640,7 @@ class Terminal:
 
         # Usage example
         lines.append(f"{BOLD}Usage:{RESET}")
-        lines.append(f"  {GREEN}!{action_name}{RESET} {DIM}[--param value ...]{RESET}")
+        lines.append(f"  {GREEN}!{action_name}{RESET} {DIM}[--param value ..]{RESET}")
         lines.append(DIM + "-" * 70 + RESET)
 
         return "\n".join(lines)

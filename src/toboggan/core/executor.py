@@ -10,9 +10,9 @@ from loguru import logger
 from .utils.common import SingletonMeta
 from . import action
 from . import target
-from ..helpers.linux import LinuxHelper
-from ..helpers.windows import WindowsHelper
-from ..helpers.base import OSHelperBase
+from .helpers.linux import LinuxHelper
+from .helpers.windows import WindowsHelper
+from .helpers.base import OSHelperBase
 
 
 class Executor(metaclass=SingletonMeta):
@@ -344,7 +344,7 @@ class Executor(metaclass=SingletonMeta):
                 # Apply exponential backoff with jitter
                 sleep_time = (2**attempt) + (random.randint(0, 1000) / 1000)
                 if debug:
-                    logger.warning(f"⏳ Retrying after {sleep_time:.2f} seconds...")
+                    logger.warning(f"⏳ Retrying after {sleep_time:.2f} seconds..")
                 time.sleep(sleep_time)
 
         if not result:
