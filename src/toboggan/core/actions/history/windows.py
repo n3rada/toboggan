@@ -1,6 +1,6 @@
 # Local application/library specific imports
 from .core.action import BaseAction
-from ..utils import common
+from .utils import common
 
 
 class HistoryAction(BaseAction):

@@ -5,7 +5,7 @@ from loguru import logger
 
 # Local application/library specific imports
 from .core.action import BaseAction
-from ..utils.jwt import TokenReader
+from .utils.jwt import TokenReader
 
 
 class KubeCheckAction(BaseAction):

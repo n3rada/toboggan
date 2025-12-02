@@ -4,7 +4,7 @@ from loguru import logger
 # Local application/library specific imports
 from .core.action import BaseAction
 from .core.actions.drop_bin.linux import DropBinary
-from ..utils.binaries import BinaryFetcher
+from .utils.binaries import BinaryFetcher
 
 
 class DropStaticBinary(BaseAction):
