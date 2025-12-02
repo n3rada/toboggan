@@ -8,11 +8,11 @@ from loguru import logger
 
 # Local application/library specific imports
 from .utils.common import SingletonMeta
-from .core import action
-from .core import target
-from .core.helpers.linux import LinuxHelper
-from .core.helpers.windows import WindowsHelper
-from .core.helpers.base import OSHelperBase
+from . import action
+from . import target
+from ..helpers.linux import LinuxHelper
+from ..helpers.windows import WindowsHelper
+from ..helpers.base import OSHelperBase
 
 
 class Executor(metaclass=SingletonMeta):
