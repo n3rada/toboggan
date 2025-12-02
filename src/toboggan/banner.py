@@ -1,8 +1,7 @@
 # toboggan/src/utils/banner.py
 
 # Local library imports
-from toboggan import __version__ as version
-
+from . import __version__ as version
 
 def display_banner() -> str:
     return rf"""

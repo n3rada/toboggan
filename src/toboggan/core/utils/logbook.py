@@ -17,6 +17,7 @@ Is this message about...
    └─ Use WARNING/ERROR
 """
 
+# Built-in imports
 import os
 import sys
 from pathlib import Path

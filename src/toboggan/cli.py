@@ -13,10 +13,10 @@ from modwrap import ModuleWrapper
 import httpx
 
 # Local library imports
-from . import __version__
+from . import __version__, banner
 from .core import executor
 from .core import terminal
-from .core.utils import logbook, common, banner
+from .core.utils import logbook, common
 
 # Directory where built-in handlers are stored
 BUILTIN_DIR = Path(__file__).parent / "core/handlers"
