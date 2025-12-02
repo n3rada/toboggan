@@ -21,7 +21,7 @@ from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.document import Document
 
 # Local library imports
-from .utils import logbook
+from ..utils import logbook
 from .executor import Executor
 from .action import NamedPipe
 
