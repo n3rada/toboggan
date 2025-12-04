@@ -82,7 +82,6 @@ class InternetCheckAction(BaseAction):
             logger.info(f"⚙️ Using {tool}")
             cmd = f"{tool} {use_flags} {hostname}"
             result = self._executor.remote_execute(cmd, timeout=10, retry=False)
-            logger.trace(result)
             if (
                 not result
                 or "timed out" in result
