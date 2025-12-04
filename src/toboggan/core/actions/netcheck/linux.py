@@ -3,7 +3,7 @@ from loguru import logger
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
-
+from toboggan.core.utils import common
 
 class InternetCheckAction(BaseAction):
     DESCRIPTION = (
@@ -71,10 +71,10 @@ class InternetCheckAction(BaseAction):
 
         if curl_path := self._executor.os_helper.get_command_location("curl"):
             tool = curl_path.strip()
-            use_flags = "-m 5 -Iks"
+            use_flags = "-kLs"
         elif wget_path := self._executor.os_helper.get_command_location("wget"):
             tool = wget_path.strip()
-            use_flags = "--spider"
+            use_flags = "-qO- --max-redirect=5 --no-check-certificate"
 
         if not tool:
             logger.error("❌ No suitable HTTP tool found (curl/wget).")
@@ -91,3 +91,8 @@ class InternetCheckAction(BaseAction):
                 logger.error(f"❌ Could not reach {hostname}")
             else:
                 logger.success(f"✅ Reached {hostname}")
+                if common.analyze_response(result):
+                    logger.success("✅ Direct internet access")
+                else:
+                    logger.error("❌ Blocked, proxied or captive portal detected")
+                
