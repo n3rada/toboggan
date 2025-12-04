@@ -138,6 +138,8 @@ def analyze_response(body: str) -> bool:
 
     title = extract_html_title(body)
 
+    logger.info(f"Title of the webpage is: {title}")
+
     blocked_keywords = [
         "access denied",
         "proxy authentication",
@@ -153,7 +155,7 @@ def analyze_response(body: str) -> bool:
 
     for kw in blocked_keywords:
         if kw in title:
-            logger.warning(f"'{title} matched {kw}")
+            logger.debug(f"Matched {kw}")
             return False
 
     return True
