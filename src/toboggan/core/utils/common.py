@@ -138,7 +138,7 @@ def analyze_response(body: str) -> bool:
     ]
 
     for keyword in blocked_keywords:
-        if keyword in body_lower:
+        if keyword in clean:
             hits.append(keyword)
 
     if hits:
