@@ -88,6 +88,41 @@ def is_valid_directory_path(path: str) -> bool:
         return False
 
 
+def analyze_response(body: str) -> bool:
+    if not body:
+        return False  # Nothing came back
+
+    body_lower = body.lower()
+
+    # Common firewall or captive portal signatures
+    blocked_keywords = [
+        "access denied",
+        "forbidden",
+        "intercepted",
+        "proxy authentication",
+        "blocked by",
+        "firewall",
+        "content filtered",
+        "security policy",
+        "bluecoat",
+        "zscaler",
+        "sophos",
+        "fortigate",
+        "checkpoint",
+        "cloudflare",
+        "akamai",
+        "login",
+        "authentication required",
+    ]
+
+    for keyword in blocked_keywords:
+        if keyword in body_lower:
+            return False
+
+    return True
+
+
+
 def is_valid_file_path(path: str) -> bool:
     r"""
     Validates if the provided path is a valid Unix or Windows file path (not ending with / or \).
