@@ -116,12 +116,27 @@ def normalize_html_text(body: str) -> str:
         logger.trace(f"HTML normalization failed: {e}")
         return body.lower()
 
+def extract_html_title(body: str) -> str | None:
+    """
+    Extract the <title> from HTML if present.
+    Returns None if not found or invalid HTML.
+    """
+    try:
+        doc = html.fromstring(body)
+        title = doc.findtext(".//title")
+        if title:
+            return title.strip().lower()
+    except Exception as e:
+        logger.trace(f"Title extraction failed: {e}")
+
+    return None
+
+
 def analyze_response(body: str) -> bool:
     if not body:
-        return False  # Nothing came back
+        return False
 
-    # Normalize HTML to visible text only
-    clean = normalize_html_text(body)
+    title = extract_html_title(body)
 
     blocked_keywords = [
         "access denied",
@@ -136,15 +151,10 @@ def analyze_response(body: str) -> bool:
         "checkpoint",
     ]
 
-    hits = []
-
-    for keyword in blocked_keywords:
-        if keyword in clean:
-            hits.append(keyword)
-
-    if hits:
-        logger.trace(f"Block indicators matched: {hits}")
-        return False
+    for kw in blocked_titles:
+        if kw in title:
+            logger.warning(f"'{title} matched {kw}")
+            return False
 
     return True
 
