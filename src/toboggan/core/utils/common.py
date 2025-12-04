@@ -10,6 +10,7 @@ import uuid
 
 # Third party library imports
 from loguru import logger
+from lxml import html, etree
 
 class SingletonMeta(type):
     """
@@ -87,12 +88,40 @@ def is_valid_directory_path(path: str) -> bool:
     except Exception as e:
         return False
 
+def normalize_html_text(body: str) -> str:
+    """
+    Remove scripts, styles, comments and return only normalized visible text.
+    """
+    try:
+        doc = html.fromstring(body)
+
+        # Remove script/style/meta/noscript/iframe/svg
+        for bad in doc.xpath(
+            "//script|//style|//noscript|//meta|//iframe|//svg|//link|//head"
+        ):
+            bad.drop_tree()
+
+        # Remove HTML comments
+        etree.strip_tags(doc, etree.Comment)
+
+        # Extract visible text
+        text = doc.text_content()
+
+        # Normalize whitespace
+        text = " ".join(text.split())
+
+        return text.lower()
+
+    except Exception as e:
+        logger.trace(f"HTML normalization failed: {e}")
+        return body.lower()
 
 def analyze_response(body: str) -> bool:
     if not body:
         return False  # Nothing came back
 
-    body_lower = body.lower()
+    # Normalize HTML to visible text only
+    clean = normalize_html_text(body)
 
     # Common firewall or captive portal signatures
     blocked_keywords = [
@@ -113,8 +142,7 @@ def analyze_response(body: str) -> bool:
             hits.append(keyword)
 
     if hits:
-        if debug:
-            logger.trace("Block indicators matched:", hits)
+        logger.trace(f"Block indicators matched: {hits}"))
         return False
 
     return True
