@@ -142,7 +142,7 @@ def analyze_response(body: str) -> bool:
             hits.append(keyword)
 
     if hits:
-        logger.trace(f"Block indicators matched: {hits}"))
+        logger.trace(f"Block indicators matched: {hits}")
         return False
 
     return True
