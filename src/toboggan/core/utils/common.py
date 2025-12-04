@@ -140,7 +140,7 @@ def analyze_response(body: str) -> bool:
 
     if not output:
         output = normalize_html_text(body)
-        logger.info(f"Webpage content: {output}")
+        logger.debug(f"Webpage content: {output}")
     else:
         logger.info(f"Title of the webpage is: {output}")
    
