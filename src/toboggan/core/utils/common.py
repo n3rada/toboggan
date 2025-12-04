@@ -138,6 +138,9 @@ def analyze_response(body: str) -> bool:
 
     title = extract_html_title(body)
 
+    if not title:
+        return False
+
     logger.info(f"Title of the webpage is: {title}")
 
     blocked_keywords = [
