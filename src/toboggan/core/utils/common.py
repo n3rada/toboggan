@@ -9,7 +9,7 @@ import gzip
 import uuid
 
 # Third party library imports
-
+from loguru import logger
 
 class SingletonMeta(type):
     """
@@ -97,27 +97,25 @@ def analyze_response(body: str) -> bool:
     # Common firewall or captive portal signatures
     blocked_keywords = [
         "access denied",
-        "forbidden",
-        "intercepted",
         "proxy authentication",
+        "intercepted",
         "blocked by",
-        "firewall",
         "content filtered",
         "security policy",
         "bluecoat",
         "zscaler",
-        "sophos",
         "fortigate",
         "checkpoint",
-        "cloudflare",
-        "akamai",
-        "login",
-        "authentication required",
     ]
 
     for keyword in blocked_keywords:
         if keyword in body_lower:
-            return False
+            hits.append(keyword)
+
+    if hits:
+        if debug:
+            logger.trace("Block indicators matched:", hits)
+        return False
 
     return True
 
