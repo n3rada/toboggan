@@ -123,7 +123,6 @@ def analyze_response(body: str) -> bool:
     # Normalize HTML to visible text only
     clean = normalize_html_text(body)
 
-    # Common firewall or captive portal signatures
     blocked_keywords = [
         "access denied",
         "proxy authentication",
@@ -136,6 +135,8 @@ def analyze_response(body: str) -> bool:
         "fortigate",
         "checkpoint",
     ]
+
+    hits = []
 
     for keyword in blocked_keywords:
         if keyword in clean:
