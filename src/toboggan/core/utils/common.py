@@ -151,7 +151,7 @@ def analyze_response(body: str) -> bool:
         "checkpoint",
     ]
 
-    for kw in blocked_titles:
+    for kw in blocked_keywords:
         if kw in title:
             logger.warning(f"'{title} matched {kw}")
             return False
