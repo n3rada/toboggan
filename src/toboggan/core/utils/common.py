@@ -148,6 +148,7 @@ def analyze_response(body: str) -> bool:
     blocked_keywords = [
         "access denied",
         "proxy authentication",
+        "been blocked",
         "intercepted",
         "blocked by",
         "content filtered",

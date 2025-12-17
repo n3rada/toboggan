@@ -90,9 +90,8 @@ class InternetCheckAction(BaseAction):
             ):
                 logger.error(f"❌ Could not reach {hostname}")
             else:
-                logger.success(f"✅ Reached {hostname}")
                 if common.analyze_response(result):
-                    logger.success("✅ Direct internet access")
+                    logger.success(f"✅ Reached {hostname}")
                 else:
                     logger.error("❌ Blocked, proxied or captive portal detected")
                 
