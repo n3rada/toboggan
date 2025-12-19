@@ -26,7 +26,7 @@ pipx install --system-site-packages 'git+https://github.com/n3rada/toboggan.git'
 
 Or you can directly inject the dependency inside `toboggan`:
 ```shell
-pipx inject psycopg2 toboggan
+pipx inject toboggan psycopg2
 ```
 
 ## 🔍 What is an RCE Python Module?
