@@ -471,7 +471,7 @@ class Terminal:
         lines.append(f"{BOLD}Built-in Commands:{RESET}")
         lines.append(DIM + "-" * (max_action_length + 50) + RESET)
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}max_size{RESET}', max_action_length)} → "
+            f"🔹 {ansi_ljust(f'{GREEN}chunksize{RESET}', max_action_length)} → "
             f"{CYAN}Probe or manually set the max command size.{RESET}"
         )
         lines.append(f"    ⚙️ Parameters: bytes (optional, multiple of 1024)")
