@@ -45,8 +45,6 @@ class IpInfoAction(BaseAction):
 
         # Step 2: Process each interface
         for iface_name in interfaces:
-            logger.info(f"🔍 Analyzing interface: {iface_name}")
-
             # Read interface index
             idx_result = self._executor.remote_execute(
                 f"{cat_command} /sys/class/net/{iface_name}/ifindex 2>/dev/null || echo '0'",
