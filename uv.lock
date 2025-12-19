@@ -247,11 +247,11 @@ wheels = [
 
 [[package]]
 name = "modwrap"
-version = "1.1.6"
+version = "1.1.7"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/55/34/01e86fe2e55b342490cc53c8f809dd84714bd25e4bb97db10bc33d494942/modwrap-1.1.6.tar.gz", hash = "sha256:d1eba082515107d8b24173939e8367ddfdb53fb48cb013bda5b9de937400c135", size = 5262, upload-time = "2025-12-02T21:53:35.895Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/ad/b0a4eeca2c0eedd57861928e43a18f459b987f4d92445038aa531e42f487/modwrap-1.1.7.tar.gz", hash = "sha256:cd020e5a0d3fa7f9101740793929b6ec8d86cf0987fb10e1b70772599d273812", size = 5819, upload-time = "2025-12-19T18:30:13.736Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/5e/e6ea67bd8839bdb7b4a283827cc032d94448dab430360480b89b9e1f04ed/modwrap-1.1.6-py3-none-any.whl", hash = "sha256:acd6830f8c51102536ba46bd192b920f6cc6e435f0637dfab04cc9816771fe99", size = 6413, upload-time = "2025-12-02T21:53:34.778Z" },
+    { url = "https://files.pythonhosted.org/packages/96/3a/db4553e74aa05967822cb8e0c917f28ececbdcfb95d8a1a3d5769a745a67/modwrap-1.1.7-py3-none-any.whl", hash = "sha256:5f32bb074607c322c0f2514a0b51843788b9cd6617cfcf8ddfa5ac4c48407ca7", size = 6928, upload-time = "2025-12-19T18:30:12.33Z" },
 ]
 
 [[package]]
