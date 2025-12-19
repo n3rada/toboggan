@@ -70,8 +70,8 @@ class AutoSshBackdoorAction(BaseAction):
                 except Exception as e:
                     return f"❌ Failed to generate key locally: {e}"
 
-                private_key = key_path.read_text()
-                public_key = (key_path.with_suffix(".pub")).read_text()
+                private_key = key_path.read_text(encoding="utf-8")
+                public_key = (key_path.with_suffix(".pub")).read_text(encoding="utf-8")
                 logger.info("🔑 SSH keypair generated locally.")
         else:
             logger.info(f"🔑 ssh-keygen found at: {sshkeygen_path}")
