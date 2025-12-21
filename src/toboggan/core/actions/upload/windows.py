@@ -53,7 +53,8 @@ class UploadAction(BaseAction):
 
             # If remote_path looks like a directory (ends with \), append filename
             if remote_path.endswith("\\"):
-                remote_path = f"{remote_path.rstrip('\\\\')}{local_file.name}"
+                base_path = remote_path.rstrip("\\")
+                remote_path = f"{base_path}\\{local_file.name}"
 
         logger.info(f"📤 Uploading {local_path} to {remote_path}")
 
