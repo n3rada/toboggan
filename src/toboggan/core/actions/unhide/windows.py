@@ -22,16 +22,8 @@ class UnHideAction(BaseAction):
             logger.debug(f"🔓 De-obfuscating output: {len(command)} bytes")
             logger.trace(f"Raw: {command}")
             
-            # Step 0: Clean the input - remove all whitespace, newlines, etc.
-            cleaned = ''.join(command.split())
-            logger.trace(f"After cleaning: {len(cleaned)} bytes")
-            
-            if not cleaned:
-                logger.warning("⚠️  Empty output after cleaning")
-                return ""
-            
             # Step 1: Reverse the string (undo PowerShell string reversal)
-            reversed_data = cleaned[::-1]
+            reversed_data = command[::-1]
             logger.trace(f"After reverse: {reversed_data}")
 
             # Step 2: Base64 decode
