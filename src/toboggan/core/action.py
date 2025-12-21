@@ -12,20 +12,56 @@ from modwrap import ModuleWrapper
 
 
 class BaseAction(ABC):
-    """Base class for all modules in Toboggan"""
+    """Abstract base class for all actions in Toboggan.
+
+    Provides the foundation for implementing custom actions that can be executed
+    on remote systems. All actions must inherit from this class and implement
+    the run() method.
+
+    Attributes:
+        _executor: The executor instance for remote command execution.
+        _os_helper: OS-specific helper instance for platform operations.
+    """
 
     def __init__(self, executor):
+        """Initialize the action with an executor instance.
+
+        Args:
+            executor: The Executor instance that provides remote execution
+                capabilities and OS helper access.
+        """
         self._executor = executor
         self._os_helper = executor.os_helper
 
     @abstractmethod
     def run(self, *args, **kwargs):
-        """Every action must implement this method"""
+        """Execute the action's main functionality.
+
+        This method must be implemented by all subclasses to define the specific
+        behavior of the action.
+
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            The result of the action execution. Return type varies by implementation.
+        """
         pass
 
 
 class NamedPipe(BaseAction):
-    """Abstract base class for Named Pipe actions"""
+    """Abstract base class for Named Pipe-based inter-process communication.
+
+    Provides a framework for implementing semi-interactive shells using named pipes
+    (FIFO) for bidirectional communication with remote systems. Subclasses implement
+    OS-specific pipe creation and management.
+
+    Attributes:
+        _stdin: Path to the stdin pipe for command input.
+        _stdout: Path to the stdout pipe for command output.
+        _read_interval: Time interval between pipe read operations.
+    """
 
     def __init__(
         self,
@@ -34,14 +70,26 @@ class NamedPipe(BaseAction):
         stdin_path: str = None,
         stdout_path: str = None,
     ):
-        """
-        Initialize a NamedPipe action for inter-process communication using named pipes.
+        """Initialize a NamedPipe action for inter-process communication.
+
+        Sets up named pipes for bidirectional communication with the remote system.
+        If pipe paths are not specified, generates stealthy random filenames to avoid
+        detection. Calculates and logs estimated polling frequency based on network
+        round-trip time.
 
         Args:
-            executor: The Executor instance responsible for remote command execution and OS helper access.
-            read_interval (float, optional): Time interval (in seconds) between read operations on the pipe. Defaults to 0.4. If the average response time of the executor is higher, it will be used instead.
-            stdin_path (str, optional): Name of the input (stdin) pipe. If None, a stealthy name is generated. Defaults to None.
-            stdout_path (str, optional): Name of the output (stdout) pipe. If None, a stealthy name is generated. Defaults to None.
+            executor: The Executor instance responsible for remote command execution
+                and OS helper access.
+            read_interval: Time interval in seconds between read operations on the pipe.
+                Defaults to 0.3. The actual poll cycle will be longer due to network RTT.
+            stdin_path: Full path to the input (stdin) pipe. If None, a stealthy name
+                is automatically generated. Defaults to None.
+            stdout_path: Full path to the output (stdout) pipe. If None, a stealthy name
+                is automatically generated. Defaults to None.
+
+        Note:
+            The effective polling frequency is read_interval + average RTT, which affects
+            the number of requests per second/minute to the remote system.
         """
         super().__init__(executor)
 
@@ -80,30 +128,85 @@ class NamedPipe(BaseAction):
     # Abstract methods
     @abstractmethod
     def setup(self, read_interval: float = 0.4, session_identifier: str = None):
-        """Every NamedPipe action must implement this method"""
+        """Set up the named pipes on the remote system.
+
+        Creates the necessary pipes and initializes the communication channel.
+        Implementation details vary by operating system.
+
+        Args:
+            read_interval: Time interval in seconds between read operations. Defaults to 0.4.
+            session_identifier: Optional identifier for the session. Defaults to None.
+
+        Raises:
+            RuntimeError: If pipe creation or initialization fails.
+        """
         pass
 
     @abstractmethod
     def execute(self, command: str):
-        """Every NamedPipe action must implement this method"""
+        """Execute a command through the named pipe.
+
+        Writes the command to the stdin pipe for execution on the remote system.
+        Output will be available through the stdout pipe.
+
+        Args:
+            command: The command string to execute on the remote system.
+
+        Raises:
+            RuntimeError: If command execution or pipe communication fails.
+        """
         pass
 
     @abstractmethod
     def _stop(self):
-        """Every NamedPipe action must implement this method"""
+        """Clean up named pipe resources on the remote system.
+
+        Stops background processes, closes pipes, and removes temporary files.
+        This method is called internally by stop() and must be implemented by
+        all subclasses.
+
+        Note:
+            This is an internal method. Use stop() for public cleanup operations.
+        """
         pass
 
     # Public methods
     def stop(self):
+        """Stop the named pipe action and clean up resources.
+
+        Logs the stop operation and delegates to the subclass-specific _stop()
+        implementation for cleanup of pipes and background processes.
+        """
         logger.info("Stopping named pipe")
         self._stop()
 
 
 class ActionsManager:
-    """Dynamically loads and manages Toboggan actions from system and user directories."""
+    """Dynamically loads and manages Toboggan actions from system and user directories.
+
+    Provides discovery, loading, and instantiation of action modules. Supports both
+    system-provided actions and user-defined custom actions, with user actions taking
+    priority when name conflicts occur.
+
+    Attributes:
+        __os: Target operating system ('linux' or 'windows').
+        __system_actions_path: Path to built-in system actions.
+        __user_actions_path: Path to user-defined custom actions.
+    """
 
     # Constructor
     def __init__(self, target_os: str = "linux"):
+        """Initialize the actions manager for a specific operating system.
+
+        Sets up paths to system and user action directories based on the target OS.
+
+        Args:
+            target_os: Target operating system. Must be 'linux' or 'windows'.
+                Defaults to 'linux'.
+
+        Raises:
+            ValueError: If target_os is not 'linux' or 'windows'.
+        """
 
         if target_os not in ["linux", "windows"]:
             raise ValueError(
@@ -124,6 +227,21 @@ class ActionsManager:
 
     # Public methods
     def get_actions(self) -> dict:
+        """Discover and catalog all available actions for the target OS.
+
+        Scans both system and user action directories, loading metadata for each
+        compatible action. Ignores internal actions like 'hide' and 'unhide'.
+
+        Returns:
+            Dictionary mapping action names to their metadata, including:
+                - path: Full path to the action file
+                - parameters: List of parameters the action accepts
+                - description: Human-readable description (if available)
+
+        Note:
+            User actions can override system actions with the same name.
+            Actions without valid BaseAction classes are skipped with a warning.
+        """
         ignored_actions = {"hide", "unhide"}
         actions = {}
 
@@ -172,14 +290,23 @@ class ActionsManager:
         return actions
 
     def get_action(self, name: str) -> BaseAction:
-        """
-        Retrieves an action, prioritizing user actions over system ones.
+        """Retrieve and load an action class by name.
+
+        Searches for the action in both user and system directories, prioritizing
+        user-defined actions when both exist. Logs the source and last modified
+        timestamp for user actions.
 
         Args:
-            name (str): The action category (e.g., "download", "interactivity").
+            name: The action name (e.g., "download", "fifo", "upload").
+                OS-specific variants are automatically resolved.
 
         Returns:
-            BaseAction instance if found, else None.
+            The action class (subclass of BaseAction) if found, None otherwise.
+
+        Note:
+            User actions in ~/.local/share/toboggan/actions (Linux) or
+            %LOCALAPPDATA%\toboggan\actions (Windows) take precedence over
+            built-in system actions.
         """
         name_with_os = f"{name}/{self.__os}"
         system_module_path = self.__system_actions_path / f"{name_with_os}.py"
@@ -211,14 +338,20 @@ class ActionsManager:
         return None
 
     def load_action_from_path(self, file_path: Path) -> BaseAction:
-        """
-        Dynamically loads an action class from a Python file using ModuleWrapper.
+        """Dynamically load an action class from a Python file.
+
+        Uses ModuleWrapper to safely import and inspect the Python file, extracting
+        the first class that inherits from BaseAction.
 
         Args:
-            file_path (Path): The full path to the action file.
+            file_path: Full path to the action's Python file.
 
         Returns:
-            BaseAction class if found, else None.
+            The action class (subclass of BaseAction) if found and valid,
+            None if no valid action class exists or loading fails.
+
+        Note:
+            Errors during module loading are logged but do not raise exceptions.
         """
         try:
             wrapper = ModuleWrapper(file_path)
@@ -233,6 +366,18 @@ class ActionsManager:
 
     # Private methods
     def __extract_parameters(self, wrapper: ModuleWrapper) -> list:
+        """Extract parameter information from an action class.
+
+        Inspects the action's __init__ (for NamedPipe) or run() method to extract
+        parameter names and default values for documentation and CLI generation.
+
+        Args:
+            wrapper: ModuleWrapper instance containing the loaded action module.
+
+        Returns:
+            List of parameter strings formatted as 'name (default)' or 'name' if no default.
+            Returns empty list if extraction fails.
+        """
         try:
             # Get the class that inherits from BaseAction
             action_cls = wrapper.get_class(must_inherit=BaseAction)
@@ -258,7 +403,17 @@ class ActionsManager:
             return []
 
     def __get_user_module_dir(self) -> Path:
-        """Get the user action directory (XDG for Linux/macOS, LOCALAPPDATA for Windows)."""
+        """Get the platform-specific user action directory.
+
+        Returns the appropriate directory for user-defined actions based on OS
+        conventions: XDG Base Directory specification for Linux/macOS, and
+        LocalAppData for Windows.
+
+        Returns:
+            Path to user actions directory:
+                - Linux/macOS: $XDG_DATA_HOME/toboggan/actions or ~/.local/share/toboggan/actions
+                - Windows: %LOCALAPPDATA%\toboggan\actions or ~/AppData/Local/toboggan/actions
+        """
         if os.name == "nt":
             local_appdata = os.getenv(
                 "LOCALAPPDATA", str(Path.home() / "AppData" / "Local")
