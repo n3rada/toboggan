@@ -1,3 +1,6 @@
+# toboggan/core/helpers/linux.py
+
+# Built-in imports
 import secrets
 import random
 import re

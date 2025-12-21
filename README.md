@@ -135,6 +135,7 @@ It is specifically crafted to be used in controlled environments, such as:
 Misuse of this project may result in legal action. Please use this tool responsibly and in compliance with applicable laws and regulations.
 
 ## ⚖️ Legal Notice
+
 Any unauthorized use of this tool in real-world environments or against systems without explicit permission from the system owner is strictly prohibited and may violate legal and ethical standards. The creators and contributors of this tool are not responsible for any misuse or damage caused.
 
 Use responsibly and ethically. Always respect the law and obtain proper authorization.

@@ -1,4 +1,6 @@
-# Standard library imports
+# toboggan/core/executor.py
+
+# Built-in imports
 import random
 import time
 import base64

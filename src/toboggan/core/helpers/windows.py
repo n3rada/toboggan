@@ -1,3 +1,6 @@
+# toboggan/core/helpers/windows.py
+
+# Built-in imports
 import secrets
 import random
 import re

@@ -1,3 +1,5 @@
+# toboggan/core/handlers/burpsuite.py
+
 # Built-in imports
 import base64
 import xml.etree.ElementTree as ET
