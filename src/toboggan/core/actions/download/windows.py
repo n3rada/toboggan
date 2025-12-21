@@ -39,8 +39,9 @@ class DownloadAction(BaseAction):
 
         # Check if the file exists and is accessible
         if self._os_helper.shell_type == "powershell":
+            # Use literal path with -LiteralPath to avoid escaping issues
             can_read = self._executor.remote_execute(
-                command=f"(Test-Path '{remote_path}' -PathType Leaf).ToString()"
+                command=f'(Test-Path -LiteralPath "{remote_path}" -PathType Leaf).ToString()'
             ).strip()
         else:
             can_read = self._executor.remote_execute(
@@ -75,20 +76,21 @@ class DownloadAction(BaseAction):
 
         if self._os_helper.shell_type == "powershell":
             # Use PowerShell's Compress-Archive and Base64 encoding
+            # Use double quotes and escape any internal quotes
             compress_encode_cmd = f"""
 $ProgressPreference='SilentlyContinue'
-$src = '{remote_path}'
-$zip = '{remote_archive}'
-$b64 = '{remote_base64_path}'
-Compress-Archive -Path $src -DestinationPath $zip -Force
+$src = "{remote_path}"
+$zip = "{remote_archive}"
+$b64 = "{remote_base64_path}"
+Compress-Archive -LiteralPath $src -DestinationPath $zip -Force
 $bytes = [IO.File]::ReadAllBytes($zip)
 $enc = [Convert]::ToBase64String($bytes)
 [IO.File]::WriteAllText($b64, $enc)
-Remove-Item $zip -Force
+Remove-Item -LiteralPath $zip -Force
 """.strip()
         else:
-            # CMD: invoke PowerShell
-            compress_encode_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $src = '{remote_path}'; $zip = '{remote_archive}'; $b64 = '{remote_base64_path}'; Compress-Archive -Path $src -DestinationPath $zip -Force; $bytes = [IO.File]::ReadAllBytes($zip); $enc = [Convert]::ToBase64String($bytes); [IO.File]::WriteAllText($b64, $enc); Remove-Item $zip -Force" """.strip()
+            # CMD: invoke PowerShell - escape quotes properly
+            compress_encode_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $src = '{remote_path}'; $zip = '{remote_archive}'; $b64 = '{remote_base64_path}'; Compress-Archive -LiteralPath $src -DestinationPath $zip -Force; $bytes = [IO.File]::ReadAllBytes($zip); $enc = [Convert]::ToBase64String($bytes); [IO.File]::WriteAllText($b64, $enc); Remove-Item -LiteralPath $zip -Force" """.strip()
 
         result = self._executor.remote_execute(
             command=compress_encode_cmd, timeout=60, retry=False
@@ -96,10 +98,10 @@ Remove-Item $zip -Force
 
         # Step 3: Get the encoded file size
         if self._os_helper.shell_type == "powershell":
-            size_cmd = f"(Get-Item '{remote_base64_path}').Length"
+            size_cmd = f'(Get-Item -LiteralPath "{remote_base64_path}").Length'
         else:
             size_cmd = (
-                f'powershell -nop -c "(Get-Item \'{remote_base64_path}\').Length"'
+                f'powershell -nop -c "(Get-Item -LiteralPath \'{remote_base64_path}\').Length"'
             )
 
         size_output = self._executor.remote_execute(command=size_cmd).strip()
@@ -107,7 +109,7 @@ Remove-Item $zip -Force
         if not size_output or not size_output.isdigit():
             logger.error(f"❌ Failed to retrieve encoded file size for: {remote_path}")
             self._executor.remote_execute(
-                command=f"Remove-Item '{remote_base64_path}' -Force -EA 0"
+                command=f'Remove-Item -LiteralPath "{remote_base64_path}" -Force -EA 0'
             )
             return False
 
@@ -137,7 +139,7 @@ Remove-Item $zip -Force
                     # Read chunk using .NET methods for reliability
                     chunk_cmd = f"""
 $ProgressPreference='SilentlyContinue'
-$fs = [IO.File]::OpenRead('{remote_base64_path}')
+$fs = [IO.File]::OpenRead("{remote_base64_path}")
 $fs.Seek({offset}, [IO.SeekOrigin]::Begin) | Out-Null
 $buf = New-Object byte[] {chunk_size}
 $read = $fs.Read($buf, 0, {chunk_size})
@@ -163,7 +165,8 @@ $fs.Close()
 
         # Step 5: Cleanup remote files
         self._executor.remote_execute(
-            command=f"Remove-Item '{remote_base64_path}' -Force -EA 0", retry=False
+            command=f'Remove-Item -LiteralPath "{remote_base64_path}" -Force -EA 0',
+            retry=False,
         )
 
         # Step 6: Decode and extract

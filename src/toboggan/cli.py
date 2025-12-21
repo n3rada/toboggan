@@ -444,7 +444,20 @@ def main() -> int:
             )
 
         logger.debug("🚀 Starting terminal session")
-        return remote_terminal.start()
+        exit_code = remote_terminal.start()
+        
+        # Cleanup: Delete remote working directory if it was created
+        if command_executor.has_working_directory:
+            logger.info("🧹 Cleaning up remote working directory...")
+            command_executor.delete_working_directory()
+        
+        return exit_code
     except Exception:
         logger.exception("Unhandled exception occurred")
+        # Attempt cleanup even on error
+        try:
+            if 'command_executor' in locals() and command_executor.has_working_directory:
+                command_executor.delete_working_directory()
+        except Exception:
+            pass
         return 1

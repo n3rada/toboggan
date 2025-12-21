@@ -64,37 +64,43 @@ class WindowsHelper(base.OSHelperBase):
         """
         # Define base directories and their corresponding naming patterns
         base_dirs = {
-            "C:\\ProgramData": [
-                "Mozilla",
-                "Microsoft",
-                "Google",
-                "Adobe",
-                "Chrome",
-                "Edge",
+            "C:\\Windows\\Temp": [
+                "TMP",
+                "tmp",
+                "cache",
+                "temp",
             ],
-            "C:\\Users\\Public": [
-                "Libraries",
-                "Documents",
-                "Downloads",  # Common Windows folders
-                "Pictures",
-                "Videos",
-                "Desktop",  # Standard user directories
+            "C:\\ProgramData": [
+                "Mozilla\\Firefox\\Profiles",
+                "Microsoft\\Windows\\Caches",
+                "Google\\Chrome\\User Data",
+                "Adobe\\Common",
+            ],
+            "C:\\Users\\Public\\Documents": [
+                "My Videos",
+                "My Music",
+                "My Pictures",
             ],
         }
 
         directory = random.choice(list(base_dirs.keys()))
-        prefix = random.choice(base_dirs[directory])
+        options = base_dirs[directory]
 
-        # Generate a Mozilla-style GUID for ProgramData or a Windows-style GUID for Public
-        if directory == "C:\\ProgramData":
-            # Format: Mozilla-1de4eec8-1241-4177-a864-e594e8d1fb38
-            guid = f"{secrets.token_hex(4)}-{secrets.token_hex(2)}-{secrets.token_hex(2)}-{secrets.token_hex(2)}-{secrets.token_hex(6)}"
-            name = f"{prefix}-{guid}"
-        else:
-            # Format: Libraries-4627-4456-9876-5678ABCD
-            guid = f"{secrets.token_hex(2)[:4]}-{secrets.token_hex(2)[:4]}-{secrets.token_hex(2)[:4]}-{secrets.token_hex(4)[:8]}".upper()
-            name = f"{prefix}-{guid}"
-        return f"{directory}\\{name}"
+        if directory == "C:\\Windows\\Temp":
+            # Format: C:\Windows\Temp\tmp1a4f2e3b
+            prefix = random.choice(options)
+            guid = secrets.token_hex(4)
+            return f"{directory}\\{prefix}{guid}"
+        elif directory == "C:\\ProgramData":
+            # Format: C:\ProgramData\Mozilla\Firefox\Profiles\abc123de.default-release
+            subpath = random.choice(options)
+            profile = secrets.token_hex(4)
+            suffix = random.choice(["default-release", "default", "cache", "temp"])
+            return f"{directory}\\{subpath}\\{profile}.{suffix}"
+        else:  # Public\Documents
+            # Format: C:\Users\Public\Documents\My Videos\tmp
+            subpath = random.choice(options)
+            return f"{directory}\\{subpath}\\tmp"
 
     def start_named_pipe(self, action_class, **kwargs) -> None:
         """Stub for Windows named pipe support. Not implemented yet."""
