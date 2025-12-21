@@ -193,250 +193,281 @@ class Terminal:
             f"🔧 Prefix set to '{self.__prefix}' — use '{self.__prefix}h' for available commands."
         )
 
-        while True:
-            try:
-                user_input = self.__prompt_session.prompt(message=self.__prompt())
-                if not user_input:
-                    continue
-            except EOFError:
-                # Control-D pressed - normal exit
-                self._exit()
-                return 0
-            except KeyboardInterrupt:
-                # Control-C pressed - check if buffer has text first
-                if self.__prompt_session.app.current_buffer.text:
-                    continue
-
-                if self._exit():
-                    return 130  # SIGINT exit code
-
-                continue
-
-            except Exception as exc:
-                logger.warning(f"Exception occured: {exc}")
-                continue
-            else:
-                if not user_input.startswith(self.__prefix):
-                    if (
-                        self.__target.os == "linux"
-                        and self.__executor.os_helper.is_fifo_active()
-                    ):
-                        self.__executor.os_helper.fifo_execute(user_input)
-                        continue
-
-                    try:
-                        if result := self.__executor.remote_execute(command=user_input):
-                            print(result)
-
-                        continue
-                    except KeyboardInterrupt:
-                        print("\r", end="", flush=True)  # Clear the ^C
-                        logger.warning(
-                            "Keyboard interruption received during remote command execution."
-                        )
-                        continue
-
+        try:
+            while True:
                 try:
-                    command_parts = shlex.split(
-                        user_input[len(self.__prefix) :].strip()
-                    )
-                except ValueError as e:
-                    logger.error(f"❌ Command parsing failed: {e}")
-                    continue
+                    user_input = self.__prompt_session.prompt(message=self.__prompt())
+                    if not user_input:
+                        continue
+                except EOFError:
+                    # Control-D pressed - normal exit
+                    self._exit()
+                    return 0
+                except KeyboardInterrupt:
+                    # Control-C pressed - check if buffer has text first
+                    if self.__prompt_session.app.current_buffer.text:
+                        continue
 
-                if not command_parts:
-                    continue
-
-                command = command_parts[0].lower().replace("-", "_")
-
-                if command in ["e", "ex", "exit"]:
                     if self._exit():
-                        return 0
+                        return 130  # SIGINT exit code
 
                     continue
 
-                if command in ["help", "h"]:
-                    print(self.__get_help())
+                except Exception as exc:
+                    logger.warning(f"Exception occurred: {exc}")
                     continue
-
-                raw_args = command_parts[1:]
-
-                if command == "chunksize" or command == "chunk_size":
-                    if raw_args:
-                        self.__executor.chunk_max_size = int(raw_args[0])
-                    else:
-                        self.__executor.chunk_max_size = (
-                            self.__executor.calculate_max_chunk_size()
-                        )
-
-                    continue
-
-                if command == "debug":
-                    # Toggle debug mode
-                    if self.__log_level == "DEBUG":
-                        self.__log_level = "INFO"
-                        logbook.setup_logging(self.__log_level)
-                        logger.info("🔇 Debug mode disabled")
-                    else:
-                        self.__log_level = "DEBUG"
-                        logbook.setup_logging(self.__log_level)
-                        logger.info("🔊 Debug mode enabled")
-
-                    continue
-
-                if command == "trace":
-                    # Toggle trace mode
-                    if self.__log_level == "TRACE":
-                        self.__log_level = "INFO"
-                        logbook.setup_logging(self.__log_level)
-                        logger.info("🔇 Trace mode disabled")
-                    else:
-                        self.__log_level = "TRACE"
-                        logbook.setup_logging(self.__log_level)
-                        logger.info("🔊 Trace mode enabled")
-
-                    continue
-
-                if command == "paths":
-                    # Handle paths subcommands
-                    if raw_args and raw_args[0] in ["add", "a"]:
-                        # Add new paths
-                        if len(raw_args) > 1:
-                            self.__handle_paths_add(raw_args[1:])
-                        else:
-                            logger.error(
-                                "❌ No paths provided. Usage: !paths add /path1 /path2 or !paths add /path1:/path2"
-                            )
-                    elif raw_args and raw_args[0] in ["clear", "c"]:
-                        # Clear cache
-                        self.__handle_paths_clear()
-                    else:
-                        # Show paths info
-                        print(self.__get_paths_info())
-                    continue
-
-                actions_dict = self.__executor.action_manager.get_actions()
-
-                # Check if action exists in the file system but failed to load
-                if command not in actions_dict:
-                    # Try to detect if the action file exists but had loading issues
-                    action_manager = self.__executor.action_manager
-                    expected_path = action_manager._action_directory / command
-                    
-                    if expected_path.exists() and expected_path.is_dir():
-                        # Action directory exists but didn't load - likely syntax/import error
-                        logger.error(
-                            f"❌ Action '{command}' exists but failed to load. "
-                            "Check for syntax errors or missing dependencies."
-                        )
-                    else:
-                        # Truly unknown command
-                        logger.error(
-                            f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
-                        )
-                    continue
-
-                if targeted_action := actions_dict.get(command):
-                    if action_class := self.__executor.action_manager.load_action_from_path(
-                        targeted_action["path"]
-                    ):
-
-                        # Parse args into kwargs and positionals
-                        keyword_args = {}
-                        positional_args = []
-
-                        i = 0
-                        while i < len(raw_args):
-                            arg = raw_args[i]
-
-                            # Handle --key=value
-                            if arg.startswith("--") and "=" in arg:
-                                key, value = arg[2:].split("=", 1)
-                                # Convert hyphens to underscores for Python parameter names
-                                key = key.replace("-", "_")
-                                keyword_args[key] = value
-                                i += 1
-                                continue
-
-                            # Handle --key value
-                            if arg.startswith("--"):
-                                key = arg[2:]
-                                # Convert hyphens to underscores for Python parameter names
-                                key = key.replace("-", "_")
-
-                                # If next token exists and is not another --flag, treat it as value
-                                if i + 1 < len(raw_args) and not raw_args[
-                                    i + 1
-                                ].startswith("--"):
-                                    keyword_args[key] = raw_args[i + 1]
-                                    i += 2
-                                else:
-                                    keyword_args[key] = True  # Boolean flag
-                                    i += 1
-                                continue
-
-                            # Handle -h (short flag for help)
-                            if arg == "-h":
-                                keyword_args["h"] = True
-                                i += 1
-                                continue
-
-                            # Handle positional argument
-                            positional_args.append(arg)
-                            i += 1
-
-                        # Filter out 'executor' from keyword_args - it's injected automatically
-                        if "executor" in keyword_args:
-                            logger.warning(
-                                "⚠️ Ignoring '--executor' parameter (automatically provided)"
-                            )
-                            keyword_args.pop("executor")
-
-                        # Check for help flag
-                        if keyword_args.get("help") or keyword_args.get("h"):
-                            print(self.__get_action_help(command, action_class))
+                else:
+                    if not user_input.startswith(self.__prefix):
+                        if (
+                            self.__target.os == "linux"
+                            and self.__executor.os_helper.is_fifo_active()
+                        ):
+                            self.__executor.os_helper.fifo_execute(user_input)
                             continue
 
-                        if raw_args:
-                            logger.debug(f"▶️ Running '{command}' with args: {raw_args}")
-                        else:
-                            logger.debug(f"▶️ Running '{command}'")
-
                         try:
-                            if issubclass(action_class, NamedPipe):
-                                self.__executor.os_helper.start_named_pipe(
-                                    action_class=action_class, **keyword_args
-                                )
-                                continue
+                            if result := self.__executor.remote_execute(command=user_input):
+                                print(result)
 
-                            action = action_class(self.__executor)
-
-                            if positional_args or keyword_args:
-                                action_output = action.run(
-                                    *positional_args, **keyword_args
-                                )
-                            else:
-                                action_output = action.run()
-
-                        except TypeError as exc:
+                            continue
+                        except KeyboardInterrupt:
+                            print("\r", end="", flush=True)  # Clear the ^C
                             logger.warning(
-                                f"⚠️ Incorrect arguments for '{command}': {exc}"
+                                "Keyboard interruption received during remote command execution."
                             )
                             continue
                         except Exception as exc:
-                            logger.error(f"❌ Action '{command}' failed: {exc}")
+                            logger.error(f"❌ Command execution failed: {exc}")
                             continue
 
-                        if action_output is not None:
-                            print(action_output)
+                    try:
+                        command_parts = shlex.split(
+                            user_input[len(self.__prefix) :].strip()
+                        )
+                    except ValueError as e:
+                        logger.error(f"❌ Command parsing failed: {e}")
+                        continue
+
+                    if not command_parts:
+                        continue
+
+                    command = command_parts[0].lower().replace("-", "_")
+
+                    if command in ["e", "ex", "exit"]:
+                        if self._exit():
+                            return 0
 
                         continue
-                else:
-                    # Action exists in dict but failed to load from path
-                    logger.error(
-                        f"❌ Action '{command}' failed to load. Check for syntax errors or missing dependencies."
-                    )
 
+                    if command in ["help", "h"]:
+                        print(self.__get_help())
+                        continue
+
+                    raw_args = command_parts[1:]
+
+                    if command == "chunksize" or command == "chunk_size":
+                        try:
+                            if raw_args:
+                                self.__executor.chunk_max_size = int(raw_args[0])
+                            else:
+                                self.__executor.chunk_max_size = (
+                                    self.__executor.calculate_max_chunk_size()
+                                )
+                        except ValueError as e:
+                            logger.error(f"❌ Invalid chunk size: {e}")
+                        except Exception as e:
+                            logger.error(f"❌ Failed to set chunk size: {e}")
+
+                        continue
+
+                    if command == "debug":
+                        # Toggle debug mode
+                        if self.__log_level == "DEBUG":
+                            self.__log_level = "INFO"
+                            logbook.setup_logging(self.__log_level)
+                            logger.info("🔇 Debug mode disabled")
+                        else:
+                            self.__log_level = "DEBUG"
+                            logbook.setup_logging(self.__log_level)
+                            logger.info("🔊 Debug mode enabled")
+
+                        continue
+
+                    if command == "trace":
+                        # Toggle trace mode
+                        if self.__log_level == "TRACE":
+                            self.__log_level = "INFO"
+                            logbook.setup_logging(self.__log_level)
+                            logger.info("🔇 Trace mode disabled")
+                        else:
+                            self.__log_level = "TRACE"
+                            logbook.setup_logging(self.__log_level)
+                            logger.info("🔊 Trace mode enabled")
+
+                        continue
+
+                    if command == "paths":
+                        try:
+                            # Handle paths subcommands
+                            if raw_args and raw_args[0] in ["add", "a"]:
+                                # Add new paths
+                                if len(raw_args) > 1:
+                                    self.__handle_paths_add(raw_args[1:])
+                                else:
+                                    logger.error(
+                                        "❌ No paths provided. Usage: !paths add /path1 /path2 or !paths add /path1:/path2"
+                                    )
+                            elif raw_args and raw_args[0] in ["clear", "c"]:
+                                # Clear cache
+                                self.__handle_paths_clear()
+                            else:
+                                # Show paths info
+                                print(self.__get_paths_info())
+                        except Exception as e:
+                            logger.error(f"❌ Paths command failed: {e}")
+
+                        continue
+
+                    try:
+                        actions_dict = self.__executor.action_manager.get_actions()
+                    except Exception as e:
+                        logger.error(f"❌ Failed to get actions: {e}")
+                        continue
+
+                    # Check if action exists in the file system but failed to load
+                    if command not in actions_dict:
+                        # Try to detect if the action file exists but had loading issues
+                        try:
+                            action_manager = self.__executor.action_manager
+                            expected_path = action_manager._action_directory / command
+                            
+                            if expected_path.exists() and expected_path.is_dir():
+                                # Action directory exists but didn't load - likely syntax/import error
+                                logger.error(
+                                    f"❌ Action '{command}' exists but failed to load. "
+                                    "Check for syntax errors or missing dependencies."
+                                )
+                            else:
+                                # Truly unknown command
+                                logger.error(
+                                    f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
+                                )
+                        except Exception as e:
+                            logger.error(f"❌ Unknown command: '{command}'. Type '!help' to see available commands.")
+
+                        continue
+
+                    if targeted_action := actions_dict.get(command):
+                        try:
+                            action_class = self.__executor.action_manager.load_action_from_path(
+                                targeted_action["path"]
+                            )
+                            
+                            if not action_class:
+                                # Action exists in dict but failed to load from path
+                                logger.error(
+                                    f"❌ Action '{command}' failed to load. Check for syntax errors or missing dependencies."
+                                )
+                                continue
+
+                            # Parse args into kwargs and positionals
+                            keyword_args = {}
+                            positional_args = []
+
+                            i = 0
+                            while i < len(raw_args):
+                                arg = raw_args[i]
+
+                                # Handle --key=value
+                                if arg.startswith("--") and "=" in arg:
+                                    key, value = arg[2:].split("=", 1)
+                                    # Convert hyphens to underscores for Python parameter names
+                                    key = key.replace("-", "_")
+                                    keyword_args[key] = value
+                                    i += 1
+                                    continue
+
+                                # Handle --key value
+                                if arg.startswith("--"):
+                                    key = arg[2:]
+                                    # Convert hyphens to underscores for Python parameter names
+                                    key = key.replace("-", "_")
+
+                                    # If next token exists and is not another --flag, treat it as value
+                                    if i + 1 < len(raw_args) and not raw_args[
+                                        i + 1
+                                    ].startswith("--"):
+                                        keyword_args[key] = raw_args[i + 1]
+                                        i += 2
+                                    else:
+                                        keyword_args[key] = True  # Boolean flag
+                                        i += 1
+                                    continue
+
+                                # Handle -h (short flag for help)
+                                if arg == "-h":
+                                    keyword_args["h"] = True
+                                    i += 1
+                                    continue
+
+                                # Handle positional argument
+                                positional_args.append(arg)
+                                i += 1
+
+                            # Filter out 'executor' from keyword_args - it's injected automatically
+                            if "executor" in keyword_args:
+                                logger.warning(
+                                    "⚠️ Ignoring '--executor' parameter (automatically provided)"
+                                )
+                                keyword_args.pop("executor")
+
+                            # Check for help flag
+                            if keyword_args.get("help") or keyword_args.get("h"):
+                                print(self.__get_action_help(command, action_class))
+                                continue
+
+                            if raw_args:
+                                logger.debug(f"▶️ Running '{command}' with args: {raw_args}")
+                            else:
+                                logger.debug(f"▶️ Running '{command}'")
+
+                            try:
+                                if issubclass(action_class, NamedPipe):
+                                    self.__executor.os_helper.start_named_pipe(
+                                        action_class=action_class, **keyword_args
+                                    )
+                                    continue
+
+                                action = action_class(self.__executor)
+
+                                if positional_args or keyword_args:
+                                    action_output = action.run(
+                                        *positional_args, **keyword_args
+                                    )
+                                else:
+                                    action_output = action.run()
+
+                            except TypeError as exc:
+                                logger.warning(
+                                    f"⚠️ Incorrect arguments for '{command}': {exc}"
+                                )
+                                continue
+                            except Exception as exc:
+                                logger.error(f"❌ Action '{command}' failed: {exc}")
+                                continue
+
+                            if action_output is not None:
+                                print(action_output)
+
+                        except Exception as exc:
+                            logger.error(f"❌ Failed to execute action '{command}': {exc}")
+                            continue
+
+        except Exception as exc:
+            logger.exception(f"💥 Unhandled exception in terminal: {exc}")
+            return 1
+
+        # This should never be reached due to while True loop
         return 0
 
     # Private methods
