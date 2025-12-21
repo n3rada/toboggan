@@ -169,7 +169,7 @@ $bytes = [Convert]::FromBase64String($enc)
         )
 
         # Step 4: Verify with MD5 checksum
-        logger.info("🔍 Verifying file integrity...")
+        logger.info("🔍 Verifying file integrity")
 
         if self._os_helper.shell_type == "powershell":
             # Use .NET directly for better compatibility (Get-FileHash requires PS 4.0+)
