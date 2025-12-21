@@ -29,9 +29,28 @@ class UploadAction(BaseAction):
                                          Can be a directory or full file path.
                                          Defaults to the current working directory.
         """
+        # Normalize path and handle potential encoding issues
+        local_path = str(local_path).strip()
+        
+        # On Windows, handle both forward and backward slashes
         local_file = Path(local_path)
-        if not local_file.exists() or not local_file.is_file():
+        
+        # Additional validation with resolved path
+        try:
+            if not local_file.exists():
+                # Try resolving the path in case of relative paths or symlinks
+                local_file = local_file.resolve()
+        except Exception as e:
+            logger.error(f"❌ Error resolving path '{local_path}': {e}")
+            return
+        
+        if not local_file.exists():
             logger.error(f"❌ Local file does not exist: {local_path}")
+            logger.debug(f"Attempted to access: {local_file}")
+            return
+            
+        if not local_file.is_file():
+            logger.error(f"❌ Path is not a file: {local_path}")
             return
 
         current_working_directory = self._executor.target.pwd.rstrip("\\")
@@ -130,15 +149,16 @@ class UploadAction(BaseAction):
         logger.info(f"📂 Decoding remotely to {remote_path}")
 
         if self._os_helper.shell_type == "powershell":
+            # Use explicit ASCII encoding for base64 data
             decode_cmd = f"""
 $ProgressPreference='SilentlyContinue'
-$enc = [IO.File]::ReadAllText("{remote_encoded_path}")
+$enc = [IO.File]::ReadAllText("{remote_encoded_path}", [Text.Encoding]::ASCII)
 $bytes = [Convert]::FromBase64String($enc)
 [IO.File]::WriteAllBytes("{remote_path}", $bytes)
 """.strip()
         else:
-            # CMD: invoke PowerShell
-            decode_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $enc = [IO.File]::ReadAllText('{remote_encoded_path}'); $bytes = [Convert]::FromBase64String($enc); [IO.File]::WriteAllBytes('{remote_path}', $bytes)" """.strip()
+            # CMD: invoke PowerShell with explicit ASCII encoding
+            decode_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $enc = [IO.File]::ReadAllText('{remote_encoded_path}', [Text.Encoding]::ASCII); $bytes = [Convert]::FromBase64String($enc); [IO.File]::WriteAllBytes('{remote_path}', $bytes)" """.strip()
 
         result = self._executor.remote_execute(decode_cmd, retry=True, timeout=60)
 
@@ -152,15 +172,26 @@ $bytes = [Convert]::FromBase64String($enc)
         logger.info("🔍 Verifying file integrity...")
 
         if self._os_helper.shell_type == "powershell":
-            md5_cmd = f'(Get-FileHash -LiteralPath "{remote_path}" -Algorithm MD5).Hash'
+            # Use .NET directly for better compatibility (Get-FileHash requires PS 4.0+)
+            md5_cmd = f"""
+$ProgressPreference='SilentlyContinue'
+$md5 = [System.Security.Cryptography.MD5]::Create()
+$fs = [IO.File]::OpenRead("{remote_path}")
+$hash = $md5.ComputeHash($fs)
+$fs.Close()
+$md5.Dispose()
+[BitConverter]::ToString($hash).Replace('-','')
+""".strip()
         else:
-            # CMD: invoke PowerShell
-            md5_cmd = f"powershell -nop -c \"(Get-FileHash -LiteralPath '{remote_path}' -Algorithm MD5).Hash\""
+            # CMD: invoke PowerShell with .NET MD5
+            md5_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $md5 = [System.Security.Cryptography.MD5]::Create(); $fs = [IO.File]::OpenRead('{remote_path}'); $hash = $md5.ComputeHash($fs); $fs.Close(); $md5.Dispose(); [BitConverter]::ToString($hash).Replace('-','')" """.strip()
 
         remote_md5 = self._executor.remote_execute(md5_cmd, timeout=30).strip()
 
-        if not remote_md5:
-            logger.error(f"❌ Failed to create the file at {remote_path}.")
+        if not remote_md5 or len(remote_md5) != 32:
+            logger.error(f"❌ Failed to verify the file at {remote_path}.")
+            if remote_md5:
+                logger.debug(f"Received MD5 output: {remote_md5}")
             return
 
         logger.info(f"🔒 Remote MD5: {remote_md5}")
