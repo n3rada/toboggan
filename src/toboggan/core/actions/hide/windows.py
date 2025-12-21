@@ -72,13 +72,17 @@ class HideAction(BaseAction):
         3. Reverse string
         4. Base64 encode again
         """
+        logger.debug(f"🔒 Obfuscating command: {command[:100]}...")
+        
         # Add error redirection unless user explicitly added it
         if re.search(r"(2>&1|2>|>|>>)", command) is None:
             command += " 2>&1"
 
         if self._use_aes:
+            logger.debug("🔐 Using AES-256-CBC encryption")
             # Encrypt the command
             encrypted = encrypt_command(command, self._AES_KEY, self._AES_IV)
+            logger.debug(f"   Encrypted: {encrypted[:80]}...")
             
             # Build PowerShell decryption pipeline
             # Convert hex key/iv to byte arrays
@@ -117,6 +121,7 @@ class HideAction(BaseAction):
 
         # Encode the full script in base64
         encoded_script = base64.b64encode(full_script.encode('utf-16le')).decode()
+        logger.debug(f"📦 Encoded script: {len(encoded_script)} bytes")
 
         # Determine shell-appropriate execution method
         if self._executor.os_helper.shell_type == 'cmd':
@@ -126,4 +131,5 @@ class HideAction(BaseAction):
             # For PowerShell, use -EncodedCommand
             final_cmd = f'powershell -NoP -NonI -W Hidden -Enc {encoded_script}'
 
+        logger.debug(f"✅ Final obfuscated command: {len(final_cmd)} bytes")
         return final_cmd
