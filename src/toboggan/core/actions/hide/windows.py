@@ -53,8 +53,7 @@ class HideAction(BaseAction):
     def __init__(self, executor):
         super().__init__(executor)
 
-        # Check if we have PowerShell available (most Windows systems do)
-        # We'll always try to use AES with .NET crypto classes
+        # Use AES with .NET crypto classes
         self._use_aes = True
         self._AES_KEY, self._AES_IV = generate_key_iv()
         
@@ -120,17 +119,13 @@ class HideAction(BaseAction):
             f"-join $b[$($b.Length-1)..0]"
         )
 
-        # Encode the full script in base64
+        # Encode the full script in base64 (UTF-16LE for PowerShell -EncodedCommand)
         encoded_script = base64.b64encode(full_script.encode('utf-16le')).decode()
         logger.debug(f"📦 Encoded script: {len(encoded_script)} bytes")
 
-        # Determine shell-appropriate execution method
-        if self._executor.os_helper.shell_type == 'cmd':
-            # For CMD, invoke PowerShell
-            final_cmd = f'powershell -NoP -NonI -W Hidden -Enc {encoded_script}'
-        else:
-            # For PowerShell, use -EncodedCommand
-            final_cmd = f'powershell -NoP -NonI -W Hidden -Enc {encoded_script}'
-
+        # Return PowerShell encoded command
+        # Note: Executor will handle shell invocation if needed
+        final_cmd = f'-NoP -NonI -W Hidden -Enc {encoded_script}'
+        
         logger.debug(f"✅ Final obfuscated command: {len(final_cmd)} bytes")
         return final_cmd

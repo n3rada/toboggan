@@ -72,6 +72,10 @@ class Executor(metaclass=SingletonMeta):
             # Temporarily disable obfuscation during action initialization
             self.__obfuscation = False
 
+            # For Windows with obfuscation, force PowerShell mode
+            if self.__os == "windows" and hasattr(self._os_helper, 'force_powershell'):
+                self._os_helper.force_powershell()
+
             self.__obfuscation_action = self.__action_manager.get_action("hide")(
                 executor=self
             )

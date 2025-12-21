@@ -166,6 +166,13 @@ class WindowsHelper(base.OSHelperBase):
         logger.warning("Shell type detection inconclusive, defaulting to CMD")
         return "cmd"
 
+    # Public methods
+    def force_powershell(self) -> None:
+        """Force shell type to PowerShell (used when obfuscation is enabled)."""
+        if self.__shell_type != 'powershell':
+            logger.info("🔄 Switching from CMD to PowerShell for obfuscation support")
+            self.__shell_type = 'powershell'
+    
     # Properties
     @property
     def shell_type(self) -> str:
