@@ -224,10 +224,10 @@ class ActionsManager:
             wrapper = ModuleWrapper(file_path)
             action_class = wrapper.get_class(must_inherit=BaseAction)
             if action_class:
-                logger.debug(f"👀 Loaded action class: {action_class.__name__}")
+                logger.debug(f"Loaded action class: {action_class.__name__}")
                 return action_class
         except Exception as exc:
-            logger.error(f"❌ Failed to load module: {file_path.name} ({exc})")
+            logger.error(f"Failed to load module: {file_path.name} ({exc})")
 
         return None
 
