@@ -1,4 +1,4 @@
-🛝 Slide into post-exploitation from RCE with ease. Toboggan wraps your remote command execution into a upgradable dumb shell, sliding directly into post-exploitation phase. It allows you to fastly launch a `mkfifo` forward-shell inside a targeted Linux environment.
+🛝 Slide into post-exploitation from RCE with ease. Toboggan is a post-exploitation framework that transforms web shells, command injection vulnerabilities, and blind RCE into an upgradable semi-interactive shell. It's the perfect reverse shell alternative for firewalled targets, providing a forward shell handler (`mkfifo`) inside a targeted Linux environment.
 
 <p align="center">
     <img src="./media/example.png" alt="">
@@ -31,7 +31,14 @@ pipx inject toboggan psycopg2
 
 ## 🔍 What is an RCE Python Module?
 
-A Remote Code Execution (RCE) module is a Python script that defines how commands are sent to and executed on a remote system. Toboggan uses this module to wrap and streamline post-exploitation command execution.
+A Remote Code Execution (RCE) module is a Python script that defines how commands are sent to and executed on a remote system. Toboggan uses this module to wrap web shells, command injection exploits, and other RCE vectors, transforming them into a streamlined post-exploitation shell interface.
+
+This works with:
+- **Web shells** (PHP, ASP, JSP backdoors).
+- **Command injection** vulnerabilities.
+- **HTTP-based RCE** (web application exploits).
+- **SQL injection** with command execution (`xp_cmdshell`, etc.).
+- Any custom RCE vector you can script.
 
 To be compatible with Toboggan, your module must define a function with the following exact signature:
 
@@ -64,12 +71,16 @@ The goal is for Toboggan to call your `execute()` function with any arbitrary co
 
 ## 🧸 Usage
 
-Once installed, you can execute it using:
+### Basic Shell Upgrade
+
+Upgrade your web shell or command injection to an interactive shell:
 ```shell
 toboggan ~/phpexploit.py
 ```
 
-When you are knowing what you are doing, you can also do:
+### Advanced: Forward Shell with Obfuscation
+
+For experienced users, launch a fully interactive forward shell with command obfuscation:
 ```shell
 toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
 ```
@@ -103,13 +114,19 @@ You can also directly import a Burp saved request that contains the `||cmd||` pl
 toboggan --request brequest
 ```
 
-## 🏗️ Making Dumb Shells Smarter
+## 🏗️ Shell Upgrade: From Dumb to Semi-Interactive
 
 ### Named Pipes for Semi-Interactive Shells
 
-Toboggan uses named pipes (FIFO - First In, First Out) for inter-process communication (IPC). Named pipes are particularly useful when working with RCE over limited channels like HTTP requests or restricted command execution interfaces. It uses a `mkfifo` command under the hood. Also known as forward-shell style.
+Toboggan upgrades dumb web shells into semi-interactive shells using named pipes (FIFO - First In, First Out) for inter-process communication. This forward shell technique is invaluable when:
 
-This allows Toboggan to simulate pseudo-TTY behavior, even in restricted environments behind firewalls. To enable named pipe mode, use the `--fifo` flag:
+- You can't get a reverse shell due to firewall restrictions
+- Target is behind NAT or multiple proxies.
+- Working with HTTP-only RCE channels (web shells, command injection).
+- Dealing with blind command execution that doesn't return output immediately (e.g., output from log file).
+- You need an interactive shell without opening connections back to your machine.
+
+The forward shell uses `mkfifo` under the hood to create a pseudo-TTY experience, even in heavily restricted environments. To enable this shell upgrade, use the `--fifo` flag:
 ```shell
 toboggan ~/phpexploit.py --fifo
 ```
