@@ -317,6 +317,25 @@ class Terminal:
 
                 actions_dict = self.__executor.action_manager.get_actions()
 
+                # Check if action exists in the file system but failed to load
+                if command not in actions_dict:
+                    # Try to detect if the action file exists but had loading issues
+                    action_manager = self.__executor.action_manager
+                    expected_path = action_manager._action_directory / command
+                    
+                    if expected_path.exists() and expected_path.is_dir():
+                        # Action directory exists but didn't load - likely syntax/import error
+                        logger.error(
+                            f"❌ Action '{command}' exists but failed to load. "
+                            "Check for syntax errors or missing dependencies."
+                        )
+                    else:
+                        # Truly unknown command
+                        logger.error(
+                            f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
+                        )
+                    continue
+
                 if targeted_action := actions_dict.get(command):
                     if action_class := self.__executor.action_manager.load_action_from_path(
                         targeted_action["path"]
@@ -412,10 +431,11 @@ class Terminal:
                             print(action_output)
 
                         continue
-
-                logger.error(
-                    f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
-                )
+                else:
+                    # Action exists in dict but failed to load from path
+                    logger.error(
+                        f"❌ Action '{command}' failed to load. Check for syntax errors or missing dependencies."
+                    )
 
         return 0
 
