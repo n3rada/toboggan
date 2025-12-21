@@ -33,11 +33,15 @@ class TerminalCompleter(Completer):
         self._prefix = prefix
         self._executor = executor
 
-        # Built-in commands with descriptions
-        self.builtins = {
+        # Built-in commands with descriptions (including aliases)
+        self._builtins = {
             "exit": "Exit the terminal",
+            "e": "Exit the terminal (alias)",
+            "ex": "Exit the terminal (alias)",
             "help": "Show help message",
+            "h": "Show help message (alias)",
             "chunksize": "Probe or manually set the max command size",
+            "chunk_size": "Probe or manually set the max command size (alias)",
             "debug": "Toggle debug mode on/off",
             "trace": "Toggle trace mode on/off",
             "paths": "Show custom paths and command location cache",
@@ -61,7 +65,7 @@ class TerminalCompleter(Completer):
         # If no text entered yet, suggest all commands and actions
         if not text:
             # Suggest built-in commands
-            for cmd, desc in self.builtins.items():
+            for cmd, desc in self._builtins.items():
                 yield Completion(cmd, start_position=0, display_meta=desc)
 
             # Suggest available actions
@@ -76,7 +80,7 @@ class TerminalCompleter(Completer):
             return
 
         # If text entered, filter suggestions
-        for cmd, desc in self.builtins.items():
+        for cmd, desc in self._builtins.items():
             if cmd.startswith(text):
                 yield Completion(cmd[len(text) :], display_meta=desc)
 
@@ -522,14 +526,31 @@ class Terminal:
         lines.append(f"{BOLD}Built-in Commands:{RESET}")
         lines.append(DIM + "-" * (max_action_length + 50) + RESET)
         lines.append(
+            f"🔹 {ansi_ljust(f'{GREEN}help{RESET} ({DIM}h{RESET})', max_action_length + 10)} → "
+            f"{CYAN}Show this help message.{RESET}"
+        )
+        lines.append(
+            f"🔹 {ansi_ljust(f'{GREEN}exit{RESET} ({DIM}e, ex{RESET})', max_action_length + 10)} → "
+            f"{CYAN}Exit the toboggan shell session.{RESET}"
+        )
+        lines.append(
             f"🔹 {ansi_ljust(f'{GREEN}chunksize{RESET}', max_action_length)} → "
             f"{CYAN}Probe or manually set the max command size.{RESET}"
         )
-        lines.append(f"    ⚙️ Parameters: bytes (optional, multiple of 1024)")
+        lines.append(f"    ⚙️ Parameters: [bytes] (optional, must be multiple of 1024)")
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}exit{RESET}', max_action_length)} → "
-            f"{CYAN}Exit the toboggan shell session.{RESET}"
+            f"🔹 {ansi_ljust(f'{GREEN}debug{RESET}', max_action_length)} → "
+            f"{CYAN}Toggle debug logging on/off.{RESET}"
         )
+        lines.append(
+            f"🔹 {ansi_ljust(f'{GREEN}trace{RESET}', max_action_length)} → "
+            f"{CYAN}Toggle trace logging on/off.{RESET}"
+        )
+        lines.append(
+            f"🔹 {ansi_ljust(f'{GREEN}paths{RESET}', max_action_length)} → "
+            f"{CYAN}Show custom paths and command location cache.{RESET}"
+        )
+        lines.append(f"    ⚙️ Subcommands: add <paths>, clear")
 
         return "\n".join(lines)
 
