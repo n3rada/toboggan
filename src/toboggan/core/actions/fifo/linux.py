@@ -1,3 +1,6 @@
+# toboggan/core/actions/fifo/linux.py
+
+# Built-in library imports
 import threading
 import time
 import random
@@ -18,6 +21,15 @@ class FifoAction(NamedPipe):
         executor,
         read_interval: float = 0.4,
     ):
+        """Initialize the FIFO action for semi-interactive remote command execution.
+
+        Sets up named pipes (FIFO) for bidirectional communication with the remote
+        system using stdin/stdout pipes. Configures the shell to use and polling interval.
+
+        Args:
+            executor: The executor instance for remote command execution.
+            read_interval: Time in seconds between output polling attempts. Defaults to 0.4.
+        """
         # Get stdin/stdout from os_helper
         stdin_path = executor.os_helper.stdin_path
         stdout_path = executor.os_helper.stdout_path
@@ -31,6 +43,14 @@ class FifoAction(NamedPipe):
         logger.info(f"🌀 FiFo will use shell: {self._shell}")
 
     def setup(self):
+        """Set up the FIFO named pipes on the remote system.
+
+        Creates the stdin FIFO pipe and starts a background process that reads
+        from it and pipes to the configured shell. The background process PID
+        is captured for later cleanup.
+
+        The setup creates a pipeline: tail -f stdin_fifo | shell > stdout_fifo 2>&1
+        """
         mkfifo_path = self._executor.os_helper.get_command_location("mkfifo")
         mkfifo_cmd = f"{mkfifo_path} {self._stdin}"
         self._executor.remote_execute(mkfifo_cmd)
@@ -61,6 +81,11 @@ class FifoAction(NamedPipe):
         self.__read_thread = None
 
     def run(self):
+        """Start the output polling thread.
+
+        Creates and starts a daemon thread that continuously polls the stdout
+        FIFO for command output. The thread runs in the background until stopped.
+        """
         self.__read_thread = threading.Thread(
             name="output_polling",
             target=self.__poll_output,
@@ -70,6 +95,12 @@ class FifoAction(NamedPipe):
         self.__read_thread.start()
 
     def _stop(self):
+        """Stop the FIFO action and clean up resources.
+
+        Stops the output polling thread, kills the background FIFO process,
+        and removes the FIFO files from the remote system. Attempts graceful
+        termination (SIGTERM) before forceful kill (SIGKILL) if needed.
+        """
         self.__stop_thread = True
         if self.__read_thread is not None:
             self.__read_thread.join()
@@ -134,13 +165,30 @@ class FifoAction(NamedPipe):
             logger.warning("⚠️ Could not find 'rm' command to clean up FIFO files")
 
     def execute(self, command: str):
+        """Execute a command through the FIFO stdin pipe.
+
+        Writes the command to the stdin FIFO pipe, which is being monitored
+        by the background shell process. The command will be executed by the
+        shell and output will be available through the stdout FIFO.
+
+        Args:
+            command: The command string to execute on the remote system.
+        """
+
         echo_path = self._executor.os_helper.get_command_location("echo")
         forward_command = f"{echo_path} '{command}' > {self._stdin}"
 
         self._executor.remote_execute(forward_command)
 
     def __poll_output(self) -> None:
+        """Continuously poll the stdout FIFO for command output.
 
+        Runs in a background thread, periodically checking the stdout FIFO
+        for new output. Uses various commands (cat, sed, tail, dd) to read
+        and truncate the FIFO in one operation. Applies jitter to avoid
+        burst collisions. Detects shell prompts to enable TTY mode for
+        interactive sessions.
+        """
         cat_path = self._executor.os_helper.get_command_location("cat")
         sed_path = self._executor.os_helper.get_command_location("sed")
         tail_path = self._executor.os_helper.get_command_location("tail")
