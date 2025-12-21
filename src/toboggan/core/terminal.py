@@ -113,13 +113,13 @@ class Terminal:
             log_level: Initial logging level (default: 'INFO').
         """
         if history:
-            # Create temp directory for history files
-            self.__temp_dir = Path(tempfile.gettempdir()) / "toboggan"
-            self.__temp_dir.mkdir(exist_ok=True)
+            # Create .toboggan directory in user's home for persistent history
+            self.__history_dir = Path.home() / ".toboggan"
+            self.__history_dir.mkdir(exist_ok=True)
 
             # Create unique history file using hostname
             self.__history_file = (
-                self.__temp_dir / f"{executor.target.hostname}_history"
+                self.__history_dir / f"{executor.target.hostname}_history"
             )
 
             # Create the history file first if it doesn't exist
@@ -134,7 +134,7 @@ class Terminal:
                 )
 
             history_backend = ThreadedHistory(FileHistory(str(self.__history_file)))
-            logger.info("💾 Persistent command history enabled.")
+            logger.info(f"💾 Persistent command history: {self.__history_file}")
 
         else:
             history_backend = ThreadedHistory(InMemoryHistory())  # in-memory history
