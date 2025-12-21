@@ -124,8 +124,8 @@ class Executor(metaclass=SingletonMeta):
                 )
                 else self._os_helper.format_working_directory()
             )
-
-            self.remote_execute(command=f"mkdir -p {self._working_directory}")
+            
+            self.remote_execute(command=f'mkdir "{self._working_directory}"')
             logger.info(
                 f"📂 Remote working directory initialized: {self._working_directory}"
             )
