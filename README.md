@@ -103,7 +103,7 @@ You can forward to your favorite proxifier such as [`Squid`](https://www.squid-c
 toboggan ~/phpexploit.py --proxy http://squideu.<something>.io:3128
 ```
 
-### BurpSuite
+### [BurpSuite](https://portswigger.net/burp)
 
 To route traffic through Burp Suite:
 ```shell
