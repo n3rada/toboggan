@@ -113,8 +113,9 @@ class HideAction(BaseAction):
 
         # Build the pipeline that outputs base64 then reverses
         # PowerShell script to execute command, base64 encode output, then reverse it
+        # Use & {...} to invoke scriptblock and capture output
         full_script = (
-            f"$r=({decrypt_script}|Out-String);"
+            f"$r=&{{{decrypt_script}|Out-String}};"
             f"$b=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($r));"
             f"-join $b[$($b.Length-1)..0]"
         )
