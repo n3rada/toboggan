@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "toboggan"
-version = "0.8.0"
+version = "0.9.0"
 description = "Bring intelligence to any remote command execution (RCE)."
 authors = [
     {name = "n3rada"}
