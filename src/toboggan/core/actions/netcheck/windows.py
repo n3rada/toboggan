@@ -51,10 +51,11 @@ class InternetCheckAction(BaseAction):
 
         if self._os_helper.shell_type == "powershell":
             # Try Resolve-DnsName first (most reliable)
-            dns_cmd = f"$ProgressPreference='SilentlyContinue'; (Resolve-DnsName {hostname} -Type A -EA 0 | select -First 1 -exp IPAddress)"
+            # Filter for A records only and get IP4Address property (works for all record types)
+            dns_cmd = f"$ProgressPreference='SilentlyContinue'; (Resolve-DnsName {hostname} -Type A -EA 0 | ? {{$_.Type -eq 'A'}} | select -First 1 -exp IP4Address)"
             dns_result = self._executor.remote_execute(dns_cmd, timeout=10, retry=False)
             
-            if dns_result and dns_result.strip() and "error" not in dns_result.lower():
+            if dns_result and dns_result.strip() and "error" not in dns_result.lower() and "cannot be found" not in dns_result.lower():
                 logger.success("✅ DNS resolution succeeded.")
                 logger.debug(f"🔎 DNS result: {dns_result.strip()}")
             else:
