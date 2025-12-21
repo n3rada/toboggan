@@ -301,12 +301,24 @@ def main() -> int:
         execution_module.BASE_CMD = args.exec_wrapper
         logger.info("Use OS system command as base.")
     elif args.request:
-        wrapper = ModuleWrapper(BUILTIN_DIR / "burpsuite.py")
-        execution_module = wrapper.module
-        execution_module.BURP_REQUEST_OBJECT = execution_module.BurpRequest(
-            args.request
-        )
-        logger.info("Use Burpsuite request as base.")
+        try:
+            wrapper = ModuleWrapper(BUILTIN_DIR / "burpsuite.py")
+            execution_module = wrapper.module
+            
+            # BurpRequest.__init__ handles all validation
+            logger.info(f"📄 Loading Burp Suite request from: {args.request}")
+            execution_module.BURP_REQUEST_OBJECT = execution_module.BurpRequest(
+                args.request
+            )
+            logger.success("✅ Burp Suite request loaded and validated successfully")
+        except (FileNotFoundError, ValueError) as e:
+            logger.error(str(e))
+            logger.info("💡 Tip: Save a request from Burp Suite (right-click → Save item) with ||cmd|| placeholder")
+            return 1
+        except Exception as e:
+            logger.error(f"❌ Failed to load Burp Suite request: {e}")
+            logger.debug("Full error:", exc_info=True)
+            return 1
     elif args.module:
         logger.info(f"Use provided module: '{args.module}'.")
 
