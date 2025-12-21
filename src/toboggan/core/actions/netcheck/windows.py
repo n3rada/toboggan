@@ -3,6 +3,7 @@ from loguru import logger
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
+from toboggan.core.utils import common
 
 
 class InternetCheckAction(BaseAction):
@@ -15,14 +16,30 @@ class InternetCheckAction(BaseAction):
 
         # Step 1: ICMP Ping
         logger.info(f"📡 Testing ICMP (ping to {ip})")
+        
         if self._os_helper.shell_type == "powershell":
-            ping_cmd = f"tnc {ip} -Count 1 -InformationLevel Quiet"
+            # Try Test-NetConnection first (more modern and reliable)
+            ping_cmd = f"$ProgressPreference='SilentlyContinue'; (tnc {ip} -IL Quiet -WA 0).ToString()"
+            ping_result = self._executor.remote_execute(ping_cmd, timeout=10, retry=False)
+            
+            if ping_result and "True" in ping_result:
+                logger.success(f"✅ ICMP ping to {ip} succeeded.")
+            else:
+                # Fallback to Test-Connection
+                logger.info("⚙️ Falling back to Test-Connection")
+                ping_cmd = f"(Test-Connection {ip} -Count 1 -Quiet -EA 0).ToString()"
+                ping_result = self._executor.remote_execute(ping_cmd, timeout=10, retry=False)
+                
+                if ping_result and "True" in ping_result:
+                    logger.success(f"✅ ICMP ping to {ip} succeeded.")
+                else:
+                    logger.warning("❌ ICMP ping failed or no response.")
         else:
-            ping_cmd = f"ping -n 1 -w 2000 {ip}"  # 2000ms timeout
-
-        ping_result = self._executor.remote_execute(ping_cmd, timeout=5)
-        if ping_result:
-            if "True" in ping_result or "bytes=32" in ping_result:
+            # CMD - use standard ping command
+            ping_cmd = f"ping -n 1 -w 2000 {ip}"
+            ping_result = self._executor.remote_execute(ping_cmd, timeout=5, retry=False)
+            
+            if ping_result and ("bytes=32" in ping_result or "TTL=" in ping_result):
                 logger.success(f"✅ ICMP ping to {ip} succeeded.")
             else:
                 logger.warning("❌ ICMP ping failed or no response.")
@@ -31,42 +48,74 @@ class InternetCheckAction(BaseAction):
         logger.info(f"🧠 Testing DNS resolution over: {hostname}")
 
         if self._os_helper.shell_type == "powershell":
-            dns_cmd = (
-                f"resolve-dnsname {hostname} -Type A -EA 0 | select -exp IPAddress"
-            )
-        else:
-            # More reliable nslookup command for CMD with timeout and specific DNS server
-            dns_cmd = f"nslookup -timeout=2 {hostname} 8.8.8.8"
-
-        dns_result = self._executor.remote_execute(dns_cmd, timeout=10)
-        if dns_result:
-            if self._os_helper.shell_type == "powershell":
-                success = len(dns_result.strip()) > 0
-            else:
-                success = "Name:" in dns_result or "Address:" in dns_result
-
-            if success:
+            # Try Resolve-DnsName first (most reliable)
+            dns_cmd = f"$ProgressPreference='SilentlyContinue'; (Resolve-DnsName {hostname} -Type A -EA 0 | select -First 1 -exp IPAddress)"
+            dns_result = self._executor.remote_execute(dns_cmd, timeout=10, retry=False)
+            
+            if dns_result and dns_result.strip() and "error" not in dns_result.lower():
                 logger.success("✅ DNS resolution succeeded.")
-                logger.debug(f"🔎 DNS result:\n {dns_result.strip()}")
+                logger.debug(f"🔎 DNS result: {dns_result.strip()}")
             else:
-                logger.error("❌ DNS resolution failed")
+                # Fallback to nslookup
+                logger.info("⚙️ Falling back to nslookup")
+                dns_cmd = f"nslookup -timeout=2 {hostname}"
+                dns_result = self._executor.remote_execute(dns_cmd, timeout=10, retry=False)
+                
+                if dns_result and ("Address:" in dns_result or "Addresses:" in dns_result):
+                    logger.success("✅ DNS resolution succeeded.")
+                    logger.debug(f"🔎 DNS result: {dns_result.strip()}")
+                else:
+                    logger.error("❌ DNS resolution failed")
         else:
-            logger.error("❌ No response from DNS query")
+            # CMD - use nslookup with DNS server
+            dns_cmd = f"nslookup -timeout=2 {hostname} 8.8.8.8"
+            dns_result = self._executor.remote_execute(dns_cmd, timeout=10, retry=False)
+            
+            if dns_result and ("Name:" in dns_result or "Address:" in dns_result):
+                logger.success("✅ DNS resolution succeeded.")
+                logger.debug(f"🔎 DNS result: {dns_result.strip()}")
+            else:
+                logger.error("❌ DNS resolution failed or no response.")
 
         # Step 3: HTTP/HTTPS
         logger.info("📦 Checking outbound TCP HTTP(S) access")
         url = f"https://{hostname}"
 
         if self._os_helper.shell_type == "powershell":
-            # Using Invoke-RestMethod with maximum timeout of 10 seconds
-            web_cmd = f"$ProgressPreference = 'SilentlyContinue'; try {{ irm '{url}' -Method Head -TimeoutSec 10; 'Success' }} catch {{ $_.Exception.Message }}"
+            # Try Invoke-RestMethod first (most reliable)
+            logger.info("⚙️ Using Invoke-RestMethod")
+            web_cmd = f"$ProgressPreference='SilentlyContinue'; try {{ irm '{url}' -TimeoutSec 10 -EA Stop }} catch {{ 'FAILED' }}"
+            web_result = self._executor.remote_execute(web_cmd, timeout=15, retry=False)
+            
+            if web_result and web_result.strip() and "FAILED" not in web_result:
+                # Analyze response for captive portal or blocks
+                if common.analyze_response(web_result):
+                    logger.success(f"✅ Successfully connected to {url}")
+                else:
+                    logger.error("❌ Blocked, proxied or captive portal detected")
+            else:
+                # Fallback to WebClient
+                logger.info("⚙️ Falling back to WebClient")
+                web_cmd = f"$ProgressPreference='SilentlyContinue'; try {{ [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $w = New-Object Net.WebClient; $w.DownloadString('{url}') }} catch {{ 'FAILED' }}"
+                web_result = self._executor.remote_execute(web_cmd, timeout=15, retry=False)
+                
+                if web_result and web_result.strip() and "FAILED" not in web_result:
+                    if common.analyze_response(web_result):
+                        logger.success(f"✅ Successfully connected to {url}")
+                    else:
+                        logger.error("❌ Blocked, proxied or captive portal detected")
+                else:
+                    logger.error(f"❌ Failed to connect to {url}")
         else:
-            # Using native PowerShell web client via cmd (stealthier approach)
-            web_cmd = f"powershell -nop -c \"$ProgressPreference='SilentlyContinue'; try {{ $web=New-Object Net.WebClient; $web.DownloadString('{url}'); 'Success' }} catch {{ 'Failed' }}\""
-
-        web_result = self._executor.remote_execute(web_cmd, timeout=15, retry=False)
-
-        if web_result and "Success" in web_result:
-            logger.success(f"✅ Successfully connected to {url}")
-        else:
-            logger.error(f"❌ Failed to connect to {url}")
+            # CMD - invoke PowerShell command
+            logger.info("⚙️ Using PowerShell WebClient via CMD")
+            web_cmd = f"powershell -nop -c \"$ProgressPreference='SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try {{ $w = New-Object Net.WebClient; $w.DownloadString('{url}') }} catch {{ 'FAILED' }}\""
+            web_result = self._executor.remote_execute(web_cmd, timeout=15, retry=False)
+            
+            if web_result and web_result.strip() and "FAILED" not in web_result:
+                if common.analyze_response(web_result):
+                    logger.success(f"✅ Successfully connected to {url}")
+                else:
+                    logger.error("❌ Blocked, proxied or captive portal detected")
+            else:
+                logger.error(f"❌ Failed to connect to {url}")
