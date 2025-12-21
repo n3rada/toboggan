@@ -43,7 +43,7 @@ For experienced users, launch a fully interactive forward shell with command obf
 toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
 ```
 
-It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `linux` (`--os`) remote system and obfuscating all commands (`--obfuscation`) using the [hide.py](./toboggan/actions/hide/unix.py) actions.
+It will start a FiFo named-pipe (a.k.a `mkfifo` shell, forward-shell) on `linux` (`--os`) remote system and obfuscating all commands (`--obfuscation`) using the [hide.py](./toboggan/actions/hide/linux.py) actions.
 
 ### Proxy
 
