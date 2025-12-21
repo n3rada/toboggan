@@ -37,6 +37,7 @@ This works with:
 - **Web shells** (PHP, ASP, JSP backdoors).
 - **Command injection** vulnerabilities.
 - **HTTP-based RCE** (web application exploits).
+- **Blind command execution**, where output appears elsewhere (e.g., logfile).
 - **SQL injection** with command execution (`xp_cmdshell`, etc.).
 - Any custom RCE vector you can script.
 

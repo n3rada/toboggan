@@ -70,9 +70,7 @@ class HideAction(BaseAction):
         2. Base64 encode output
         3. Reverse string
         4. Base64 encode again
-        """
-        logger.debug(f"🔒 Obfuscating command: {command[:100]}...")
-        
+        """        
         # Add error redirection unless user explicitly added it
         if re.search(r"(2>&1|2>|>|>>)", command) is None:
             command += " 2>&1"
@@ -123,9 +121,8 @@ class HideAction(BaseAction):
         encoded_script = base64.b64encode(full_script.encode('utf-16le')).decode()
         logger.debug(f"📦 Encoded script: {len(encoded_script)} bytes")
 
-        # Return PowerShell encoded command
-        # Note: Executor will handle shell invocation if needed
-        final_cmd = f'-NoP -NonI -W Hidden -Enc {encoded_script}'
+        # Return complete PowerShell command
+        final_cmd = f'powershell -NoP -NonI -W Hidden -Enc {encoded_script}'
         
         logger.debug(f"✅ Final obfuscated command: {len(final_cmd)} bytes")
         return final_cmd
