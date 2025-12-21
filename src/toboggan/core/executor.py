@@ -455,7 +455,7 @@ class Executor(metaclass=SingletonMeta):
     # Private methods
 
     def __guess_os(self) -> str:
-        logger.info("🔍 Guessing remote OS")
+        logger.debug("🔍 Guessing remote OS")
 
         ls_output = self.remote_execute(command="ls /", retry=False).strip().lower()
 
