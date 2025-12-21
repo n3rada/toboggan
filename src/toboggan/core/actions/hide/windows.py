@@ -79,7 +79,7 @@ class HideAction(BaseAction):
             logger.debug("🔐 Using AES-256-CBC encryption")
             # Encrypt the command
             encrypted = encrypt_command(command, self._AES_KEY, self._AES_IV)
-            logger.trace(f"Encrypted: {encrypted[:80]}...")
+            logger.trace(f"Encrypted: {encrypted}")
             
             # Build PowerShell decryption pipeline
             # Convert hex key/iv to byte arrays
