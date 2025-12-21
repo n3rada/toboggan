@@ -1,7 +1,9 @@
 # toboggan/core/actions/unhide/linux.py
 
+# Built-in imports
 import base64
 
+# Local application/library specific imports
 from toboggan.core.action import BaseAction
 
 
