@@ -27,17 +27,17 @@ class AutoSshBackdoorAction(BaseAction):
                 "⚠️ sshd is not installed on the target. SSH backdoor is currently unusable."
             )
             return "⚠️ sshd is not installed on the target."
+       
+        logger.info(f"🧭 sshd binary found at: {sshd_path.strip()}")
+        # Check if sshd is running
+        check_sshd = self._executor.remote_execute("ps aux | grep '[s]shd'")
+        if not check_sshd or "sshd" not in check_sshd:
+            logger.warning(
+                "⚠️ sshd is not running on the target. You may need to start it manually."
+            )
+            return "⚠️ sshd is not running on the target."
         else:
-            logger.info(f"🧭 sshd binary found at: {sshd_path.strip()}")
-            # Check if sshd is running
-            check_sshd = self._executor.remote_execute("ps aux | grep '[s]shd'")
-            if not check_sshd or "sshd" not in check_sshd:
-                logger.warning(
-                    "⚠️ sshd is not running on the target. You may need to start it manually."
-                )
-                return "⚠️ sshd is not running on the target."
-            else:
-                logger.success("✅ sshd is running.")
+            logger.success("✅ sshd is running.")
 
         # Step 1: Locate ssh-keygen
         sshkeygen_path = self._executor.os_helper.get_command_location("ssh-keygen")
