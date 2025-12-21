@@ -1,3 +1,6 @@
+# toboggan/core/actions/ssh_backdoor/linux.py
+
+# Built-in imports
 import subprocess
 import tempfile
 import os

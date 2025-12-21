@@ -1,5 +1,8 @@
-from toboggan.core.action import BaseAction
+# toboggan/core/actions/ssh_find/linux.py
 
+
+# Local library imports
+from toboggan.core.action import BaseAction
 
 class FindSshKeysAction(BaseAction):
     DESCRIPTION = "Search for SSH private keys on the system (user and host keys)."
