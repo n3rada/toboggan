@@ -29,6 +29,14 @@ Or you can directly inject the dependency inside `toboggan`:
 pipx inject toboggan psycopg2
 ```
 
+### Using [`uv`](https://docs.astral.sh/uv/)
+
+`uv tool` isolates environments by design, like `pipx`.
+
+```shell
+uv tool install "toboggan@git+https://github.com/n3rada/toboggan.git"
+```
+
 ## 🧸 Usage
 
 Upgrade your web shell or command injection to an interactive shell:
