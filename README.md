@@ -133,7 +133,7 @@ Toboggan upgrades dumb web shells into semi-interactive shells using named pipes
 - Dealing with blind command execution that doesn't return output immediately (e.g., output from log file).
 - You need an interactive shell without opening connections back to your machine.
 
-The forward shell uses `mkfifo` under the hood to create a pseudo-TTY experience, even in heavily restricted environments. To enable this shell upgrade, use the `--fifo` flag:
+The forward shell uses `mkfifo` under the hood (like mkfifo reverse shell technique) to create a pseudo-TTY experience, even in heavily restricted environments. To enable this shell upgrade, use the `--fifo` flag:
 ```shell
 toboggan ~/phpexploit.py --fifo
 ```
