@@ -85,7 +85,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Obfuscate commands using AES encryption or base64 encoding to evade detection.",
     )
 
-    # Positional argument for module (most common use case)
     parser.add_argument(
         "module",
         type=str,
