@@ -251,6 +251,7 @@ class ActionsManager:
 
             for action_dir in source_path.iterdir():
                 action_name = action_dir.stem
+
                 if action_name in ignored_actions:
                     continue
 
@@ -308,6 +309,7 @@ class ActionsManager:
             %LOCALAPPDATA%\toboggan\actions (Windows) take precedence over
             built-in system actions.
         """
+
         name_with_os = f"{name}/{self.__os}"
         system_module_path = self.__system_actions_path / f"{name_with_os}.py"
         user_module_path = self.__user_actions_path / f"{name_with_os}.py"
@@ -319,6 +321,7 @@ class ActionsManager:
                 formatted_time = datetime.fromtimestamp(last_modified).strftime(
                     "%Y-%m-%d %H:%M:%S"
                 )
+
                 if action := self.load_action_from_path(user_module_path):
                     logger.info(
                         f"📦 Loaded user action '{name}' (last modified: {formatted_time})"
