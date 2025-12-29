@@ -7,24 +7,24 @@ name = "toboggan"
 version = "0.9.0"
 description = "Bring intelligence to any remote command execution (RCE)."
 authors = [
-    {name = "n3rada"}
+    { name = "n3rada" }
 ]
-license = {text = "GPL-3.0-or-later"}
+license = { text = "GPL-3.0-or-later" }
 readme = "README.md"
 requires-python = ">=3.9,<4.0"
+
 dependencies = [
-    "prompt-toolkit (>=3.0.20,<4.0.0)",
-    "tqdm (>=4.61.0,<5.0.0)",
-    "httpx (>=0.28.0)",
-    "pycryptodomex (>=3.10.1,<4.0.0)",
-    "loguru (>=0.7.0,<1.0.0)",
-    "modwrap (>=1.1.7, <1.2.0)",
+    "prompt-toolkit>=3.0.20,<4.0.0",
+    "tqdm>=4.61.0,<5.0.0",
+    "httpx>=0.28.0",
+    "pycryptodomex>=3.10.1,<4.0.0",
+    "loguru>=0.7.0,<1.0.0",
+    "modwrap>=1.1.7,<1.2.0",
     "lxml>=6.0.2",
 ]
 
 [project.urls]
-repository  = "https://github.com/n3rada/toboggan"
+repository = "https://github.com/n3rada/toboggan"
 
 [project.scripts]
-toboggan = 'toboggan.cli:main'
-
+toboggan = "toboggan.cli:main"
