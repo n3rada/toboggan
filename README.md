@@ -46,7 +46,7 @@ Upgrade your web shell or command injection to an interactive shell:
 toboggan ~/phpexploit.py
 ```
 
-### Advanced: Forward Shell with Obfuscation
+### Forward Shell with Obfuscation
 
 For experienced users, launch a fully interactive forward shell with command obfuscation:
 ```shell
