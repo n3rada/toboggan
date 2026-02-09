@@ -48,7 +48,7 @@ toboggan ~/phpexploit.py
 
 ### Forward Shell with Obfuscation
 
-For experienced users, launch a fully interactive forward shell with command obfuscation:
+Launch a fully interactive forward shell with command obfuscation:
 ```shell
 toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
 ```
