@@ -140,7 +140,7 @@ The forward shell uses `mkfifo` under the hood (like mkfifo reverse shell techni
 toboggan ~/phpexploit.py --fifo
 ```
 
-Toboggan will create a FIFO-based communication channel, allowing you to interact with the remote system in a more dynamic way. This enables interactive commands that require stdin/stdout communication such as **`sudo -l`** (list sudo privileges), **`su - otheruser`** (switch users interactively), **`ssh user@host`** (establish interactive SSH sessions), **`mysql -u root -p`** (connect to database clients requiring password prompts), **`passwd`** (change user passwords), and any custom applications or scripts using `read` that expect real-time user input.
+Toboggan will create a FIFO-based communication channel, allowing you to interact with the remote system in a more dynamic way. This enables interactive commands that require stdin/stdout communication such as `sudo -l` (list sudo privileges) and any custom applications or scripts using `read` that expect real-time user input.
 
 > [!WARNING]
 > Ctrl+C not forwarded. Control characters only work in real TTY/PTY environments.
