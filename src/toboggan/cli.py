@@ -319,7 +319,7 @@ def main() -> int:
             logger.debug("Full error:", exc_info=True)
             return 1
     elif args.module:
-        logger.info(f"Use provided module: '{args.module}'.")
+        logger.info(f"Use provided module: '{args.module}'")
 
         wrapper = ModuleWrapper(args.module)
 
