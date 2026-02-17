@@ -82,7 +82,7 @@ class LinuxHelper(base.OSHelperBase):
 
         random_hex = common.generate_fixed_length_token(length=32)
         random_suffix = common.generate_fixed_length_token(length=6).upper()
-        return f"/tmp/systemd-private-{random_hex}-upower.service-{random_suffix}"
+        return f"/tmp/systemd-private-{random_hex}-dbus-broker.service-{random_suffix}"
 
     def random_system_file_name(
         self,
