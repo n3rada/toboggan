@@ -11,7 +11,7 @@ from loguru import logger
 # Local application/library specific imports
 from . import action
 from . import target
-from toboggan.core.utils.common import SingletonMeta
+from .utils.common import SingletonMeta
 from .helpers.linux import LinuxHelper
 from .helpers.windows import WindowsHelper
 from .helpers.base import OSHelperBase
@@ -378,8 +378,8 @@ class Executor(metaclass=SingletonMeta):
                 if debug:
                     logger.error(
                         f"⚠️ Failed to de-obfuscate command output.\n"
-                        f"   • Original Command: {command!r}\n"
-                        f"   • Received Output: {result!r}"
+                        f"\t• Original Command: {command!r}\n"
+                        f"\t• Received Output: {result!r}"
                     )
                 raise
 
@@ -388,18 +388,27 @@ class Executor(metaclass=SingletonMeta):
     def delete_working_directory(self) -> None:
         """
         Deletes the remote working directory if it has been created.
-
-        Args:
-            debug (bool): Whether to log deletion info.
+        Uses rm -rf to force removal of all contents.
         """
         if not self.has_working_directory:
+            logger.debug("No working directory to delete.")
             return
+
         try:
-            self.remote_execute(f"rm -r {self._working_directory}")
+            logger.debug(
+                f"🗑️ Deleting remote working directory: {self._working_directory}"
+            )
+            # Use -rf to force deletion, bypass obfuscation for cleanup reliability
+            self.remote_execute(
+                f"rm -rf {self._working_directory}",
+                debug=False,
+                bypass_obfuscation=True,
+            )
+
         except Exception as exc:
             logger.warning(f"⚠️ Failed to delete remote working directory: {exc}")
 
-    def calculate_max_chunk_size(self, min_size=128, max_size=262144) -> int:
+    def calculate_max_chunk_size(self, min_size=10, max_size=262144) -> int:
         """
         Determines the maximum command chunk size accepted by the remote shell.
         First tries the maximum size directly, then falls back to binary search if needed.
@@ -419,8 +428,7 @@ class Executor(metaclass=SingletonMeta):
 
         # Align initial bounds
         max_size = align_size(max_size)
-        min_size = max(128, min_size)  # Absolute minimum
-
+        
         def test_command_size(size: int) -> tuple[bool, int]:
             """
             Test if a command of given size works without truncation.
@@ -509,7 +517,9 @@ class Executor(metaclass=SingletonMeta):
             if actual_size_aligned >= min_size:
                 verify_success, _ = test_command_size(actual_size_aligned)
                 if verify_success:
-                    logger.success(f"✅ Verified maximum size: {actual_size_aligned} bytes")
+                    logger.success(
+                        f"✅ Verified maximum size: {actual_size_aligned} bytes"
+                    )
                     return actual_size_aligned
             logger.info(
                 "❌ Deduced size verification failed, falling back to binary search"
@@ -518,9 +528,7 @@ class Executor(metaclass=SingletonMeta):
             logger.info("❌ Maximum size failed, falling back to binary search")
 
         # Fall back to binary search if maximum size failed
-        logger.info(
-            f"🔢 Binary search range: {min_size} to {max_size} bytes"
-        )
+        logger.info(f"🔢 Binary search range: {min_size} to {max_size} bytes")
 
         low = min_size
         high = max_size
@@ -554,7 +562,9 @@ class Executor(metaclass=SingletonMeta):
                     if verify_success:
                         best = actual_size_aligned
                         logger.info(f"✅ Verified deduced size: {best} bytes")
-                high = actual_size_aligned - (1024 if actual_size_aligned >= 1024 else 64)
+                high = actual_size_aligned - (
+                    1024 if actual_size_aligned >= 1024 else 64
+                )
             else:
                 logger.info(f"❌ Failed at {mid} bytes")
                 high = mid - (1024 if mid >= 1024 else 64)
