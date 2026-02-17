@@ -76,28 +76,25 @@ class HideAction(BaseAction):
         if re.search(r"(1?>>?|2>>&?|>>?|[0-9]+>&[0-9]+)", command) is None:
             command += " 2>&1"
 
-        # Use basic command names (available in PATH on all Unix systems)
-        base64_cmd = "base64"
-        echo_cmd = "echo"
-
         if self.__openssl_path:
             encrypted = encrypt_command(command, self._AES_KEY, self._AES_IV)
+            # Use 'sh' in the inner decrypt pipeline to avoid $0 context issues
             decrypt_pipeline = (
-                f"{echo_cmd} '{encrypted}'|{base64_cmd} -d|"
-                f"{self.__openssl_path} enc -aes-256-cbc -d -K {self._AES_KEY} -iv {self._AES_IV}|{self._executor.shell}"
+                f"echo {encrypted}|"
+                f"{self.__openssl_path} enc -aes-256-cbc -d -a -K {self._AES_KEY} -iv {self._AES_IV}"
             )
+            logger.trace(f"Encrypted command (AES-256-CBC): {encrypted}")
         else:
             # fallback: just base64 + decode
             encoded = base64.b64encode(command.encode()).decode()
-            decrypt_pipeline = (
-                f"{echo_cmd} '{encoded}'|{base64_cmd} -d|{self._executor.shell}"
-            )
+            decrypt_pipeline = f"echo {encoded}|base64 -d"
+            logger.trace(f"Encoded command (base64): {encoded}")
 
-        # Obfuscate further: base64 + reverse + base64 encode all
-        obfuscated = base64.urlsafe_b64encode(
-            f"{decrypt_pipeline}|{base64_cmd} -w0|rev".encode()
-        ).decode()
+        # Base64 encode the entire pipeline
+        encoded_pipeline = base64.b64encode(decrypt_pipeline.encode()).decode()
 
-        final_cmd = f"{echo_cmd} {obfuscated}|{base64_cmd} -d|{self._executor.shell}"
+        hidden_command = f"echo {encoded_pipeline}|base64 -d|$0|$0|base64 -w0|rev"
 
-        return final_cmd
+        logger.trace(f"Final obfuscated command: {hidden_command}")
+
+        return hidden_command

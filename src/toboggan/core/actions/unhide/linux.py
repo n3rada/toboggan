@@ -29,17 +29,16 @@ class UnHideAction(BaseAction):
     def run(self, command: str) -> str:
         try:
             logger.debug(f"🔓 De-obfuscating output: {len(command)} bytes")
-            
-            # Step 1: Reverse the string (undo `rev`)
+
             reversed_data = command[::-1]
 
-            # Step 2: Base64 decode
+            logger.trace(f"✅ Reversed data: {reversed_data}")
+
             decoded_data = base64.b64decode(reversed_data)
-            logger.trace(f"After base64 decode: {len(decoded_data)} bytes")
 
             # Step 3: Decode to UTF-8 string
             result = decoded_data.decode("utf-8", errors="replace").strip()
-            logger.trace(f"✅ Decoded result: {len(result)} bytes")
+            logger.trace(f"✅ Decoded result: {result}")
             return result
 
         except Exception as e:
