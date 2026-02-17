@@ -33,8 +33,7 @@ class LinPEASAction(BaseAction):
         if not local_path or not Path(local_path).exists():
             return "❌ Failed to obtain linpeas.sh locally or via download."
 
-        # Generate a stealthy filename
-        filename = f".linpeas_{generate_fixed_length_token(6)}.sh"
+        filename = f".{generate_uuid()}"
         remote_path = f"{self._executor.working_directory}/{filename}"
 
         UploadAction(self._executor).run(
