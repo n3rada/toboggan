@@ -274,7 +274,8 @@ class LinuxHelper(base.OSHelperBase):
                         return full_path
                 except ValueError:
                     raise
-                except Exception:
+                except Exception as exc:
+                    logger.trace(f"⚠️ Command not found at custom path: {full_path} - Exception: {exc}")
                     continue  # Try next custom path
 
         # Wrap a full command with /bin/busybox if its base command is supported.
