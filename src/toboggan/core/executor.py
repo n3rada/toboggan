@@ -401,14 +401,14 @@ class Executor(metaclass=SingletonMeta):
 
     def calculate_max_chunk_size(self, min_size=128, max_size=262144) -> int:
         """
-        Determines the maximum shell command size accepted by the remote shell.
+        Determines the maximum command chunk size accepted by the remote shell.
         First tries the maximum size directly, then falls back to binary search if needed.
         Sizes >= 1024 are aligned to 1024, smaller sizes use natural alignment.
         Validates output integrity by checking the last characters aren't truncated.
         Uses marker truncation and output length to deduce the actual working size.
 
         Returns:
-            int: Maximum command size in bytes that succeeded.
+            int: Maximum command size in bytes that the remote shell accepts.
         """
 
         def align_size(size: int) -> int:
@@ -480,7 +480,7 @@ class Executor(metaclass=SingletonMeta):
                     estimated_size = output_len + len("echo ")
                     logger.debug(
                         f"📊 No marker found - output length: {output_len} chars, "
-                        f"estimated size: {estimated_size} bytes"
+                        f"estimated command size: {estimated_size} bytes"
                     )
                     return False, estimated_size
 
