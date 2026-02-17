@@ -73,7 +73,7 @@ class Executor(metaclass=SingletonMeta):
             self.__obfuscation = False
 
             # For Windows with obfuscation, force PowerShell mode
-            if self.__os == "windows" and hasattr(self._os_helper, 'force_powershell'):
+            if self.__os == "windows" and hasattr(self._os_helper, "force_powershell"):
                 self._os_helper.force_powershell()
 
             self.__obfuscation_action = self.__action_manager.get_action("hide")(
@@ -128,7 +128,7 @@ class Executor(metaclass=SingletonMeta):
                 )
                 else self._os_helper.format_working_directory()
             )
-            
+
             self.remote_execute(command=f'mkdir "{self._working_directory}"')
             logger.info(
                 f"📂 Remote working directory initialized: {self._working_directory}"
@@ -220,11 +220,22 @@ class Executor(metaclass=SingletonMeta):
         if size <= 0:
             raise ValueError("Chunk size must be a positive integer.")
 
-        if size % 1024 != 0:
+        # Only align to 1024 for larger sizes
+        if size >= 1024 and size % 1024 != 0:
             logger.warning(
                 f"Chunk size {size} is not a multiple of 1024. Rounding down to nearest 1024."
             )
             size = (size // 1024) * 1024
+        elif size >= 1024:
+            # Already aligned
+            pass
+        else:
+            # Small size - no alignment needed
+            logger.info(f"Using small chunk size: {size} bytes (no alignment)")
+
+        if size <= 0:
+            logger.error("❌ Chunk size must be positive after alignment.")
+            return
 
         try:
             self.remote_execute(
@@ -388,42 +399,127 @@ class Executor(metaclass=SingletonMeta):
         except Exception as exc:
             logger.warning(f"⚠️ Failed to delete remote working directory: {exc}")
 
-    def calculate_max_chunk_size(self, min_size=1024, max_size=262144) -> int:
+    def calculate_max_chunk_size(self, min_size=128, max_size=262144) -> int:
         """
         Determines the maximum shell command size accepted by the remote shell.
         First tries the maximum size directly, then falls back to binary search if needed.
-        All sizes are ensured to be multiples of 1024.
+        Sizes >= 1024 are aligned to 1024, smaller sizes use natural alignment.
+        Validates output integrity by checking the last characters aren't truncated.
+        Uses marker truncation and output length to deduce the actual working size.
 
         Returns:
-            int: Maximum command size in bytes (rounded to nearest 1024) that succeeded.
+            int: Maximum command size in bytes that succeeded.
         """
-        # Round max_size down to nearest multiple of 1024
-        max_size = (max_size // 1024) * 1024
-        min_size = (min_size // 1024) * 1024
+
+        def align_size(size: int) -> int:
+            """Align size appropriately - 1024 for large sizes, no alignment for small."""
+            if size >= 1024:
+                return (size // 1024) * 1024
+            return size
+
+        # Align initial bounds
+        max_size = align_size(max_size)
+        min_size = max(128, min_size)  # Absolute minimum
+
+        def test_command_size(size: int) -> tuple[bool, int]:
+            """
+            Test if a command of given size works without truncation.
+
+            Returns:
+                tuple[bool, int]: (success, actual_size)
+                - success: True if output is complete, False if truncated
+                - actual_size: The deduced actual size based on marker or output length
+            """
+            # Use a distinctive marker at the end to verify output isn't truncated
+            marker = "ENDMARKER"
+            marker_len = len(marker)
+
+            # Calculate junk size: total - "echo " - marker
+            junk_size = size - len("echo ") - marker_len
+
+            if junk_size < 0:
+                return False, 0
+
+            junk = "A" * junk_size
+            cmd = f"echo {junk}{marker}"
+
+            try:
+                result = self.remote_execute(
+                    cmd,
+                    timeout=5,
+                    retry=False,
+                    raise_on_failure=True,
+                    debug=False,
+                )
+
+                # Check if the output ends with our marker (strip whitespace)
+                output_stripped = result.strip()
+
+                if output_stripped.endswith(marker):
+                    # Full marker present - no truncation
+                    return True, size
+
+                # Check for partial marker to deduce actual size
+                for i in range(len(marker) - 1, 0, -1):
+                    partial_marker = marker[:i]
+                    if output_stripped.endswith(partial_marker):
+                        # Found partial marker - calculate actual size
+                        chars_missing = len(marker) - i
+                        actual_size = size - chars_missing
+                        logger.debug(
+                            f"📊 Partial marker detected: '{partial_marker}' "
+                            f"({i}/{len(marker)} chars) - deduced size: {actual_size} bytes"
+                        )
+                        return False, actual_size
+
+                # No marker found - use output length to estimate actual size
+                # The output length tells us approximately where truncation occurred
+                output_len = len(output_stripped)
+                if output_len > 0:
+                    # Account for "echo " command overhead (5 chars)
+                    estimated_size = output_len + len("echo ")
+                    logger.debug(
+                        f"📊 No marker found - output length: {output_len} chars, "
+                        f"estimated size: {estimated_size} bytes"
+                    )
+                    return False, estimated_size
+
+                logger.debug(f"❌ No output at {size} bytes")
+                return False, 0
+
+            except Exception as e:
+                logger.debug(f"❌ Exception at {size} bytes: {e}")
+                return False, 0
 
         # Try maximum size first
-        junk_size = max_size - len("echo") - 1  # -1 for space
-        junk = "A" * junk_size
-        cmd = f"echo {junk}"
-
         logger.info(f"📏 Trying maximum size: {max_size} bytes")
 
-        try:
-            self.remote_execute(
-                cmd,
-                timeout=5,
-                retry=False,
-                raise_on_failure=True,
-                debug=False,
-            )
+        success, actual_size = test_command_size(max_size)
+        if success:
             logger.success(f"✅ Maximum size {max_size} bytes works!")
             return max_size
-        except Exception:
+        elif actual_size > 0:
+            # Truncation detected - we found the actual limit
+            actual_size_aligned = align_size(actual_size)
+            logger.info(
+                f"📏 Truncation detected at {max_size} bytes - "
+                f"deduced actual size: {actual_size} bytes ({actual_size_aligned} aligned)"
+            )
+            # Verify the deduced size works
+            if actual_size_aligned >= min_size:
+                verify_success, _ = test_command_size(actual_size_aligned)
+                if verify_success:
+                    logger.success(f"✅ Verified maximum size: {actual_size_aligned} bytes")
+                    return actual_size_aligned
+            logger.info(
+                "❌ Deduced size verification failed, falling back to binary search"
+            )
+        else:
             logger.info("❌ Maximum size failed, falling back to binary search")
 
         # Fall back to binary search if maximum size failed
         logger.info(
-            f"🔢 Binary search range: {min_size} to {max_size} bytes (1024-aligned)"
+            f"🔢 Binary search range: {min_size} to {max_size} bytes"
         )
 
         low = min_size
@@ -431,31 +527,45 @@ class Executor(metaclass=SingletonMeta):
         best = 0
 
         while low <= high:
-            mid = ((low + high) // 2) // 1024 * 1024  # Round to multiple of 1024
-            junk_size = mid - len("echo") - 1  # -1 for space
-            junk = "A" * junk_size
-            cmd = f"echo {junk}"
+            # Align mid appropriately
+            mid = (low + high) // 2
+            mid = align_size(mid)
+
+            # Avoid getting stuck
+            if mid == best or mid < low:
+                break
 
             logger.info(f"📏 Trying size: {mid} bytes")
 
-            try:
-                self.remote_execute(
-                    cmd,
-                    timeout=5,
-                    retry=False,
-                    raise_on_failure=True,
-                    debug=False,
-                )
-                logger.info(f"✅ Success at {mid} bytes")
+            success, actual_size = test_command_size(mid)
+            if success:
+                logger.info(f"✅ Success at {mid} bytes (output verified)")
                 best = mid
-                low = mid + 1024
-            except Exception:
+                low = mid + (1024 if mid >= 1024 else 64)
+            elif actual_size > 0 and actual_size < mid:
+                # We found truncation and can deduce the actual size
+                actual_size_aligned = align_size(actual_size)
+                logger.info(
+                    f"📊 Truncation at {mid} bytes - deduced: {actual_size_aligned} bytes"
+                )
+                if actual_size_aligned > best and actual_size_aligned >= min_size:
+                    # Verify this deduced size
+                    verify_success, _ = test_command_size(actual_size_aligned)
+                    if verify_success:
+                        best = actual_size_aligned
+                        logger.info(f"✅ Verified deduced size: {best} bytes")
+                high = actual_size_aligned - (1024 if actual_size_aligned >= 1024 else 64)
+            else:
                 logger.info(f"❌ Failed at {mid} bytes")
-                high = mid - 1024
+                high = mid - (1024 if mid >= 1024 else 64)
 
             logger.debug(f"🔁 Search range: low={low}, high={high}, best={best}")
 
-        logger.success(f"📏 Final maximum command size: {best} bytes")
+        if best > 0:
+            logger.success(f"📏 Final maximum command size: {best} bytes")
+        else:
+            logger.error(f"❌ Could not determine a working command size")
+
         return best
 
     # Private methods
