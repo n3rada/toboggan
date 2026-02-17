@@ -7,7 +7,7 @@ from loguru import logger
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.actions.upload.linux import UploadAction
-from toboggan.core.utils.common import generate_fixed_length_token
+from toboggan.core.utils.common import generate_fixed_length_token, generate_uuid
 
 
 class LinPEASAction(BaseAction):
@@ -37,13 +37,15 @@ class LinPEASAction(BaseAction):
         filename = f".linpeas_{generate_fixed_length_token(6)}.sh"
         remote_path = f"{self._executor.working_directory}/{filename}"
 
-        UploadAction().run(local_path=str(local_path), remote_path=remote_path)
+        UploadAction(self._executor).run(
+            local_path=str(local_path), remote_path=remote_path
+        )
 
         # Make it executable
         self._executor.remote_execute(f"chmod +x {remote_path}")
 
         # Execute in background and redirect output
-        output_file = f"{self._executor.working_directory}/.linpeas_output.log"
+        output_file = f"{self._executor.working_directory}/.{generate_uuid()}.log"
         exec_cmd = f"nohup {remote_path} > {output_file} 2>&1 &"
         self._executor.remote_execute(exec_cmd)
 
