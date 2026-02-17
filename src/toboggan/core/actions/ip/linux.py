@@ -144,9 +144,6 @@ class IpInfoAction(BaseAction):
 
         # Add routing table information
         logger.info("🗺️  Reading routing table from /proc/net/route")
-        output_lines.append("=" * 70)
-        output_lines.append("🗺️  ROUTING TABLE")
-        output_lines.append("=" * 70 + "\n")
 
         # Read and parse /proc/net/route directly
         proc_route = self._executor.remote_execute(
