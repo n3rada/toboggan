@@ -272,6 +272,8 @@ class LinuxHelper(base.OSHelperBase):
                             f"💾 Cached command from custom path: {command} -> {full_path}"
                         )
                         return full_path
+                except ValueError:
+                    raise
                 except Exception:
                     continue  # Try next custom path
 
