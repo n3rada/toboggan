@@ -271,7 +271,7 @@ class Terminal:
 
                     raw_args = command_parts[1:]
 
-                    if command == "chunksize" or command == "command_size":
+                    if command == "size" or command == "cmdsize":
                         try:
                             if raw_args:
                                 self.__executor.command_max_size = int(raw_args[0])
