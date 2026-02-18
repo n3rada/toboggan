@@ -231,7 +231,7 @@ class Executor(metaclass=SingletonMeta):
             pass
         else:
             # Small size - no alignment needed
-            logger.info(f"Using small chunk size: {size} bytes (no alignment)")
+            logger.debug(f"Using small chunk size: {size} bytes (no alignment)")
 
         if size <= 0:
             logger.error("❌ Chunk size must be positive after alignment.")
@@ -253,7 +253,7 @@ class Executor(metaclass=SingletonMeta):
             return
 
         self._chunk_max_size = size
-        logger.info(f"📏 Chunk max size set to: {self._chunk_max_size} bytes")
+        logger.debug(f"📏 Chunk max size set to: {self._chunk_max_size} bytes")
 
     # Public methods
 
@@ -428,7 +428,7 @@ class Executor(metaclass=SingletonMeta):
 
         # Align initial bounds
         max_size = align_size(max_size)
-        
+
         def test_command_size(size: int) -> tuple[bool, int]:
             """
             Test if a command of given size works without truncation.
@@ -480,15 +480,15 @@ class Executor(metaclass=SingletonMeta):
                         )
                         return False, actual_size
 
-                # No marker found - use output length to estimate actual size
-                # The output length tells us approximately where truncation occurred
+                # No marker found - use output length to estimate upper bound for binary search
+                # This is unreliable as final answer but useful to narrow search space
                 output_len = len(output_stripped)
                 if output_len > 0:
                     # Account for "echo " command overhead (5 chars)
                     estimated_size = output_len + len("echo ")
                     logger.debug(
                         f"📊 No marker found - output length: {output_len} chars, "
-                        f"estimated command size: {estimated_size} bytes"
+                        f"estimated upper bound: {estimated_size} bytes (for search optimization)"
                     )
                     return False, estimated_size
 
@@ -506,33 +506,31 @@ class Executor(metaclass=SingletonMeta):
         if success:
             logger.success(f"✅ Maximum size {max_size} bytes works!")
             return max_size
-        elif actual_size > 0:
-            # Truncation detected - we found the actual limit
-            actual_size_aligned = align_size(actual_size)
-            logger.info(
-                f"📏 Truncation detected at {max_size} bytes - "
-                f"deduced actual size: {actual_size} bytes ({actual_size_aligned} aligned)"
-            )
-            # Verify the deduced size works
-            if actual_size_aligned >= min_size:
-                verify_success, _ = test_command_size(actual_size_aligned)
-                if verify_success:
-                    logger.success(
-                        f"✅ Verified maximum size: {actual_size_aligned} bytes"
-                    )
-                    return actual_size_aligned
-            logger.info(
-                "❌ Deduced size verification failed, falling back to binary search"
-            )
-        else:
-            logger.info("❌ Maximum size failed, falling back to binary search")
 
-        # Fall back to binary search if maximum size failed
-        logger.info(f"🔢 Binary search range: {min_size} to {max_size} bytes")
-
+        # Adjust binary search range based on initial test
         low = min_size
         high = max_size
         best = 0
+
+        if actual_size > 0:
+            # Got output or partial marker - use to optimize search range
+            estimated_upper = actual_size * 4  # Give 4x headroom
+            estimated_upper_aligned = align_size(estimated_upper)
+
+            if estimated_upper_aligned < max_size:
+                # Narrow the search space - likely limit is around estimated size
+                high = min(estimated_upper_aligned, max_size)
+                logger.info(
+                    f"📊 Output suggests limit around {actual_size} bytes - "
+                    f"narrowing search to {min_size}-{high} bytes"
+                )
+            else:
+                logger.info("❌ Maximum size failed, using full binary search range")
+        else:
+            logger.info("❌ No output from maximum size test")
+
+        # Binary search for the actual limit
+        logger.info(f"🔢 Binary search range: {min_size} to {high} bytes")
 
         while low <= high:
             # Align mid appropriately
@@ -561,7 +559,15 @@ class Executor(metaclass=SingletonMeta):
                     verify_success, _ = test_command_size(actual_size_aligned)
                     if verify_success:
                         best = actual_size_aligned
-                        logger.info(f"✅ Verified deduced size: {best} bytes")
+                        logger.success(f"✅ Verified deduced size: {best} bytes")
+                        # Deduced size verified - this is our answer
+                        return best
+                    else:
+                        logger.debug(
+                            f"❌ Deduced size {actual_size_aligned} verification failed"
+                        )
+
+                # Verification failed or skipped - search below the truncation point
                 high = actual_size_aligned - (
                     1024 if actual_size_aligned >= 1024 else 64
                 )
