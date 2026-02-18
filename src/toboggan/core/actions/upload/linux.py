@@ -69,12 +69,16 @@ class UploadAction(BaseAction):
         local_md5 = hashlib.md5(raw_bytes).hexdigest()
         logger.info(f"🔒 Local MD5: {local_md5}")
 
-        chunk_size = self._executor.chunk_max_size
+        # Calculate effective chunk size accounting for command overhead
+        # Command format: printf %s {chunk} >> {remote_encoded_path}
+        command_overhead = len("printf %s ") + len(" >> ") + len(remote_encoded_path)
+        chunk_size = max(1, self._executor.chunk_max_size - command_overhead)
+
         encoded_size = len(encoded_file)
         total_chunks = (encoded_size + chunk_size - 1) // chunk_size
 
         logger.info(
-            f"📦 Encoded file size: {encoded_size} bytes ({total_chunks} chunks)"
+            f"📦 Encoded file size: {encoded_size} bytes ({total_chunks} chunks, {chunk_size}B each)"
         )
 
         # Step 2: Upload in chunks
@@ -103,7 +107,7 @@ class UploadAction(BaseAction):
         logger.info(f"📂 Decoding and extracting remotely to {remote_path}")
         base64_path = self._executor.os_helper.get_command_location("base64")
         self._executor.remote_execute(
-            f"{base64_path} -d {remote_encoded_path} | dd of={remote_path} bs=1024",
+            f"{base64_path} -d {remote_encoded_path}|dd of={remote_path} bs=1024",
             retry=True,
             timeout=60,
         )
@@ -126,6 +130,6 @@ class UploadAction(BaseAction):
         else:
             logger.success("✅ MD5 checksum matched.")
 
-        logger.success(f"✅ File uploaded and extracted successfully: {remote_path}")
+        logger.success(f"✅ File uploaded: {remote_path}")
 
         return
