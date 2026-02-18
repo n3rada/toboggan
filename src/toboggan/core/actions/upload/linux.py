@@ -53,7 +53,6 @@ class UploadAction(BaseAction):
 
         logger.info(f"📤 Uploading {local_path} to {remote_path}")
 
-        # Define remote encoded path early
         remote_encoded_path = (
             f"{self._executor.working_directory}/{generate_fixed_length_token(24)}"
         )
