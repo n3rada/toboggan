@@ -253,7 +253,7 @@ class Executor(metaclass=SingletonMeta):
             return
 
         self._command_max_size = size
-        logger.info(f"📏 Chunk max size set to: {self._command_max_size} bytes")
+        logger.info(f"📏 Command max size set to: {self._command_max_size} bytes")
 
     # Public methods
 
