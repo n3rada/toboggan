@@ -10,7 +10,6 @@ from loguru import logger
 
 # Local application/library specific imports
 from . import base
-from ..utils import common
 from ..action import NamedPipe
 
 
