@@ -525,7 +525,7 @@ class Terminal:
             )
             if details.get("parameters"):
                 params = ", ".join(details["parameters"])
-                lines.append(f"    ⚙️ Parameters: {params}")
+                lines.append(f"\t⚙️ Parameters: {params}")
 
         lines.append(DIM + "-" * (max_action_length + 50) + RESET)
         lines.append(
@@ -547,7 +547,7 @@ class Terminal:
             f"🔹 {ansi_ljust(f'{GREEN}size{RESET}', max_action_length)} → "
             f"{CYAN}Probe or manually set the max command size.{RESET}"
         )
-        lines.append(f"    ⚙️ Parameters: [bytes] (optional, must be multiple of 1024)")
+        lines.append(f"\t⚙️ Parameters: [bytes] (optional)")
         lines.append(
             f"🔹 {ansi_ljust(f'{GREEN}debug{RESET}', max_action_length)} → "
             f"{CYAN}Toggle debug logging on/off.{RESET}"
@@ -560,7 +560,7 @@ class Terminal:
             f"🔹 {ansi_ljust(f'{GREEN}paths{RESET}', max_action_length)} → "
             f"{CYAN}Show custom paths and command location cache.{RESET}"
         )
-        lines.append(f"    ⚙️ Subcommands: add <paths>, clear")
+        lines.append(f"\t⚙️ Subcommands: add <paths>, clear")
 
         return "\n".join(lines)
 
