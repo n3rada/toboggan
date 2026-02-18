@@ -20,7 +20,7 @@ class DownloadAction(BaseAction):
 
     DESCRIPTION = "Retrieve a file remotely, compress it, and save it locally."
 
-    def run(self, remote_path: str, local_path: str = None, chunk_size: int = 4096):
+    def run(self, remote_path: str, local_path: str = None, command_size: int = 4096):
         """
         Attempts to compress, encode, and retrieve a remote file in chunks, saving it locally.
 
@@ -28,7 +28,7 @@ class DownloadAction(BaseAction):
             remote_path (str): Path to the remote file.
             local_path (str, optional): Path where the file should be saved. If a directory, saves inside.
                                         If None, saves in the current working directory.
-            chunk_size (int, optional): Size of each chunk to be retrieved. Defaults to 4096.
+            command_size (int, optional): Size of each chunk to be retrieved. Defaults to 4096.
 
         Returns:
             bool: True if the file was successfully downloaded and extracted, False otherwise.
@@ -114,7 +114,7 @@ Remove-Item -LiteralPath $zip -Force
             return False
 
         total_encoded_size = int(size_output)
-        total_chunks = (total_encoded_size + chunk_size - 1) // chunk_size
+        total_chunks = (total_encoded_size + command_size - 1) // command_size
 
         logger.info(
             f"⬇️ Downloading {remote_path} ({total_chunks} chunks, {total_encoded_size} bytes)"
@@ -133,7 +133,7 @@ Remove-Item -LiteralPath $zip -Force
             ) as progress_bar,
         ):
             for idx in range(total_chunks):
-                offset = idx * chunk_size
+                offset = idx * command_size
 
                 if self._os_helper.shell_type == "powershell":
                     # Read chunk using .NET methods for reliability
@@ -141,14 +141,14 @@ Remove-Item -LiteralPath $zip -Force
 $ProgressPreference='SilentlyContinue'
 $fs = [IO.File]::OpenRead("{remote_base64_path}")
 $fs.Seek({offset}, [IO.SeekOrigin]::Begin) | Out-Null
-$buf = New-Object byte[] {chunk_size}
-$read = $fs.Read($buf, 0, {chunk_size})
+$buf = New-Object byte[] {command_size}
+$read = $fs.Read($buf, 0, {command_size})
 $fs.Close()
 [Text.Encoding]::ASCII.GetString($buf, 0, $read)
 """.strip()
                 else:
                     # CMD: invoke PowerShell
-                    chunk_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $fs = [IO.File]::OpenRead('{remote_base64_path}'); $fs.Seek({offset}, [IO.SeekOrigin]::Begin) | Out-Null; $buf = New-Object byte[] {chunk_size}; $read = $fs.Read($buf, 0, {chunk_size}); $fs.Close(); [Text.Encoding]::ASCII.GetString($buf, 0, $read)" """.strip()
+                    chunk_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $fs = [IO.File]::OpenRead('{remote_base64_path}'); $fs.Seek({offset}, [IO.SeekOrigin]::Begin) | Out-Null; $buf = New-Object byte[] {command_size}; $read = $fs.Read($buf, 0, {command_size}); $fs.Close(); [Text.Encoding]::ASCII.GetString($buf, 0, $read)" """.strip()
 
                 chunk = self._executor.remote_execute(
                     command=chunk_cmd, timeout=30, retry=False, debug=False

@@ -96,9 +96,9 @@ class UploadAction(BaseAction):
         local_md5 = hashlib.md5(raw_bytes).hexdigest().upper()
         logger.info(f"🔒 Local MD5: {local_md5}")
 
-        chunk_size = self._executor.chunk_max_size
+        command_size = self._executor.command_max_size
         encoded_size = len(encoded_file)
-        total_chunks = (encoded_size + chunk_size - 1) // chunk_size
+        total_chunks = (encoded_size + command_size - 1) // command_size
 
         logger.info(
             f"📦 Encoded file size: {encoded_size} bytes ({total_chunks} chunks)"
@@ -114,7 +114,7 @@ class UploadAction(BaseAction):
                 total=encoded_size, unit="B", unit_scale=True, desc="Uploading"
             ) as progress_bar:
                 for idx in range(total_chunks):
-                    chunk = encoded_file[idx * chunk_size : (idx + 1) * chunk_size]
+                    chunk = encoded_file[idx * command_size : (idx + 1) * command_size]
 
                     if self._os_helper.shell_type == "powershell":
                         # Use Add-Content for appending

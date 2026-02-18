@@ -71,13 +71,13 @@ class UploadAction(BaseAction):
         # Calculate effective chunk size accounting for command overhead
         # Command format: printf %s {chunk} >> {remote_encoded_path}
         command_overhead = len("printf %s ") + len(" >> ") + len(remote_encoded_path)
-        chunk_size = max(1, self._executor.chunk_max_size - command_overhead)
+        command_size = max(1, self._executor.command_max_size - command_overhead)
 
         encoded_size = len(encoded_file)
-        total_chunks = (encoded_size + chunk_size - 1) // chunk_size
+        total_chunks = (encoded_size + command_size - 1) // command_size
 
         logger.info(
-            f"📦 Encoded file size: {encoded_size} bytes ({total_chunks} chunks, {chunk_size}B each)"
+            f"📦 Encoded file size: {encoded_size} bytes ({total_chunks} chunks, {command_size}B each)"
         )
 
         # Step 2: Upload in chunks
@@ -94,14 +94,14 @@ class UploadAction(BaseAction):
                     total=encoded_size, unit="B", unit_scale=True, desc="Uploading"
                 ) as progress_bar:
                     for idx in range(total_chunks):
-                        chunk = encoded_file[idx * chunk_size : (idx + 1) * chunk_size]
+                        chunk = encoded_file[idx * command_size : (idx + 1) * command_size]
                         self._executor.remote_execute(
                             f"printf %s {chunk} >> {remote_encoded_path}"
                         )
                         progress_bar.update(len(chunk))
             else:
                 for idx in range(total_chunks):
-                    chunk = encoded_file[idx * chunk_size : (idx + 1) * chunk_size]
+                    chunk = encoded_file[idx * command_size : (idx + 1) * command_size]
                     self._executor.remote_execute(
                         f"printf %s {chunk} >> {remote_encoded_path}"
                     )

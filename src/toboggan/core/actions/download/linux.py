@@ -20,7 +20,7 @@ class DownloadAction(BaseAction):
 
     DESCRIPTION = "Retrieve a file remotely, compress it, and save it locally."
 
-    def run(self, remote_path: str, local_path: str = None, chunk_size: int = 4096):
+    def run(self, remote_path: str, local_path: str = None, command_size: int = 4096):
         """
         Attempts to compress, encode, and retrieve a remote file in chunks, saving it locally.
 
@@ -28,7 +28,7 @@ class DownloadAction(BaseAction):
             remote_path (str): Path to the remote file.
             local_path (str, optional): Path where the file should be saved. If a directory, saves inside.
                                         If None, saves in the current working directory.
-            chunk_size (int, optional): Size of each chunk to be retrieved. Defaults to 4096.
+            command_size (int, optional): Size of each chunk to be retrieved. Defaults to 4096.
 
         Returns:
             bool: True if the file was successfully downloaded and extracted, False otherwise.
@@ -80,7 +80,7 @@ class DownloadAction(BaseAction):
             return False
 
         total_encoded_size = int(wc_output.split()[0])
-        total_chunks = (total_encoded_size + chunk_size - 1) // chunk_size
+        total_chunks = (total_encoded_size + command_size - 1) // command_size
 
         logger.info(
             f"⬇️ Downloading {remote_path} ({total_chunks} chunks) to {save_path}.tar.gz"
@@ -95,9 +95,9 @@ class DownloadAction(BaseAction):
             ) as progress_bar,
         ):
             for idx in range(total_chunks):
-                offset = idx * chunk_size
+                offset = idx * command_size
                 chunk = self._executor.remote_execute(
-                    command=f"dd if={remote_base64_path} bs=1 skip={offset} count={chunk_size} 2>/dev/null"
+                    command=f"dd if={remote_base64_path} bs=1 skip={offset} count={command_size} 2>/dev/null"
                 ).strip()
 
                 if chunk:

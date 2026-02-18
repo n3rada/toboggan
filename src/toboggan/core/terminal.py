@@ -40,8 +40,8 @@ class TerminalCompleter(Completer):
             "ex": "Exit the terminal (alias)",
             "help": "Show help message",
             "h": "Show help message (alias)",
-            "chunksize": "Probe or manually set the max command size",
-            "chunk_size": "Probe or manually set the max command size (alias)",
+            "size": "Probe or manually set the max command size",
+            "cmdsize": "Probe or manually set the max command size (alias)",
             "debug": "Toggle debug mode on/off",
             "trace": "Toggle trace mode on/off",
             "paths": "Show custom paths and command location cache",
@@ -271,13 +271,13 @@ class Terminal:
 
                     raw_args = command_parts[1:]
 
-                    if command == "chunksize" or command == "chunk_size":
+                    if command == "chunksize" or command == "command_size":
                         try:
                             if raw_args:
-                                self.__executor.chunk_max_size = int(raw_args[0])
+                                self.__executor.command_max_size = int(raw_args[0])
                             else:
-                                self.__executor.chunk_max_size = (
-                                    self.__executor.calculate_max_chunk_size()
+                                self.__executor.command_max_size = (
+                                    self.__executor.calculate_max_command_size()
                                 )
                         except ValueError as e:
                             logger.error(f"❌ Invalid chunk size: {e}")

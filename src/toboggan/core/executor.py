@@ -61,7 +61,7 @@ class Executor(metaclass=SingletonMeta):
         else:
             self._os_helper = WindowsHelper(self)
 
-        self._chunk_max_size = 2048  # Default chunk size for remote commands
+        self._command_max_size = 2048  # Default chunk size for remote commands
 
         self.__action_manager = action.ActionsManager(target_os=self.__os)
 
@@ -210,12 +210,12 @@ class Executor(metaclass=SingletonMeta):
         return self._avg_response_time
 
     @property
-    def chunk_max_size(self) -> int:
+    def command_max_size(self) -> int:
         """Maximum size of a chunk for remote command execution."""
-        return self._chunk_max_size
+        return self._command_max_size
 
-    @chunk_max_size.setter
-    def chunk_max_size(self, size: int) -> None:
+    @command_max_size.setter
+    def command_max_size(self, size: int) -> None:
         """Set the maximum size of a chunk for remote command execution."""
         if size <= 0:
             raise ValueError("Chunk size must be a positive integer.")
@@ -252,8 +252,8 @@ class Executor(metaclass=SingletonMeta):
             )
             return
 
-        self._chunk_max_size = size
-        logger.info(f"📏 Chunk max size set to: {self._chunk_max_size} bytes")
+        self._command_max_size = size
+        logger.info(f"📏 Chunk max size set to: {self._command_max_size} bytes")
 
     # Public methods
 
@@ -408,7 +408,7 @@ class Executor(metaclass=SingletonMeta):
         except Exception as exc:
             logger.warning(f"⚠️ Failed to delete remote working directory: {exc}")
 
-    def calculate_max_chunk_size(self, min_size=10, max_size=262144) -> int:
+    def calculate_max_command_size(self, min_size=10, max_size=262144) -> int:
         """
         Determines the maximum command chunk size accepted by the remote shell.
         First tries the maximum size directly, then falls back to binary search if needed.
