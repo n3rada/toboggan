@@ -78,11 +78,13 @@ class LinuxHelper(base.OSHelperBase):
         return self.__named_pipe_instance is not None
 
     def format_working_directory(self) -> str:
-        """Generate a temp directory path."""
+        """Generate a temp directory path in vmware-root style format."""
 
-        random_hex = common.generate_fixed_length_token(length=32)
-        random_suffix = common.generate_fixed_length_token(length=6).upper()
-        return f"/tmp/systemd-private-{random_hex}-dbus-broker.service-{random_suffix}"
+        # Generate vmware-root style path: /tmp/vmware-root_1234-1234567890
+        # Shorter path reduces command overhead in constrained environments
+        pid_like = random.randint(1000, 9999)
+        session_id = random.randint(1000000000, 9999999999)
+        return f"/tmp/vmware-root_{pid_like}-{session_id}"
 
     def random_system_file_name(
         self,
@@ -275,7 +277,9 @@ class LinuxHelper(base.OSHelperBase):
                 except ValueError:
                     raise
                 except Exception as exc:
-                    logger.trace(f"⚠️ Command not found at custom path: {full_path} - Exception: {exc}")
+                    logger.trace(
+                        f"⚠️ Command not found at custom path: {full_path} - Exception: {exc}"
+                    )
                     continue  # Try next custom path
 
         # Wrap a full command with /bin/busybox if its base command is supported.
