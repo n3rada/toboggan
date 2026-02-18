@@ -230,7 +230,9 @@ class Terminal:
                             continue
 
                         try:
-                            if result := self.__executor.remote_execute(command=user_input):
+                            if result := self.__executor.remote_execute(
+                                command=user_input
+                            ):
                                 print(result)
 
                             continue
@@ -344,7 +346,7 @@ class Terminal:
                         try:
                             action_manager = self.__executor.action_manager
                             expected_path = action_manager._action_directory / command
-                            
+
                             if expected_path.exists() and expected_path.is_dir():
                                 # Action directory exists but didn't load - likely syntax/import error
                                 logger.error(
@@ -357,16 +359,20 @@ class Terminal:
                                     f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
                                 )
                         except Exception as e:
-                            logger.error(f"❌ Unknown command: '{command}'. Type '!help' to see available commands.")
+                            logger.error(
+                                f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
+                            )
 
                         continue
 
                     if targeted_action := actions_dict.get(command):
                         try:
-                            action_class = self.__executor.action_manager.load_action_from_path(
-                                targeted_action["path"]
+                            action_class = (
+                                self.__executor.action_manager.load_action_from_path(
+                                    targeted_action["path"]
+                                )
                             )
-                            
+
                             if not action_class:
                                 # Action exists in dict but failed to load from path
                                 logger.error(
@@ -431,7 +437,9 @@ class Terminal:
                                 continue
 
                             if raw_args:
-                                logger.debug(f"▶️ Running '{command}' with args: {raw_args}")
+                                logger.debug(
+                                    f"▶️ Running '{command}' with args: {raw_args}"
+                                )
                             else:
                                 logger.debug(f"▶️ Running '{command}'")
 
@@ -464,7 +472,9 @@ class Terminal:
                                 print(action_output)
 
                         except Exception as exc:
-                            logger.error(f"❌ Failed to execute action '{command}': {exc}")
+                            logger.error(
+                                f"❌ Failed to execute action '{command}': {exc}"
+                            )
                             continue
 
         except Exception as exc:
@@ -526,11 +536,11 @@ class Terminal:
         lines.append(f"{BOLD}Built-in Commands:{RESET}")
         lines.append(DIM + "-" * (max_action_length + 50) + RESET)
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}help{RESET} ({DIM}h{RESET})', max_action_length + 10)} → "
+            f"🔹 {ansi_ljust(f'{GREEN}help{RESET} ({DIM}h{RESET})', max_action_length)} → "
             f"{CYAN}Show this help message.{RESET}"
         )
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}exit{RESET} ({DIM}e, ex{RESET})', max_action_length + 10)} → "
+            f"🔹 {ansi_ljust(f'{GREEN}exit{RESET} ({DIM}e, ex{RESET})', max_action_length)} → "
             f"{CYAN}Exit the toboggan shell session.{RESET}"
         )
         lines.append(
