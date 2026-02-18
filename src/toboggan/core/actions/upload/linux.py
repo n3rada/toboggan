@@ -86,16 +86,26 @@ class UploadAction(BaseAction):
             f"📤 Uploading {local_file.name} in chunks inside: {self._executor.working_directory}"
         )
 
+        # Disable progress bar when trace logging is enabled to avoid polluting output
+        use_progress_bar = logger._core.min_level > logger.level("TRACE").no
+
         try:
-            with tqdm(
-                total=encoded_size, unit="B", unit_scale=True, desc="Uploading"
-            ) as progress_bar:
+            if use_progress_bar:
+                with tqdm(
+                    total=encoded_size, unit="B", unit_scale=True, desc="Uploading"
+                ) as progress_bar:
+                    for idx in range(total_chunks):
+                        chunk = encoded_file[idx * chunk_size : (idx + 1) * chunk_size]
+                        self._executor.remote_execute(
+                            f"printf %s {chunk} >> {remote_encoded_path}"
+                        )
+                        progress_bar.update(len(chunk))
+            else:
                 for idx in range(total_chunks):
                     chunk = encoded_file[idx * chunk_size : (idx + 1) * chunk_size]
                     self._executor.remote_execute(
                         f"printf %s {chunk} >> {remote_encoded_path}"
                     )
-                    progress_bar.update(len(chunk))
         except KeyboardInterrupt:
             logger.warning("⚠️ Upload interrupted by user. Cleaning up...")
             self._executor.remote_execute(f"rm -f {remote_encoded_path}")
