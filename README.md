@@ -28,7 +28,7 @@ pipx install --system-site-packages 'git+https://github.com/n3rada/toboggan.git'
 
 Or you can directly inject the dependency inside `toboggan`:
 ```shell
-pipx inject toboggan psycopg2
+pipx inject toboggan pyrfc==3.3.1
 ```
 
 ### Using [`uv`](https://docs.astral.sh/uv/)
