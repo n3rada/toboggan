@@ -280,9 +280,9 @@ class Terminal:
                                     self.__executor.calculate_max_command_size()
                                 )
                         except ValueError as e:
-                            logger.error(f"❌ Invalid chunk size: {e}")
+                            logger.error(f"❌ Invalid command size: {e}")
                         except Exception as e:
-                            logger.error(f"❌ Failed to set chunk size: {e}")
+                            logger.error(f"❌ Failed to set command size: {e}")
 
                         continue
 
@@ -544,7 +544,7 @@ class Terminal:
             f"{CYAN}Exit the toboggan shell session.{RESET}"
         )
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}chunksize{RESET}', max_action_length)} → "
+            f"🔹 {ansi_ljust(f'{GREEN}size{RESET}', max_action_length)} → "
             f"{CYAN}Probe or manually set the max command size.{RESET}"
         )
         lines.append(f"    ⚙️ Parameters: [bytes] (optional, must be multiple of 1024)")
