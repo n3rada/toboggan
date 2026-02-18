@@ -253,7 +253,7 @@ class Executor(metaclass=SingletonMeta):
             return
 
         self._chunk_max_size = size
-        logger.debug(f"📏 Chunk max size set to: {self._chunk_max_size} bytes")
+        logger.info(f"📏 Chunk max size set to: {self._chunk_max_size} bytes")
 
     # Public methods
 
@@ -552,7 +552,7 @@ class Executor(metaclass=SingletonMeta):
                 # We found truncation and can deduce the actual size
                 actual_size_aligned = align_size(actual_size)
                 logger.info(
-                    f"📊 Truncation at {mid} bytes - deduced: {actual_size_aligned} bytes"
+                    f"📊 Truncation at {mid} bytes."
                 )
                 if actual_size_aligned > best and actual_size_aligned >= min_size:
                     # Verify this deduced size
