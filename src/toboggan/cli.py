@@ -28,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="toboggan",
         add_help=True,
         description="Bring intelligence to any remote command execution (RCE) vector.",
-        epilog=f"""For more information, visit: https://github.com/n3rada/toboggan""",
+        epilog="For more information, visit: https://github.com/n3rada/toboggan",
         allow_abbrev=True,
         exit_on_error=True,
     )
