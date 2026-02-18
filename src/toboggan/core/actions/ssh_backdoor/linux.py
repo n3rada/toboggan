@@ -114,7 +114,7 @@ class SshBackdoorAction(BaseAction):
             chunk_b64 = base64.b64encode(chunk.encode()).decode()
             self._executor.remote_execute(f"echo {chunk_b64}|base64 -d >> {auth_keys}")
 
-        # Mandatory or it will fail
+        # Add newline after key to separate from next entry
         self._executor.remote_execute(f"echo >> {auth_keys}")
 
         # Set final permissions
