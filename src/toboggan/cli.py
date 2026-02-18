@@ -336,7 +336,7 @@ def main() -> int:
                 f"Cannot import module due to missing dependencies: {', '.join(deps['missing'])}"
             )
             logger.warning(
-                "Inject the dependencies or install toboggan using pipx with --system-site-packages"
+                "Inject the dependencies or install toboggan globally"
             )
             return 1
 
