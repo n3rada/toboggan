@@ -91,7 +91,7 @@ class IpInfoAction(BaseAction):
 
             # Alternative: Read /proc/net/route to find IPs associated with this interface
             route_data = self._executor.remote_execute(
-                "{cat_command} /proc/net/route", retry=False
+                f"{cat_command} /proc/net/route", retry=False
             )
             if route_data:
                 for route_line in route_data.strip().split("\n")[1:]:  # Skip header
