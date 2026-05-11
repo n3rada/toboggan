@@ -5,7 +5,7 @@ import argparse
 import os
 import sys
 import time
-from pathlib import Path
+from importlib.resources import files
 
 # External library imports
 from loguru import logger
@@ -19,7 +19,7 @@ from .core import terminal
 from .core.utils import logbook, common
 
 # Directory where built-in handlers are stored
-BUILTIN_DIR = Path(__file__).parent / "core/handlers"
+BUILTIN_DIR = files("toboggan.core.handlers")
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -29,3 +29,11 @@ repository = "https://github.com/n3rada/toboggan"
 
 [project.scripts]
 toboggan = "toboggan.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
