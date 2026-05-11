@@ -18,35 +18,63 @@ This works with:
 
 ## 📦 Installation
 
-Install directly from the repository:
+Prefer using [`uv`](https://docs.astral.sh/uv/), a fast Python package manager that installs tools in isolated environments. Alternatively, [`pipx`](https://pypa.github.io/pipx/) or `pip` work as well.
 
-```shell
-pip install 'toboggan@git+https://github.com/n3rada/toboggan.git'
+### With [uv](https://docs.astral.sh/uv/) (recommended)
+
+[`uv tool install`](https://docs.astral.sh/uv/guides/tools/#installing-tools) persistently installs the tool and adds it to your `PATH`, similar to `pipx`:
+
+```bash
+uv tool install git+https://github.com/n3rada/toboggan.git
 ```
 
-### Using [`pipx`](https://pypa.github.io/pipx/)
+After installation, `toboggan` is available directly:
+
+```bash
+toboggan --help
+```
+
+To upgrade later:
+
+```bash
+uv tool upgrade toboggan
+```
+
+> [!TIP]
+> You can also run `toboggan` **without installing** it using [`uvx`](https://docs.astral.sh/uv/guides/tools/#running-tools) (alias for `uv tool run`), which creates a temporary isolated environment on the fly:
+> ```bash
+> uvx --from git+https://github.com/n3rada/toboggan.git toboggan --help
+> ```
+
+To inject an extra dependency (e.g., a database driver needed by your RCE module):
+
+```bash
+uv tool install git+https://github.com/n3rada/toboggan.git --with pyrfc==3.3.1
+```
+
+### With [`pipx`](https://pypa.github.io/pipx/)
 
 > [!NOTE]
 > `pipx` installs Python applications in isolated virtual environments, which means they do not have access to system-wide packages by default (like `psycopg2`).
 
-```shell
+```bash
 pipx install 'git+https://github.com/n3rada/toboggan.git'
 ```
 
 To use system site packages, pass `--system-site-packages`:
-```shell
+```bash
 pipx install --system-site-packages 'git+https://github.com/n3rada/toboggan.git'
 ```
 
 Or inject a dependency directly:
-```shell
+```bash
 pipx inject toboggan pyrfc==3.3.1
 ```
 
-### Using [`uv`](https://docs.astral.sh/uv/)
+### With pip
 
-```shell
-uv tool install "toboggan@git+https://github.com/n3rada/toboggan.git"
+```bash
+pip install 'git+https://github.com/n3rada/toboggan.git'
 ```
 
 ## 🧸 Usage
