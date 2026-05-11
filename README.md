@@ -177,34 +177,34 @@ Actions are modular plugins executed via the `!` prefix inside the terminal sess
 
 | Action | Description |
 |---|---|
-| `download` | Retrieve a file remotely, compress it, and save it locally |
-| `upload` | Compress, encode, and upload a local file to the remote system |
-| `fifo` | Start a semi-interactive session using named pipes |
-| `hide` / `unhide` | Obfuscate/deobfuscate commands (AES or base64) |
-| `upgrade` | Attempt to upgrade a limited shell to a TTY |
-| `netcheck` | Check outbound connectivity (ICMP, DNS, HTTP) |
-| `ip` | Display network interfaces and IP addresses |
-| `users` | Enumerate system users |
-| `history` | Retrieve all users' shell command history |
-| `path` | List remote system's PATH entries |
-| `privbins` | Find SUID/SGID binaries for privilege escalation |
-| `read_others` | Scan other users' home directories for readable files |
-| `ssh_find` | Search for SSH private keys on the system |
-| `ssh_backdoor` | Generate and drop an SSH key into a user's `.ssh` directory |
-| `peas` | Upload and execute [linpeas.sh](https://github.com/peass-ng/PEASS-ng) on the target |
-| `kube_check` | Check for Kubernetes environment indicators |
-| `drop_bin` | Upload a binary to the target and make it executable |
-| `drop_static` | Drop a prebuilt static binary (curl, kubectl) |
+| [`download`](src/toboggan/core/actions/download/linux.py) | Retrieve a file remotely, compress it, and save it locally |
+| [`upload`](src/toboggan/core/actions/upload/linux.py) | Compress, encode, and upload a local file to the remote system |
+| [`fifo`](src/toboggan/core/actions/fifo/linux.py) | Start a semi-interactive session using named pipes |
+| [`hide`](src/toboggan/core/actions/hide/linux.py) / [`unhide`](src/toboggan/core/actions/unhide/linux.py) | Obfuscate/deobfuscate commands (AES or base64) |
+| [`upgrade`](src/toboggan/core/actions/upgrade/linux.py) | Attempt to upgrade a limited shell to a TTY |
+| [`netcheck`](src/toboggan/core/actions/netcheck/linux.py) | Check outbound connectivity (ICMP, DNS, HTTP) |
+| [`ip`](src/toboggan/core/actions/ip/linux.py) | Display network interfaces and IP addresses |
+| [`users`](src/toboggan/core/actions/users/linux.py) | Enumerate system users |
+| [`history`](src/toboggan/core/actions/history/linux.py) | Retrieve all users' shell command history |
+| [`path`](src/toboggan/core/actions/path/linux.py) | List remote system's PATH entries |
+| [`privbins`](src/toboggan/core/actions/privbins/linux.py) | Find SUID/SGID binaries for privilege escalation |
+| [`read_others`](src/toboggan/core/actions/read_others/linux.py) | Scan other users' home directories for readable files |
+| [`ssh_find`](src/toboggan/core/actions/ssh_find/linux.py) | Search for SSH private keys on the system |
+| [`ssh_backdoor`](src/toboggan/core/actions/ssh_backdoor/linux.py) | Generate and drop an SSH key into a user's `.ssh` directory |
+| [`peas`](src/toboggan/core/actions/peas/linux.py) | Upload and execute [linpeas.sh](https://github.com/peass-ng/PEASS-ng) on the target |
+| [`kube_check`](src/toboggan/core/actions/kube_check/linux.py) | Check for Kubernetes environment indicators |
+| [`drop_bin`](src/toboggan/core/actions/drop_bin/linux.py) | Upload a binary to the target and make it executable |
+| [`drop_static`](src/toboggan/core/actions/drop_static/linux.py) | Drop a prebuilt static binary (curl, kubectl) |
 
 ### 🪟 Windows Actions
 
 | Action | Description |
 |---|---|
-| `download` | Retrieve a file remotely |
-| `upload` | Encode and upload a local file |
-| `netcheck` | Check outbound connectivity |
-| `history` | Retrieve shell command history |
-| `hide` / `unhide` | Obfuscate/deobfuscate commands |
+| [`download`](src/toboggan/core/actions/download/windows.py) | Retrieve a file remotely |
+| [`upload`](src/toboggan/core/actions/upload/windows.py) | Encode and upload a local file |
+| [`netcheck`](src/toboggan/core/actions/netcheck/windows.py) | Check outbound connectivity |
+| [`history`](src/toboggan/core/actions/history/windows.py) | Retrieve shell command history |
+| [`hide`](src/toboggan/core/actions/hide/windows.py) / [`unhide`](src/toboggan/core/actions/unhide/windows.py) | Obfuscate/deobfuscate commands |
 
 ## 🧩 Bring Your Own Actions (BYOA)
 
