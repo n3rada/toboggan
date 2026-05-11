@@ -6,7 +6,7 @@ Slide into post-exploitation from RCE with ease.
     <img src="./media/example.png" alt="">
 </p>
 
-Toboggan is a post-exploitation framework that transforms web shells, command injection vulnerabilities, and blind RCE into an upgradable semi-interactive shell — on both **Linux** and **Windows** targets. It's the perfect reverse shell alternative for firewalled targets, providing a forward shell handler (`mkfifo`) inside a targeted environment.
+Toboggan is a post-exploitation framework that transforms web shells, command injection vulnerabilities, and blind RCE into an upgradable semi-interactive shell on both **Linux** and **Windows** targets. It's the perfect reverse shell alternative for firewalled targets, providing a forward shell handler (`mkfifo`) inside a targeted environment.
 
 This works with:
 - **Web shells** (PHP, ASP, JSP backdoors)

@@ -61,7 +61,7 @@ flowchart LR
 | **OSHelper** | `core/helpers/{base,linux,windows}.py` | Abstract base + OS-specific implementations for user lookup, path formatting, command location, named-pipe lifecycle |
 | **ActionsManager** | `core/action.py` | Discovers and dynamically loads action modules from both system (`core/actions/`) and user directories; resolves OS-specific files (`linux.py` / `windows.py`) |
 | **Handlers** | `core/handlers/` | Built-in execution backends: `os_command.py` (shell wrapper via `subprocess`) and `burpsuite.py` (Burp XML request replay via `httpx`) |
-| **Utilities** | `core/utils/` | Shared helpers — `common.py` (encoding, tokens, path validation, HTML analysis), `jwt.py` (JWT parsing), `logbook.py` (Loguru setup + XDG log paths), `binaries.py` (static binary management) |
+| **Utilities** | `core/utils/` | Shared helpers: `common.py` (encoding, tokens, path validation, HTML analysis), `jwt.py` (JWT parsing), `logbook.py` (Loguru setup + XDG log paths), `binaries.py` (static binary management) |
 
 ## 📂 Project Layout
 
@@ -121,8 +121,8 @@ class MyAction(BaseAction):
     DESCRIPTION = "Short description shown in !help"
 
     def run(self, target_path, recursive=False):
-        # self._executor  — remote command execution
-        # self._os_helper — OS-specific helpers (command lookup, path formatting, etc.)
+        # self._executor  - remote command execution
+        # self._os_helper - OS-specific helpers (command lookup, path formatting, etc.)
 
         result = self._executor.remote_execute(f"ls -la {target_path}")
         return result
@@ -150,7 +150,7 @@ class MyPipe(NamedPipe):
         ...
 ```
 
-Actions are automatically discovered by `ActionsManager` — no registration needed. The filename (`linux.py` / `windows.py`) determines which OS the action is available for.
+Actions are automatically discovered by `ActionsManager`, no registration needed. The filename (`linux.py` / `windows.py`) determines which OS the action is available for.
 
 ### Step 3: User Actions (BYOA)
 
