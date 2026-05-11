@@ -102,7 +102,9 @@ class TestBuildParser:
 
     def test_paths_multiple(self, parser):
         # nargs="+" consumes all following args, so module must come first
-        args = parser.parse_args(["exploit.py", "--paths", "/opt/bin", "/usr/local/bin"])
+        args = parser.parse_args(
+            ["exploit.py", "--paths", "/opt/bin", "/usr/local/bin"]
+        )
         assert args.paths == ["/opt/bin", "/usr/local/bin"]
 
     def test_path_colon_separated(self, parser):

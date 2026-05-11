@@ -29,6 +29,31 @@ class TestActionsManagerValidation:
         found = set(actions.keys())
         assert expected.issubset(found), f"Missing actions: {expected - found}"
 
+    def test_windows_actions_discovered(self):
+        manager = ActionsManager(target_os="windows")
+        actions = manager.get_actions()
+        assert len(actions) > 0
+        expected = {"download", "upload", "netcheck", "history"}
+        found = set(actions.keys())
+        assert expected.issubset(found), f"Missing actions: {expected - found}"
+
+    def test_windows_hide_unhide_excluded(self):
+        manager = ActionsManager(target_os="windows")
+        actions = manager.get_actions()
+        assert "hide" not in actions
+        assert "unhide" not in actions
+
+    def test_windows_actions_have_path(self):
+        manager = ActionsManager(target_os="windows")
+        actions = manager.get_actions()
+        for name, info in actions.items():
+            assert "path" in info, f"Action '{name}' missing 'path'"
+
+    def test_windows_get_action_returns_class(self):
+        manager = ActionsManager(target_os="windows")
+        action_cls = manager.get_action("download")
+        assert action_cls is not None
+
     def test_hide_unhide_excluded(self):
         manager = ActionsManager(target_os="linux")
         actions = manager.get_actions()
@@ -48,5 +73,10 @@ class TestActionsManagerValidation:
 
     def test_get_action_nonexistent_returns_none(self):
         manager = ActionsManager(target_os="linux")
+        action_cls = manager.get_action("nonexistent_action_xyz")
+        assert action_cls is None
+
+    def test_windows_get_action_nonexistent_returns_none(self):
+        manager = ActionsManager(target_os="windows")
         action_cls = manager.get_action("nonexistent_action_xyz")
         assert action_cls is None
