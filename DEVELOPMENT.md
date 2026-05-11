@@ -54,14 +54,14 @@ flowchart LR
 
 | Component | File | Role |
 |---|---|---|
-| **CLI** | `cli.py` | Parses arguments, loads the execution module via [`modwrap`](https://pypi.org/project/modwrap/), bootstraps logging, creates the `Executor` |
-| **Executor** | `core/executor.py` | Singleton that wraps the `execute()` callable. Handles OS detection, shell validation, obfuscation toggle, base64 wrapping, chunked execution, and response-time tracking |
-| **Terminal** | `core/terminal.py` | `prompt-toolkit` REPL with tab-completion, command history, action dispatch (`!` prefix), and FIFO session management |
-| **Target** | `core/target.py` | Data class holding remote OS, user, hostname, working directory, and architecture (auto-detected from `uname -a`) |
-| **OSHelper** | `core/helpers/{base,linux,windows}.py` | Abstract base + OS-specific implementations for user lookup, path formatting, command location, named-pipe lifecycle |
-| **ActionsManager** | `core/action.py` | Discovers and dynamically loads action modules from both system (`core/actions/`) and user directories; resolves OS-specific files (`linux.py` / `windows.py`) |
-| **Handlers** | `core/handlers/` | Built-in execution backends: `os_command.py` (shell wrapper via `subprocess`) and `burpsuite.py` (Burp XML request replay via `httpx`) |
-| **Utilities** | `core/utils/` | Shared helpers: `common.py` (encoding, tokens, path validation, HTML analysis), `jwt.py` (JWT parsing), `logbook.py` (Loguru setup + XDG log paths), `binaries.py` (static binary management) |
+| **CLI** | [`cli.py`](src/toboggan/cli.py) | Parses arguments, loads the execution module via [`modwrap`](https://pypi.org/project/modwrap/), bootstraps logging, creates the `Executor` |
+| **Executor** | [`core/executor.py`](src/toboggan/core/executor.py) | Singleton that wraps the `execute()` callable. Handles OS detection, shell validation, obfuscation toggle, base64 wrapping, chunked execution, and response-time tracking |
+| **Terminal** | [`core/terminal.py`](src/toboggan/core/terminal.py) | `prompt-toolkit` REPL with tab-completion, command history, action dispatch (`!` prefix), and FIFO session management |
+| **Target** | [`core/target.py`](src/toboggan/core/target.py) | Data class holding remote OS, user, hostname, working directory, and architecture (auto-detected from `uname -a`) |
+| **OSHelper** | [`core/helpers/`](src/toboggan/core/helpers/) | Abstract [`base.py`](src/toboggan/core/helpers/base.py) + OS-specific [`linux.py`](src/toboggan/core/helpers/linux.py) and [`windows.py`](src/toboggan/core/helpers/windows.py) for user lookup, path formatting, command location, named-pipe lifecycle |
+| **ActionsManager** | [`core/action.py`](src/toboggan/core/action.py) | Discovers and dynamically loads action modules from both system ([`core/actions/`](src/toboggan/core/actions/)) and user directories; resolves OS-specific files (`linux.py` / `windows.py`) |
+| **Handlers** | [`core/handlers/`](src/toboggan/core/handlers/) | Built-in execution backends: [`os_command.py`](src/toboggan/core/handlers/os_command.py) (shell wrapper via `subprocess`) and [`burpsuite.py`](src/toboggan/core/handlers/burpsuite.py) (Burp XML request replay via `httpx`) |
+| **Utilities** | [`core/utils/`](src/toboggan/core/utils/) | Shared helpers: [`common.py`](src/toboggan/core/utils/common.py) (encoding, tokens, path validation, HTML analysis), [`jwt.py`](src/toboggan/core/utils/jwt.py) (JWT parsing), [`logbook.py`](src/toboggan/core/utils/logbook.py) (Loguru setup + XDG log paths), [`binaries.py`](src/toboggan/core/utils/binaries.py) (static binary management) |
 
 ## 📂 Project Layout
 
