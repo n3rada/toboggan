@@ -254,43 +254,37 @@ def main() -> int:
 
         logger.info(f"🌐 Proxy set to {args.proxy}")
 
-    public_ip = None
     try:
         with httpx.Client(verify=False, http1=True, http2=False) as client:
             start_time = time.perf_counter()
             response = client.get("https://api.ipify.org?format=json", timeout=15)
-            end_time = time.perf_counter()
-
-            rtt = end_time - start_time
+            rtt = time.perf_counter() - start_time
 
             if response.status_code == 200:
-                public_ip = response.json().get("ip", None)
+                public_ip = response.json().get("ip")
+                if public_ip:
+                    logger.info(f"🌍 Public IP: {public_ip} (⏱️ RTT: {rtt:.2f}s)")
 
     except httpx.TimeoutException:
-        logger.error("Request timed-out.")
+        logger.warning("⚠️ Public IP check timed out.")
     except Exception as e:
-        logger.warning(f"⚠️ Error retrieving public IP: {e}")
-
-    if public_ip is None:
-        return 1
-
-    logger.info(f"🌍 Public IP: {public_ip} (⏱️ RTT: {rtt:.2f}s)")
+        logger.warning(f"⚠️ Could not retrieve public IP: {e}")
 
     execution_module = None
 
     # Check for mutually exclusive options
-    source_count = sum([
-        bool(args.module),
-        bool(args.exec_wrapper),
-        bool(args.request)
-    ])
+    source_count = sum([bool(args.module), bool(args.exec_wrapper), bool(args.request)])
 
     if source_count == 0:
-        logger.error("❌ No execution source provided. Specify a module, --exec-wrapper, or --request.")
+        logger.error(
+            "❌ No execution source provided. Specify a module, --exec-wrapper, or --request."
+        )
         return 1
 
     if source_count > 1:
-        logger.error("❌ Multiple execution sources provided. Use only one: module (positional), --exec-wrapper, or --request.")
+        logger.error(
+            "❌ Multiple execution sources provided. Use only one: module (positional), --exec-wrapper, or --request."
+        )
         return 1
 
     if args.exec_wrapper:
@@ -303,7 +297,7 @@ def main() -> int:
         try:
             wrapper = ModuleWrapper(BUILTIN_DIR / "burpsuite.py")
             execution_module = wrapper.module
-            
+
             # BurpRequest.__init__ handles all validation
             logger.info(f"📄 Loading Burp Suite request from: {args.request}")
             execution_module.BURP_REQUEST_OBJECT = execution_module.BurpRequest(
@@ -312,7 +306,9 @@ def main() -> int:
             logger.success("✅ Burp Suite request loaded and validated successfully")
         except (FileNotFoundError, ValueError) as e:
             logger.error(str(e))
-            logger.info("💡 Tip: Save a request from Burp Suite (right-click → Save item) with ||cmd|| placeholder")
+            logger.info(
+                "💡 Tip: Save a request from Burp Suite (right-click → Save item) with ||cmd|| placeholder"
+            )
             return 1
         except Exception as e:
             logger.error(f"❌ Failed to load Burp Suite request: {e}")
@@ -335,9 +331,7 @@ def main() -> int:
             logger.error(
                 f"Cannot import module due to missing dependencies: {', '.join(deps['missing'])}"
             )
-            logger.warning(
-                "Inject the dependencies or install toboggan globally"
-            )
+            logger.warning("Inject the dependencies or install toboggan globally")
             return 1
 
         execution_module = wrapper.module
@@ -456,18 +450,21 @@ def main() -> int:
 
         logger.debug("🚀 Starting terminal session")
         exit_code = remote_terminal.start()
-        
+
         # Cleanup: Delete remote working directory if it was created
         if command_executor.has_working_directory:
             logger.info("🧹 Cleaning up remote working directory...")
             command_executor.delete_working_directory()
-        
+
         return exit_code
     except Exception:
         logger.exception("Unhandled exception occurred")
         # Attempt cleanup even on error
         try:
-            if 'command_executor' in locals() and command_executor.has_working_directory:
+            if (
+                "command_executor" in locals()
+                and command_executor.has_working_directory
+            ):
                 command_executor.delete_working_directory()
         except Exception:
             pass

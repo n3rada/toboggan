@@ -210,7 +210,7 @@ class ActionsManager:
 
         if target_os not in ["linux", "windows"]:
             raise ValueError(
-                f"Invalid target OS '{target_os}'. Must be 'unix' or 'windows'."
+                f"Invalid target OS '{target_os}'. Must be 'linux' or 'windows'."
             )
 
         self.__os = target_os

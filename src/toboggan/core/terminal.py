@@ -117,9 +117,21 @@ class Terminal:
             log_level: Initial logging level (default: 'INFO').
         """
         if history:
-            # Create .toboggan directory in user's home for persistent history
-            self.__history_dir = Path.home() / ".toboggan"
-            self.__history_dir.mkdir(exist_ok=True)
+            # Store history alongside logs in XDG_STATE_HOME
+            if os.name == "nt":
+                base = Path(
+                    os.environ.get(
+                        "LOCALAPPDATA", str(Path.home() / "AppData" / "Local")
+                    )
+                )
+            else:
+                base = Path(
+                    os.environ.get(
+                        "XDG_STATE_HOME", str(Path.home() / ".local" / "state")
+                    )
+                )
+            self.__history_dir = base / "toboggan" / "history"
+            self.__history_dir.mkdir(parents=True, exist_ok=True)
 
             # Create unique history file using hostname
             self.__history_file = (

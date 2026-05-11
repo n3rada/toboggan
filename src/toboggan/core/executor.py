@@ -400,13 +400,15 @@ class Executor(metaclass=SingletonMeta):
             )
             # Use -rf to force deletion, bypass obfuscation for cleanup reliability
             self.remote_execute(
-                f"rm -rf {self._working_directory}",
+                f'rm -rf "{self._working_directory}"',
                 debug=False,
                 bypass_obfuscation=True,
             )
 
         except Exception as exc:
             logger.warning(f"⚠️ Failed to delete remote working directory: {exc}")
+        finally:
+            self._working_directory = None
 
     def calculate_max_command_size(self, min_size=10, max_size=262144) -> int:
         """
@@ -551,9 +553,7 @@ class Executor(metaclass=SingletonMeta):
             elif actual_size > 0 and actual_size < mid:
                 # We found truncation and can deduce the actual size
                 actual_size_aligned = align_size(actual_size)
-                logger.info(
-                    f"📊 Truncation at {mid} bytes."
-                )
+                logger.info(f"📊 Truncation at {mid} bytes.")
                 if actual_size_aligned > best and actual_size_aligned >= min_size:
                     # Verify this deduced size
                     verify_success, _ = test_command_size(actual_size_aligned)
