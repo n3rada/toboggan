@@ -11,17 +11,17 @@ authors = [
 ]
 license = { text = "GPL-3.0-or-later" }
 readme = "README.md"
-requires-python = ">3.9.1,<4.0"
+requires-python = ">=3.11,<4.0"
 
 dependencies = [
-    "prompt-toolkit>=3.0.20,<4.0.0",
-    "tqdm>=4.61.0,<5.0.0",
-    "httpx>=0.28.0",
-    "pycryptodomex>=3.10.1,<4.0.0",
-    "loguru>=0.7.0,<1.0.0",
-    "modwrap>=1.1.7,<1.2.0",
-    "lxml>=6.0.2",
-    "cryptography (>=46.0.5,<47.0.0)",
+    "cryptography>=48.0.0",
+    "httpx>=0.28.1",
+    "loguru>=0.7.3",
+    "lxml>=6.1.1",
+    "modwrap>=1.1.7",
+    "prompt-toolkit>=3.0.52",
+    "pycryptodomex>=3.23.0",
+    "tqdm>=4.67.3",
 ]
 
 [project.urls]
