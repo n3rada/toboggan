@@ -20,19 +20,19 @@ class BurpRequest:
         
         # Validate file exists
         if not self.__request_path.exists():
-            raise FileNotFoundError(f"❌ File not found: {self.__request_path}")
+            raise FileNotFoundError(f"File not found: {self.__request_path}")
         
         # Validate it's a file
         if not self.__request_path.is_file():
-            raise ValueError(f"❌ Path is not a file: {self.__request_path}")
+            raise ValueError(f"Path is not a file: {self.__request_path}")
         
         # Validate file is readable and not empty
         try:
             self.__request_content = self.__request_path.read_text(encoding="utf-8", errors="ignore")
             if not self.__request_content.strip():
-                raise ValueError(f"❌ File is empty: {self.__request_path}")
+                raise ValueError(f"File is empty: {self.__request_path}")
         except Exception as e:
-            raise ValueError(f"❌ Cannot read file {self.__request_path}: {e}")
+            raise ValueError(f"Cannot read file {self.__request_path}: {e}")
         
         # Parse and validate request
         self.__parsed_request = self.__parse_request()
@@ -40,7 +40,7 @@ class BurpRequest:
         # Validate ||cmd|| placeholder exists
         if not self.__has_placeholder():
             raise ValueError(
-                f"❌ Request does not contain '||cmd||' placeholder. "
+                f"Request does not contain '||cmd||' placeholder. "
                 "Add ||cmd|| in URL, headers, or body where command should be injected."
             )
 
@@ -50,15 +50,15 @@ class BurpRequest:
             tree = ET.parse(self.__request_path)
             root = tree.getroot()
         except ET.ParseError as e:
-            raise ValueError(f"❌ Invalid XML format in Burp Suite file: {e}")
+            raise ValueError(f"Invalid XML format in Burp Suite file: {e}")
         except Exception as e:
-            raise ValueError(f"❌ Failed to parse XML: {e}")
+            raise ValueError(f"Failed to parse XML: {e}")
         
         item = root.find("item")  # Only take the first request
 
         if item is None:
             raise ValueError(
-                "❌ No valid <item> found in Burp Suite file. "
+                "No valid <item> found in Burp Suite file. "
                 "Ensure you saved a request from Burp Suite (right-click → Save item)."
             )
 
@@ -71,17 +71,17 @@ class BurpRequest:
         
         # Validate required fields
         if not method:
-            raise ValueError("❌ Missing HTTP method in Burp request")
+            raise ValueError("Missing HTTP method in Burp request")
         if not url:
-            raise ValueError("❌ Missing URL in Burp request")
+            raise ValueError("Missing URL in Burp request")
         
         request_element = item.find("request")
         if request_element is None or request_element.text is None:
-            raise ValueError("❌ Missing request data in Burp Suite file")
+            raise ValueError("Missing request data in Burp Suite file")
         
         request_raw = request_element.text.strip()
         if not request_raw:
-            raise ValueError("❌ Empty request data in Burp Suite file")
+            raise ValueError("Empty request data in Burp Suite file")
 
         # Check if request is base64-encoded
         is_base64 = request_element.get("base64", "false") == "true"
@@ -93,7 +93,7 @@ class BurpRequest:
             else:
                 request_decoded = request_raw
         except Exception as e:
-            raise ValueError(f"❌ Failed to decode request data: {e}")
+            raise ValueError(f"Failed to decode request data: {e}")
 
         # Extract headers and body
         headers, body = self.__split_headers_body(request_decoded)
@@ -159,7 +159,7 @@ class BurpRequest:
             Modified request dictionary
         """
         if not command:
-            raise ValueError("❌ Command cannot be empty")
+            raise ValueError("Command cannot be empty")
         
         # Optionally URL-encode the command (useful for URL/query params)
         processed_command = quote(command, safe='') if url_encode else command
@@ -223,10 +223,10 @@ def execute(command: str, timeout: float = None) -> str:
         httpx.HTTPError: If request fails
     """
     if BURP_REQUEST_OBJECT is None:
-        raise ValueError("❌ BURP_REQUEST_OBJECT is not set. This should not happen.")
+        raise ValueError("BURP_REQUEST_OBJECT is not set. This should not happen.")
     
     if not command:
-        raise ValueError("❌ Command cannot be empty")
+        raise ValueError("Command cannot be empty")
     
     # Set default timeout
     if timeout is None:
@@ -236,7 +236,7 @@ def execute(command: str, timeout: float = None) -> str:
         # Extract request details and inject command
         parsed_request = BURP_REQUEST_OBJECT.replace_command(command)
     except Exception as e:
-        raise ValueError(f"❌ Failed to prepare request: {e}")
+        raise ValueError(f"Failed to prepare request: {e}")
 
     # Parse headers from list to dict
     headers = {}
@@ -245,7 +245,7 @@ def execute(command: str, timeout: float = None) -> str:
             key, value = line.split(": ", 1)
             headers[key.strip()] = value.strip()
         else:
-            logger.warning(f"⚠️ Skipping malformed header: {line}")
+            logger.warning(f"Skipping malformed header: {line}")
 
     # Prepare body
     body = parsed_request["body"]
@@ -276,13 +276,13 @@ def execute(command: str, timeout: float = None) -> str:
         return response.text
     
     except httpx.TimeoutException:
-        raise TimeoutError(f"❌ Request timed out after {timeout}s")
+        raise TimeoutError(f"Request timed out after {timeout}s")
     except httpx.HTTPStatusError as e:
-        logger.warning(f"⚠️ HTTP error {e.response.status_code}: {e.response.reason_phrase}")
+        logger.warning(f"HTTP error {e.response.status_code}: {e.response.reason_phrase}")
         # Return response text even on HTTP errors (command might have executed)
         return e.response.text
     except httpx.RequestError as e:
-        raise ConnectionError(f"❌ Request failed: {e}")
+        raise ConnectionError(f"Request failed: {e}")
     except Exception as e:
-        raise RuntimeError(f"❌ Unexpected error during request: {e}")
+        raise RuntimeError(f"Unexpected error during request: {e}")
 

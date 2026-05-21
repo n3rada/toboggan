@@ -27,7 +27,7 @@ class ReadableOtherHomes(BaseAction):
         result = self._executor.remote_execute(command=command).strip()
 
         if result:
-            logger.info("🧾 Readable files found in other users' home directories:")
+            logger.info("Readable files found in other users' home directories:")
             directory_map = {}
 
             for file_path in result.split("\n"):
@@ -37,8 +37,8 @@ class ReadableOtherHomes(BaseAction):
                 directory_map.setdefault(directory, []).append(file_name)
 
             for directory, files in sorted(directory_map.items()):
-                print(f"\t📁 {directory}")
+                print(f"\t{directory}")
                 for file in sorted(files):
                     print(f"\t   - {file}")
         else:
-            logger.warning("🔒 No readable files found in other users' directories.")
+            logger.warning("No readable files found in other users' directories.")

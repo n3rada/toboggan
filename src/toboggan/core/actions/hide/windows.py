@@ -57,9 +57,9 @@ class HideAction(BaseAction):
         self._use_aes = True
         self._AES_KEY, self._AES_IV = generate_key_iv()
         
-        logger.info("🔑 PowerShell .NET crypto enabled, AES encryption active.")
-        logger.debug(f"🔐 AES Key: {self._AES_KEY}")
-        logger.debug(f"🔐 AES IV: {self._AES_IV}")
+        logger.info("PowerShell .NET crypto enabled, AES encryption active.")
+        logger.debug(f"AES Key: {self._AES_KEY}")
+        logger.debug(f"AES IV: {self._AES_IV}")
 
     def run(self, command: str) -> str:
         """
@@ -76,7 +76,7 @@ class HideAction(BaseAction):
             command += " 2>&1"
 
         if self._use_aes:
-            logger.debug("🔐 Using AES-256-CBC encryption")
+            logger.debug("Using AES-256-CBC encryption")
             # Encrypt the command
             encrypted = encrypt_command(command, self._AES_KEY, self._AES_IV)
             logger.trace(f"Encrypted: {encrypted}")
@@ -119,10 +119,10 @@ class HideAction(BaseAction):
 
         # Encode the full script in base64 (UTF-16LE for PowerShell -EncodedCommand)
         encoded_script = base64.b64encode(full_script.encode('utf-16le')).decode()
-        logger.debug(f"📦 Encoded script: {len(encoded_script)} bytes")
+        logger.debug(f"Encoded script: {len(encoded_script)} bytes")
 
         # Return complete PowerShell command
         final_cmd = f'powershell -NoP -NonI -W Hidden -Enc {encoded_script}'
         
-        logger.debug(f"✅ Final obfuscated command: {len(final_cmd)} bytes")
+        logger.debug(f"Final obfuscated command: {len(final_cmd)} bytes")
         return final_cmd

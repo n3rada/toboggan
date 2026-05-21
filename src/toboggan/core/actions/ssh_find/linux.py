@@ -13,15 +13,15 @@ class FindSshKeysAction(BaseAction):
         result = self._executor.remote_execute(find_cmd, timeout=60)
 
         if not result:
-            return "🔍 No SSH private keys found."
+            return "No SSH private keys found."
 
         keys = result.strip().splitlines()
         keys = sorted(set(keys))
 
-        output = "\n🔐 Found SSH Private Keys\n"
+        output = "\nFound SSH Private Keys\n"
         output += "-" * 60 + "\n"
         for key_path in keys:
-            output += f"📁 {key_path}\n"
+            output += f"{key_path}\n"
         output += "-" * 60 + "\n"
 
         return output

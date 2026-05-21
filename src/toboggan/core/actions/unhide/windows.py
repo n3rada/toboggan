@@ -19,7 +19,7 @@ class UnHideAction(BaseAction):
 
     def run(self, command: str) -> str:
         try:
-            logger.debug(f"🔓 De-obfuscating output: {len(command)} bytes")
+            logger.debug(f"De-obfuscating output: {len(command)} bytes")
             logger.trace(f"Raw: {command}")
             
             # Step 0: Clean whitespace (remove \r\n, spaces, etc.)
@@ -36,10 +36,10 @@ class UnHideAction(BaseAction):
 
             # Step 3: Decode to UTF-8 string
             result = decoded_data.decode("utf-8", errors="replace").strip()
-            logger.debug(f"✅ Decoded result: {len(result)} bytes")
+            logger.debug(f"Decoded result: {len(result)} bytes")
             return result
 
         except Exception as e:
-            logger.error(f"❌ De-obfuscation failed: {e}")
+            logger.error(f"De-obfuscation failed: {e}")
             logger.trace(f"Failed on: {command}")
-            return f"❌ Failed to decode hidden command: {e}"
+            return f"Failed to decode hidden command: {e}"

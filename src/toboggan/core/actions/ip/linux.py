@@ -18,12 +18,12 @@ class IpInfoAction(BaseAction):
         Returns:
             str: Formatted network interface information similar to 'ip addr' output.
         """
-        logger.info("🌐 Gathering network interface information from system files")
+        logger.info("Gathering network interface information from system files")
 
         output_lines = []
 
         # Step 1: List all network interfaces
-        logger.info("📋 Reading network interfaces from /sys/class/net")
+        logger.info("Reading network interfaces from /sys/class/net")
 
         ls_command = self._os_helper.get_command_location("ls")
         ls_result = self._executor.remote_execute(
@@ -31,14 +31,14 @@ class IpInfoAction(BaseAction):
         )
 
         if not ls_result:
-            logger.error("❌ Could not list network interfaces")
+            logger.error("Could not list network interfaces")
             return "Error: Unable to read /sys/class/net"
 
         interfaces = [
             iface.strip() for iface in ls_result.strip().split("\n") if iface.strip()
         ]
         logger.success(
-            f"✅ Found {len(interfaces)} interface(s): {', '.join(interfaces)}"
+            f"Found {len(interfaces)} interface(s): {', '.join(interfaces)}"
         )
 
         cat_command = self._os_helper.get_command_location("cat")
@@ -139,11 +139,11 @@ class IpInfoAction(BaseAction):
             output_lines.append("")
 
         if not output_lines:
-            logger.error("❌ No network interface information found")
+            logger.error("No network interface information found")
             return "Error: No interfaces found"
 
         # Add routing table information
-        logger.info("🗺️  Reading routing table from /proc/net/route")
+        logger.info(" Reading routing table from /proc/net/route")
 
         # Read and parse /proc/net/route directly
         proc_route = self._executor.remote_execute(
@@ -212,6 +212,6 @@ class IpInfoAction(BaseAction):
                         f"{route['flags']:<6} {route['metric']:<7} {route['iface']}"
                     )
         else:
-            logger.warning("⚠️ Could not read routing table")
+            logger.warning("Could not read routing table")
 
         return "\n".join(output_lines).strip()

@@ -108,21 +108,21 @@ class NamedPipe(BaseAction):
 
         self._read_interval = float(read_interval)
 
-        logger.info(f"🔁 Reading interval: {self._read_interval:.2f} seconds")
+        logger.info(f"Reading interval: {self._read_interval:.2f} seconds")
 
         # Note: The actual polling frequency will be read_interval + avg request execution time
         avg_rtt = self._executor.avg_response_time
         if avg_rtt:
             estimated_poll_freq = self._read_interval + avg_rtt
             logger.info(
-                f"⏱️ Estimated total poll cycle: ~{estimated_poll_freq:.2f}s (interval + avg RTT)"
+                f"Estimated total poll cycle: ~{estimated_poll_freq:.2f}s (interval + avg RTT)"
             )
 
         req_per_sec = 1 / (self._read_interval + (avg_rtt or 0))
         req_per_min = req_per_sec * 60
 
         logger.info(
-            f"📡 Approx. requests: {req_per_sec:.2f}/sec | {req_per_min:.0f}/min"
+            f"Approx. requests: {req_per_sec:.2f}/sec | {req_per_min:.0f}/min"
         )
 
     # Abstract methods
@@ -286,7 +286,7 @@ class ActionsManager:
                         actions[action_name]["description"] = description
 
                 except Exception:
-                    logger.exception(f"⚠️ Skipping action '{action_name}'")
+                    logger.exception(f"Skipping action '{action_name}'")
 
         return actions
 
@@ -324,20 +324,20 @@ class ActionsManager:
 
                 if action := self.load_action_from_path(user_module_path):
                     logger.info(
-                        f"📦 Loaded user action '{name}' (last modified: {formatted_time})"
+                        f"Loaded user action '{name}' (last modified: {formatted_time})"
                     )
                     return action
             except Exception as e:
-                logger.warning(f"⚠️ Failed to load user action '{name}': {e}")
+                logger.warning(f"Failed to load user action '{name}': {e}")
 
         # Fallback to system action
         if system_module_path.exists():
             if action := self.load_action_from_path(system_module_path):
-                logger.info(f"📦 Loaded system action '{name}'")
+                logger.info(f"Loaded system action '{name}'")
                 return action
 
         # No valid action found
-        logger.error(f"❌ No valid action found for '{name}'")
+        logger.error(f"No valid action found for '{name}'")
         return None
 
     def load_action_from_path(self, file_path: Path) -> BaseAction:
@@ -385,7 +385,7 @@ class ActionsManager:
             # Get the class that inherits from BaseAction
             action_cls = wrapper.get_class(must_inherit=BaseAction)
             if not action_cls:
-                logger.warning(f"⚠️ No action class found in {wrapper.name}")
+                logger.warning(f"No action class found in {wrapper.name}")
                 return []
 
             class_name = action_cls.__name__
@@ -402,7 +402,7 @@ class ActionsManager:
             ]
 
         except Exception as exc:
-            logger.warning(f"⚠ Failed to extract parameters from {wrapper.name}: {exc}")
+            logger.warning(f"Failed to extract parameters from {wrapper.name}: {exc}")
             return []
 
     def __get_user_module_dir(self) -> Path:

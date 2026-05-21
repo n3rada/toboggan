@@ -41,16 +41,16 @@ class UploadAction(BaseAction):
                 # Try resolving the path in case of relative paths or symlinks
                 local_file = local_file.resolve()
         except Exception as e:
-            logger.error(f"❌ Error resolving path '{local_path}': {e}")
+            logger.error(f"Error resolving path '{local_path}': {e}")
             return
         
         if not local_file.exists():
-            logger.error(f"❌ Local file does not exist: {local_path}")
+            logger.error(f"Local file does not exist: {local_path}")
             logger.debug(f"Attempted to access: {local_file}")
             return
             
         if not local_file.is_file():
-            logger.error(f"❌ Path is not a file: {local_path}")
+            logger.error(f"Path is not a file: {local_path}")
             return
 
         current_working_directory = self._executor.target.pwd.rstrip("\\")
@@ -75,7 +75,7 @@ class UploadAction(BaseAction):
                 base_path = remote_path.rstrip("\\")
                 remote_path = f"{base_path}\\{local_file.name}"
 
-        logger.info(f"📤 Uploading {local_path} to {remote_path}")
+        logger.info(f"Uploading {local_path} to {remote_path}")
 
         # Define remote encoded path early
         remote_encoded_path = (
@@ -94,19 +94,19 @@ class UploadAction(BaseAction):
 
         # Calculate local MD5 of original file
         local_md5 = hashlib.md5(raw_bytes).hexdigest().upper()
-        logger.info(f"🔒 Local MD5: {local_md5}")
+        logger.info(f"Local MD5: {local_md5}")
 
         command_size = self._executor.command_max_size
         encoded_size = len(encoded_file)
         total_chunks = (encoded_size + command_size - 1) // command_size
 
         logger.info(
-            f"📦 Encoded file size: {encoded_size} bytes ({total_chunks} chunks)"
+            f"Encoded file size: {encoded_size} bytes ({total_chunks} chunks)"
         )
 
         # Step 2: Upload in chunks
         logger.info(
-            f"📤 Uploading {local_file.name} in chunks to: {self._executor.working_directory}"
+            f"Uploading {local_file.name} in chunks to: {self._executor.working_directory}"
         )
 
         try:
@@ -129,24 +129,24 @@ class UploadAction(BaseAction):
                     progress_bar.update(len(chunk))
 
         except KeyboardInterrupt:
-            logger.warning("⚠️ Upload interrupted by user. Cleaning up...")
+            logger.warning("Upload interrupted by user. Cleaning up...")
             self._executor.remote_execute(
                 f'Remove-Item -LiteralPath "{remote_encoded_path}" -Force -EA 0',
                 retry=False,
             )
             return
         except Exception as exc:
-            logger.error(f"❌ Upload failed: {exc}")
+            logger.error(f"Upload failed: {exc}")
             self._executor.remote_execute(
                 f'Remove-Item -LiteralPath "{remote_encoded_path}" -Force -EA 0',
                 retry=False,
             )
             return
 
-        logger.success(f"📂 Remote encoded file created: {remote_encoded_path}")
+        logger.success(f"Remote encoded file created: {remote_encoded_path}")
 
         # Step 3: Decode remotely
-        logger.info(f"📂 Decoding remotely to {remote_path}")
+        logger.info(f"Decoding remotely to {remote_path}")
 
         if self._os_helper.shell_type == "powershell":
             # Use explicit ASCII encoding for base64 data
@@ -169,7 +169,7 @@ $bytes = [Convert]::FromBase64String($enc)
         )
 
         # Step 4: Verify with MD5 checksum
-        logger.info("🔍 Verifying file integrity")
+        logger.info("Verifying file integrity")
 
         if self._os_helper.shell_type == "powershell":
             # Use .NET directly for better compatibility (Get-FileHash requires PS 4.0+)
@@ -189,19 +189,19 @@ $md5.Dispose()
         remote_md5 = self._executor.remote_execute(md5_cmd, timeout=30).strip()
 
         if not remote_md5 or len(remote_md5) != 32:
-            logger.error(f"❌ Failed to verify the file at {remote_path}.")
+            logger.error(f"Failed to verify the file at {remote_path}.")
             if remote_md5:
                 logger.debug(f"Received MD5 output: {remote_md5}")
             return
 
-        logger.info(f"🔒 Remote MD5: {remote_md5}")
+        logger.info(f"Remote MD5: {remote_md5}")
 
         if remote_md5.upper() != local_md5.upper():
-            logger.warning("❌ MD5 mismatch!")
+            logger.warning("MD5 mismatch!")
             logger.warning("The uploaded file may be corrupted.")
         else:
-            logger.success("✅ MD5 checksum matched.")
+            logger.success("MD5 checksum matched.")
 
-        logger.success(f"✅ File uploaded successfully: {remote_path}")
+        logger.success(f"File uploaded successfully: {remote_path}")
 
         return

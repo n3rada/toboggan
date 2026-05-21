@@ -47,7 +47,7 @@ class Executor(metaclass=SingletonMeta):
             self.__os = self.__guess_os()
         else:
             self.__os = target_os
-            logger.info(f"🖥️ OS set to {target_os}")
+            logger.info(f"OS set to {target_os}")
 
         self._shell = shell
         self._shell_validated = False  # Shell validation flag
@@ -85,7 +85,7 @@ class Executor(metaclass=SingletonMeta):
             )
 
             self.__obfuscation = True
-            logger.success("✅ Obfuscation enabled")
+            logger.success("Obfuscation enabled")
         else:
             self.__obfuscation = False
 
@@ -131,7 +131,7 @@ class Executor(metaclass=SingletonMeta):
 
             self.remote_execute(command=f'mkdir "{self._working_directory}"')
             logger.info(
-                f"📂 Remote working directory initialized: {self._working_directory}"
+                f"Remote working directory initialized: {self._working_directory}"
             )
 
         return self._working_directory
@@ -171,16 +171,16 @@ class Executor(metaclass=SingletonMeta):
                 self._shell_validated = True  # Assume PowerShell is valid
 
         while not self._shell_validated:
-            logger.trace(f"🔍 Validating shell: {self._shell}")
+            logger.trace(f"Validating shell: {self._shell}")
             if not self.__validate_shell():
                 if isinstance(self._os_helper, LinuxHelper):
                     if linux_shells:
                         next_shell = linux_shells.pop(0)
-                        logger.info(f"🔄 Falling back to {next_shell}")
+                        logger.info(f"Falling back to {next_shell}")
                         self.shell = next_shell
                         continue
 
-                    logger.error("❌ No valid shell found on Linux target.")
+                    logger.error("No valid shell found on Linux target.")
                     raise RuntimeError("No valid shell found on Linux target.")
 
         return self._shell
@@ -234,7 +234,7 @@ class Executor(metaclass=SingletonMeta):
             logger.debug(f"Using small chunk size: {size} bytes (no alignment)")
 
         if size <= 0:
-            logger.error("❌ Chunk size must be positive after alignment.")
+            logger.error("Chunk size must be positive after alignment.")
             return
 
         try:
@@ -248,12 +248,12 @@ class Executor(metaclass=SingletonMeta):
             )
         except Exception:
             logger.error(
-                f"❌ Chunk size of {size} bytes does not work on the remote system."
+                f"Chunk size of {size} bytes does not work on the remote system."
             )
             return
 
         self._command_max_size = size
-        logger.info(f"📏 Command max size set to: {self._command_max_size} bytes")
+        logger.info(f"Command max size set to: {self._command_max_size} bytes")
 
     # Public methods
 
@@ -292,7 +292,7 @@ class Executor(metaclass=SingletonMeta):
         """
 
         if not command:
-            logger.trace("⚠️ Attempted to execute an empty command. Skipping.")
+            logger.trace("Attempted to execute an empty command. Skipping.")
             return ""
 
         if debug:
@@ -302,7 +302,7 @@ class Executor(metaclass=SingletonMeta):
         if self._avg_response_time is not None and timeout is not None:
             timeout = max(timeout, self._avg_response_time * 1.5)
             if debug:
-                logger.debug(f"⏱️ Timeout adjusted to {timeout:.2f}s based on avg RTT")
+                logger.debug(f"Timeout adjusted to {timeout:.2f}s based on avg RTT")
 
         result = ""
 
@@ -313,7 +313,7 @@ class Executor(metaclass=SingletonMeta):
         # Apply Base64 encoding if enabled
         if self.__base64_wrapping:
             command = base64.b64encode(command.encode()).decode()
-            logger.trace(f"📦 Base64-encoded command: {command}")
+            logger.trace(f"Base64-encoded command: {command}")
 
         for attempt in range(3):
             try:
@@ -333,26 +333,26 @@ class Executor(metaclass=SingletonMeta):
 
                 if self._initial_execution_successful is False:
                     self._initial_execution_successful = True
-                    logger.success("✅ Remote target is reachable.")
+                    logger.success("Remote target is reachable.")
 
                 break  # Exit retry loop on success
 
             except Exception as exc:
 
                 if self._initial_execution_successful is False:
-                    logger.error(f"❌ Failed initial execution check: {exc}")
+                    logger.error(f"Failed initial execution check: {exc}")
                     raise RuntimeError(
                         "Unable to communicate with remote target. Aborting."
                     )
 
                 if debug:
                     logger.warning(
-                        f"❌ Execution failed (Attempt {attempt+1}/3): {exc}"
+                        f"Execution failed (Attempt {attempt+1}/3): {exc}"
                     )
 
                 if not retry:
                     if debug:
-                        logger.error("⏹ Retrying is disabled. Returning empty result.")
+                        logger.error("Retrying is disabled. Returning empty result.")
                     if raise_on_failure:
                         raise exc
 
@@ -361,23 +361,23 @@ class Executor(metaclass=SingletonMeta):
                 # Apply exponential backoff with jitter
                 sleep_time = (2**attempt) + (random.randint(0, 1000) / 1000)
                 if debug:
-                    logger.warning(f"⏳ Retrying after {sleep_time:.2f} seconds..")
+                    logger.warning(f"Retrying after {sleep_time:.2f} seconds..")
                 time.sleep(sleep_time)
 
         if not result:
             return ""
 
-        logger.trace(f"📩 Received raw output: {result!r}")
+        logger.trace(f"Received raw output: {result!r}")
 
         # Attempt to de-obfuscate the result if obfuscation was used
         if not bypass_obfuscation and self.__obfuscation:
             try:
                 result = self.__unobfuscation_action.run(result)
-                logger.trace(f"🔓 De-obfuscated output: {result!r}")
+                logger.trace(f"De-obfuscated output: {result!r}")
             except ValueError:
                 if debug:
                     logger.error(
-                        f"⚠️ Failed to de-obfuscate command output.\n"
+                        f"Failed to de-obfuscate command output.\n"
                         f"\t• Original Command: {command!r}\n"
                         f"\t• Received Output: {result!r}"
                     )
@@ -396,7 +396,7 @@ class Executor(metaclass=SingletonMeta):
 
         try:
             logger.debug(
-                f"🗑️ Deleting remote working directory: {self._working_directory}"
+                f"Deleting remote working directory: {self._working_directory}"
             )
             # Use -rf to force deletion, bypass obfuscation for cleanup reliability
             self.remote_execute(
@@ -406,7 +406,7 @@ class Executor(metaclass=SingletonMeta):
             )
 
         except Exception as exc:
-            logger.warning(f"⚠️ Failed to delete remote working directory: {exc}")
+            logger.warning(f"Failed to delete remote working directory: {exc}")
         finally:
             self._working_directory = None
 
@@ -477,7 +477,7 @@ class Executor(metaclass=SingletonMeta):
                         chars_missing = len(marker) - i
                         actual_size = size - chars_missing
                         logger.debug(
-                            f"📊 Partial marker detected: '{partial_marker}' "
+                            f"Partial marker detected: '{partial_marker}' "
                             f"({i}/{len(marker)} chars) - deduced size: {actual_size} bytes"
                         )
                         return False, actual_size
@@ -489,24 +489,24 @@ class Executor(metaclass=SingletonMeta):
                     # Account for "echo " command overhead (5 chars)
                     estimated_size = output_len + len("echo ")
                     logger.debug(
-                        f"📊 No marker found - output length: {output_len} chars, "
+                        f"No marker found - output length: {output_len} chars, "
                         f"estimated upper bound: {estimated_size} bytes (for search optimization)"
                     )
                     return False, estimated_size
 
-                logger.debug(f"❌ No output at {size} bytes")
+                logger.debug(f"No output at {size} bytes")
                 return False, 0
 
             except Exception as e:
-                logger.debug(f"❌ Exception at {size} bytes: {e}")
+                logger.debug(f"Exception at {size} bytes: {e}")
                 return False, 0
 
         # Try maximum size first
-        logger.info(f"📏 Trying maximum size: {max_size} bytes")
+        logger.info(f"Trying maximum size: {max_size} bytes")
 
         success, actual_size = test_command_size(max_size)
         if success:
-            logger.success(f"✅ Maximum size {max_size} bytes works!")
+            logger.success(f"Maximum size {max_size} bytes works!")
             return max_size
 
         # Adjust binary search range based on initial test
@@ -523,16 +523,16 @@ class Executor(metaclass=SingletonMeta):
                 # Narrow the search space - likely limit is around estimated size
                 high = min(estimated_upper_aligned, max_size)
                 logger.info(
-                    f"📊 Output suggests limit around {actual_size} bytes - "
+                    f"Output suggests limit around {actual_size} bytes - "
                     f"narrowing search to {min_size}-{high} bytes"
                 )
             else:
-                logger.info("❌ Maximum size failed, using full binary search range")
+                logger.info("Maximum size failed, using full binary search range")
         else:
-            logger.info("❌ No output from maximum size test")
+            logger.info("No output from maximum size test")
 
         # Binary search for the actual limit
-        logger.info(f"🔢 Binary search range: {min_size} to {high} bytes")
+        logger.info(f"Binary search range: {min_size} to {high} bytes")
 
         while low <= high:
             # Align mid appropriately
@@ -543,28 +543,28 @@ class Executor(metaclass=SingletonMeta):
             if mid == best or mid < low:
                 break
 
-            logger.info(f"📏 Trying size: {mid} bytes")
+            logger.info(f"Trying size: {mid} bytes")
 
             success, actual_size = test_command_size(mid)
             if success:
-                logger.info(f"✅ Success at {mid} bytes (output verified)")
+                logger.info(f"Success at {mid} bytes (output verified)")
                 best = mid
                 low = mid + (1024 if mid >= 1024 else 64)
             elif actual_size > 0 and actual_size < mid:
                 # We found truncation and can deduce the actual size
                 actual_size_aligned = align_size(actual_size)
-                logger.info(f"📊 Truncation at {mid} bytes.")
+                logger.info(f"Truncation at {mid} bytes.")
                 if actual_size_aligned > best and actual_size_aligned >= min_size:
                     # Verify this deduced size
                     verify_success, _ = test_command_size(actual_size_aligned)
                     if verify_success:
                         best = actual_size_aligned
-                        logger.success(f"✅ Verified deduced size: {best} bytes")
+                        logger.success(f"Verified deduced size: {best} bytes")
                         # Deduced size verified - this is our answer
                         return best
                     else:
                         logger.debug(
-                            f"❌ Deduced size {actual_size_aligned} verification failed"
+                            f"Deduced size {actual_size_aligned} verification failed"
                         )
 
                 # Verification failed or skipped - search below the truncation point
@@ -572,40 +572,40 @@ class Executor(metaclass=SingletonMeta):
                     1024 if actual_size_aligned >= 1024 else 64
                 )
             else:
-                logger.info(f"❌ Failed at {mid} bytes")
+                logger.info(f"Failed at {mid} bytes")
                 high = mid - (1024 if mid >= 1024 else 64)
 
-            logger.debug(f"🔁 Search range: low={low}, high={high}, best={best}")
+            logger.debug(f"Search range: low={low}, high={high}, best={best}")
 
         if best > 0:
-            logger.success(f"📏 Final maximum command size: {best} bytes")
+            logger.success(f"Final maximum command size: {best} bytes")
         else:
-            logger.error(f"❌ Could not determine a working command size")
+            logger.error(f"Could not determine a working command size")
 
         return best
 
     # Private methods
 
     def __guess_os(self) -> str:
-        logger.debug("🔍 Guessing remote OS")
+        logger.debug("Guessing remote OS")
 
         ls_output = self.remote_execute(command="ls /", retry=False).strip().lower()
 
         if ls_output:
             if "bin" in ls_output or "etc" in ls_output:
-                logger.info("🖥️ Detected Linux OS via ls /.")
+                logger.info("Detected Linux OS via ls /.")
                 return "linux"
             if "windows" in ls_output or "program files" in ls_output:
-                logger.info("🖥️ Detected Windows OS via ls /.")
+                logger.info("Detected Windows OS via ls /.")
                 return "windows"
 
         ver_output = self.remote_execute(command="ver", retry=False).strip().lower()
 
         if ver_output and "microsoft" in ver_output:
-            logger.info("🖥️ Detected Windows OS via ver.")
+            logger.info("Detected Windows OS via ver.")
             return "windows"
 
-        logger.info("🖥️ Assuming Linux OS.")
+        logger.info("Assuming Linux OS.")
         return "linux"
 
     def __validate_shell(self) -> bool:
@@ -650,10 +650,10 @@ class Executor(metaclass=SingletonMeta):
                     and "no such file" not in output
                 ):
                     logger.debug(
-                        f"✅ Shell validation succeeded with: {validation_command}"
+                        f"Shell validation succeeded with: {validation_command}"
                     )
                     logger.info(
-                        f"💾 Remote shell: '{self._shell}' — verified and ready."
+                        f"Remote shell: '{self._shell}' — verified and ready."
                     )
                     self._shell_validated = True
                     return True
@@ -661,6 +661,6 @@ class Executor(metaclass=SingletonMeta):
             except Exception:
                 continue  # Try next validation method
 
-        logger.error(f"❌ Remote shell '{self._shell}' could not be validated.")
+        logger.error(f"Remote shell '{self._shell}' could not be validated.")
         self._shell_validated = False
         return False

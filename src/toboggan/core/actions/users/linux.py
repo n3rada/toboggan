@@ -16,7 +16,7 @@ class GetUsersAction(BaseAction):
         group_data = self._executor.remote_execute("cat /etc/group")
 
         if not passwd_data or not group_data:
-            return "⚠️ Could not read /etc/passwd or /etc/group."
+            return "Could not read /etc/passwd or /etc/group."
 
         # Parse /etc/group
         gid_to_group = {}
@@ -65,7 +65,7 @@ class GetUsersAction(BaseAction):
 
         def format_table(title, data):
             if not data:
-                return f"⚠️ No {title.lower()} found.\n"
+                return f"No {title.lower()} found.\n"
 
             data.sort(key=lambda x: x[0])
             max_user_len = max(len(u[0]) for u in data) + 2
@@ -123,7 +123,7 @@ class GetUsersAction(BaseAction):
             section += "-" * min(terminal_width, total_width) + "\n"
             return section
 
-        output = format_table("📦 System users", system_users)
-        output += format_table("📜 Non-system users", non_system_users)
+        output = format_table("System users", system_users)
+        output += format_table("Non-system users", non_system_users)
 
         return output

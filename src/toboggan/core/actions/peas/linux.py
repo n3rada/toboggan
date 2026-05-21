@@ -20,18 +20,18 @@ class LinPEASAction(BaseAction):
     def run(self, local_path: str = None) -> str:
         # If no local file is provided or it doesn't exist, fetch from GitHub
         if not local_path:
-            logger.info("🌐 No linpeas.sh path provided — downloading from GitHub...")
+            logger.info("No linpeas.sh path provided — downloading from GitHub...")
             local_path = self._download_linpeas()
         else:
             local_path = Path(local_path)
             if not local_path.exists():
                 logger.warning(
-                    f"⚠️ File {local_path} not found. Downloading linpeas.sh..."
+                    f"File {local_path} not found. Downloading linpeas.sh..."
                 )
                 local_path = self._download_linpeas()
 
         if not local_path or not Path(local_path).exists():
-            return "❌ Failed to obtain linpeas.sh locally or via download."
+            return "Failed to obtain linpeas.sh locally or via download."
 
         filename = f".{generate_uuid()}"
         remote_path = f"{self._executor.working_directory}/{filename}"
@@ -48,9 +48,9 @@ class LinPEASAction(BaseAction):
         exec_cmd = f"nohup {remote_path} > {output_file} 2>&1 &"
         self._executor.remote_execute(exec_cmd)
 
-        logger.success("✅ linpeas started in background.")
-        logger.info(f"📄 Output will be stored in: {output_file}")
-        return f"🔍 linpeas.sh is running in the background.\nCheck {output_file} for results."
+        logger.success("linpeas started in background.")
+        logger.info(f"Output will be stored in: {output_file}")
+        return f"linpeas.sh is running in the background.\nCheck {output_file} for results."
 
     def _download_linpeas(self) -> Path:
         try:
@@ -66,8 +66,8 @@ class LinPEASAction(BaseAction):
             temp_path.write_bytes(response.content)
             temp_path.chmod(0o755)
 
-            logger.success(f"✅ linpeas.sh downloaded to {temp_path}")
+            logger.success(f"linpeas.sh downloaded to {temp_path}")
             return temp_path
         except Exception as e:
-            logger.error(f"❌ Failed to download linpeas.sh: {e}")
+            logger.error(f"Failed to download linpeas.sh: {e}")
             return None

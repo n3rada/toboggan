@@ -15,7 +15,7 @@ class PrivBinsAction(BaseAction):
         Fetches and displays all privileged binaries (SUID & SGID) on the system.
         Prints each section separately.
         """
-        logger.info("🔍 Scanning for SUID binaries (Execute as Root)")
+        logger.info("Scanning for SUID binaries (Execute as Root)")
 
         suid_output = self._executor.remote_execute(
             "find / -perm -u=s -type f 2>/dev/null"
@@ -26,7 +26,7 @@ class PrivBinsAction(BaseAction):
         else:
             logger.warning("No SUID Binaries Found or Insufficient Permissions.")
 
-        logger.info("🔍 Scanning for SGID binaries (Execute as Group Owner)")
+        logger.info("Scanning for SGID binaries (Execute as Group Owner)")
 
         sgid_output = self._executor.remote_execute(
             "find / -perm -g=s -type f 2>/dev/null"

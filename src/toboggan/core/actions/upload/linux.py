@@ -31,7 +31,7 @@ class UploadAction(BaseAction):
         """
         local_file = Path(local_path)
         if not local_file.exists() or not local_file.is_file():
-            logger.error(f"❌ Local file does not exist: {local_path}")
+            logger.error(f"Local file does not exist: {local_path}")
             return
 
         current_working_directory = self._executor.target.pwd.rstrip("/")
@@ -51,7 +51,7 @@ class UploadAction(BaseAction):
             if remote_path.endswith("/"):
                 remote_path = f"{remote_path.rstrip('/')}/{local_file.name}"
 
-        logger.info(f"📤 Uploading {local_path} to {remote_path}")
+        logger.info(f"Uploading {local_path} to {remote_path}")
 
         remote_encoded_path = (
             f"{self._executor.working_directory}/{generate_fixed_length_token(24)}"
@@ -66,7 +66,7 @@ class UploadAction(BaseAction):
 
         # Calculate local MD5 of original file
         local_md5 = hashlib.md5(raw_bytes).hexdigest()
-        logger.info(f"🔒 Local MD5: {local_md5}")
+        logger.info(f"Local MD5: {local_md5}")
 
         # Calculate effective chunk size accounting for command overhead
         # Command format: printf %s {chunk} >> {remote_encoded_path}
@@ -77,12 +77,12 @@ class UploadAction(BaseAction):
         total_chunks = (encoded_size + command_size - 1) // command_size
 
         logger.info(
-            f"📦 Encoded file size: {encoded_size} bytes ({total_chunks} chunks, {command_size}B each)"
+            f"Encoded file size: {encoded_size} bytes ({total_chunks} chunks, {command_size}B each)"
         )
 
         # Step 2: Upload in chunks
         logger.info(
-            f"📤 Uploading {local_file.name} in chunks inside: {self._executor.working_directory}"
+            f"Uploading {local_file.name} in chunks inside: {self._executor.working_directory}"
         )
 
         # Disable progress bar when trace logging is enabled to avoid polluting output
@@ -106,14 +106,14 @@ class UploadAction(BaseAction):
                         f"printf %s {chunk} >> {remote_encoded_path}"
                     )
         except KeyboardInterrupt:
-            logger.warning("⚠️ Upload interrupted by user. Cleaning up...")
+            logger.warning("Upload interrupted by user. Cleaning up...")
             self._executor.remote_execute(f"rm -f {remote_encoded_path}")
             return
 
-        logger.success(f"📂 Remote encoded file path: {remote_encoded_path}")
+        logger.success(f"Remote encoded file path: {remote_encoded_path}")
 
         # Step 3: Decode and decompress remotely
-        logger.info(f"📂 Decoding and extracting remotely to {remote_path}")
+        logger.info(f"Decoding and extracting remotely to {remote_path}")
         base64_path = self._executor.os_helper.get_command_location("base64")
         self._executor.remote_execute(
             f"{base64_path} -d {remote_encoded_path}|dd of={remote_path} bs=1024",
@@ -128,17 +128,17 @@ class UploadAction(BaseAction):
         md5sum = self._executor.remote_execute(f"{md5sum_path} {remote_path}").strip()
 
         if not md5sum:
-            logger.error(f"❌ Failed to create the file at {remote_path}.")
+            logger.error(f"Failed to create the file at {remote_path}.")
             return
 
         remote_md5 = md5sum.split()[0]
-        logger.info(f"🔒 Remote MD5: {remote_md5}")
+        logger.info(f"Remote MD5: {remote_md5}")
         if remote_md5 != local_md5:
-            logger.warning("❌ MD5 mismatch!")
+            logger.warning("MD5 mismatch!")
             logger.warning("The uploaded file may be corrupted.")
         else:
-            logger.success("✅ MD5 checksum matched.")
+            logger.success("MD5 checksum matched.")
 
-        logger.success(f"✅ File uploaded: {remote_path}")
+        logger.success(f"File uploaded: {remote_path}")
 
         return

@@ -32,7 +32,7 @@ class TokenReader:
         try:
             self._header, self._payload, self._signature = parse_jwt(access_token)
         except Exception as e:
-            logger.error(f"❌ Failed to parse JWT: {e}")
+            logger.error(f"Failed to parse JWT: {e}")
             raise
 
         self._expires_on = self._payload.get("exp")
@@ -41,7 +41,7 @@ class TokenReader:
 
         exp_datetime = self.expiration_datetime
         human_date = exp_datetime.strftime("%A %d %b %Y, %H:%M:%S %Z")
-        logger.info(f"🔐 JWT initialized, expires at {human_date}.")
+        logger.info(f"JWT initialized, expires at {human_date}.")
 
     @property
     def audience(self) -> str:

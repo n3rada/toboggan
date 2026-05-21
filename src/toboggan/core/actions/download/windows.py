@@ -49,10 +49,10 @@ class DownloadAction(BaseAction):
             ).strip()
 
         if "True" not in can_read:
-            logger.error(f"❌ File not found or not accessible: {remote_path}")
+            logger.error(f"File not found or not accessible: {remote_path}")
             return False
 
-        logger.info(f"📂 File is accessible: {remote_path}")
+        logger.info(f"File is accessible: {remote_path}")
 
         # Determine final local path
         if local_path is None:
@@ -65,14 +65,14 @@ class DownloadAction(BaseAction):
         else:
             save_path = local_path
 
-        logger.info(f"💾 File will be saved to: {save_path}")
+        logger.info(f"File will be saved to: {save_path}")
 
         # Step 2: Compress and Base64-encode the remote file
         random_file_name = common.generate_fixed_length_token(6) + ".zip"
         remote_archive = f"{self._executor.working_directory}\\{random_file_name}"
         remote_base64_path = f"{remote_archive}.b64"
 
-        logger.info(f"🗜️ Compressing and encoding file...")
+        logger.info(f"Compressing and encoding file...")
 
         if self._os_helper.shell_type == "powershell":
             # Use PowerShell's Compress-Archive and Base64 encoding
@@ -107,7 +107,7 @@ Remove-Item -LiteralPath $zip -Force
         size_output = self._executor.remote_execute(command=size_cmd).strip()
 
         if not size_output or not size_output.isdigit():
-            logger.error(f"❌ Failed to retrieve encoded file size for: {remote_path}")
+            logger.error(f"Failed to retrieve encoded file size for: {remote_path}")
             self._executor.remote_execute(
                 command=f'Remove-Item -LiteralPath "{remote_base64_path}" -Force -EA 0'
             )
@@ -117,7 +117,7 @@ Remove-Item -LiteralPath $zip -Force
         total_chunks = (total_encoded_size + command_size - 1) // command_size
 
         logger.info(
-            f"⬇️ Downloading {remote_path} ({total_chunks} chunks, {total_encoded_size} bytes)"
+            f"Downloading {remote_path} ({total_chunks} chunks, {total_encoded_size} bytes)"
         )
 
         # Step 4: Download in chunks
@@ -159,9 +159,9 @@ $fs.Close()
                         temp_file.write(chunk.encode("ascii"))
                         progress_bar.update(len(chunk))
                     except Exception as exc:
-                        logger.warning(f"⚠️ Error writing chunk {idx + 1}: {exc}")
+                        logger.warning(f"Error writing chunk {idx + 1}: {exc}")
                 else:
-                    logger.warning(f"⚠️ Missing chunk {idx + 1}, skipping.")
+                    logger.warning(f"Missing chunk {idx + 1}, skipping.")
 
         # Step 5: Cleanup remote files
         self._executor.remote_execute(
@@ -171,7 +171,7 @@ $fs.Close()
 
         # Step 6: Decode and extract
         try:
-            logger.info("🔓 Decoding and extracting...")
+            logger.info("Decoding and extracting...")
             decoded_data = base64.b64decode(Path(temp_download_path).read_text())
             temp_zip_path = temp_download_path.replace(".b64", ".zip")
 
@@ -182,11 +182,11 @@ $fs.Close()
             with zipfile.ZipFile(temp_zip_path, "r") as zip_ref:
                 zip_ref.extractall(path=local_path)
 
-            logger.success(f"✅ File downloaded and extracted to: {local_path}")
+            logger.success(f"File downloaded and extracted to: {local_path}")
             return True
 
         except Exception as exc:
-            logger.error(f"❌ Failed to decode and extract file: {exc}")
+            logger.error(f"Failed to decode and extract file: {exc}")
             return False
 
         finally:

@@ -252,7 +252,7 @@ def main() -> int:
         ]:
             os.environ[k] = args.proxy
 
-        logger.info(f"🌐 Proxy set to {args.proxy}")
+        logger.info(f"Proxy set to {args.proxy}")
 
     try:
         with httpx.Client(verify=False, http1=True, http2=False) as client:
@@ -263,12 +263,12 @@ def main() -> int:
             if response.status_code == 200:
                 public_ip = response.json().get("ip")
                 if public_ip:
-                    logger.info(f"🌍 Public IP: {public_ip} (⏱️ RTT: {rtt:.2f}s)")
+                    logger.info(f"Public IP: {public_ip} (RTT: {rtt:.2f}s)")
 
     except httpx.TimeoutException:
-        logger.warning("⚠️ Public IP check timed out.")
+        logger.warning("Public IP check timed out.")
     except Exception as e:
-        logger.warning(f"⚠️ Could not retrieve public IP: {e}")
+        logger.warning(f"Could not retrieve public IP: {e}")
 
     execution_module = None
 
@@ -277,13 +277,13 @@ def main() -> int:
 
     if source_count == 0:
         logger.error(
-            "❌ No execution source provided. Specify a module, --exec-wrapper, or --request."
+            "No execution source provided. Specify a module, --exec-wrapper, or --request."
         )
         return 1
 
     if source_count > 1:
         logger.error(
-            "❌ Multiple execution sources provided. Use only one: module (positional), --exec-wrapper, or --request."
+            "Multiple execution sources provided. Use only one: module (positional), --exec-wrapper, or --request."
         )
         return 1
 
@@ -299,19 +299,19 @@ def main() -> int:
             execution_module = wrapper.module
 
             # BurpRequest.__init__ handles all validation
-            logger.info(f"📄 Loading Burp Suite request from: {args.request}")
+            logger.info(f"Loading Burp Suite request from: {args.request}")
             execution_module.BURP_REQUEST_OBJECT = execution_module.BurpRequest(
                 args.request
             )
-            logger.success("✅ Burp Suite request loaded and validated successfully")
+            logger.success("Burp Suite request loaded and validated successfully")
         except (FileNotFoundError, ValueError) as e:
             logger.error(str(e))
             logger.info(
-                "💡 Tip: Save a request from Burp Suite (right-click → Save item) with ||cmd|| placeholder"
+                "Tip: Save a request from Burp Suite (right-click → Save item) with ||cmd|| placeholder"
             )
             return 1
         except Exception as e:
-            logger.error(f"❌ Failed to load Burp Suite request: {e}")
+            logger.error(f"Failed to load Burp Suite request: {e}")
             logger.debug("Full error:", exc_info=True)
             return 1
     elif args.module:
@@ -337,12 +337,12 @@ def main() -> int:
         execution_module = wrapper.module
 
     if args.base64:
-        logger.info("🔐 Base64 encoding enabled for all commands.")
+        logger.info("Base64 encoding enabled for all commands.")
 
     # Validate working directory if provided
     if args.working_directory:
         if not common.is_valid_directory_path(args.working_directory):
-            logger.error(f"❌ Invalid working directory path: {args.working_directory}")
+            logger.error(f"Invalid working directory path: {args.working_directory}")
             return 1
 
     # Merge --path and --paths arguments
@@ -350,12 +350,12 @@ def main() -> int:
     if args.path:
         # Split colon-separated PATH string
         custom_paths.extend([p.strip() for p in args.path.split(":") if p.strip()])
-        logger.info(f"📂 Parsed --path: {', '.join(custom_paths)}")
+        logger.info(f"Parsed --path: {', '.join(custom_paths)}")
 
     if args.paths:
         # Add space-separated paths
         custom_paths.extend(args.paths)
-        logger.info(f"📂 Added --paths: {', '.join(args.paths)}")
+        logger.info(f"Added --paths: {', '.join(args.paths)}")
 
     # Remove duplicates while preserving order
     if custom_paths:
@@ -378,22 +378,22 @@ def main() -> int:
             custom_paths=custom_paths if custom_paths else None,
         )
     except RuntimeError as e:
-        logger.error(f"❌ Failed to initialize executor: {e}")
+        logger.error(f"Failed to initialize executor: {e}")
         return 1
     except Exception as e:
-        logger.exception("❌ Unexpected error during executor initialization")
+        logger.exception("Unexpected error during executor initialization")
         return 1
 
     logger.info(
-        f"🛝 It takes about {command_executor.avg_response_time:.2f}s for a command "
-        f"to slide down the toboggan 🎯"
+        f"It takes about {command_executor.avg_response_time:.2f}s for a command "
+        f"to slide down the toboggan"
     )
 
     # Validate and set stdin/stdout paths if provided
     if args.stdin:
         if common.is_valid_file_path(args.stdin):
             # It's a file path
-            logger.info(f"📄 Using FIFO stdin file path: {args.stdin}")
+            logger.info(f"Using FIFO stdin file path: {args.stdin}")
             command_executor.os_helper.stdin_path = args.stdin
         elif common.is_valid_directory_path(args.stdin):
             # It's a directory, generate filename
@@ -401,15 +401,15 @@ def main() -> int:
             file_name = common.generate_uuid()
             stdin_path = f"{base_dir}/{file_name}"
             command_executor.os_helper.stdin_path = stdin_path
-            logger.info(f"📝 Generated FIFO stdin path: {stdin_path}")
+            logger.info(f"Generated FIFO stdin path: {stdin_path}")
         else:
-            logger.error(f"❌ Invalid stdin path: {args.stdin}")
+            logger.error(f"Invalid stdin path: {args.stdin}")
             return 1
 
     if args.stdout:
         if common.is_valid_file_path(args.stdout):
             # It's a file path
-            logger.info(f"📄 Using FIFO stdout file path: {args.stdout}")
+            logger.info(f"Using FIFO stdout file path: {args.stdout}")
             command_executor.os_helper.stdout_path = args.stdout
         elif common.is_valid_directory_path(args.stdout):
             # It's a directory, generate filename
@@ -417,9 +417,9 @@ def main() -> int:
             file_name = common.generate_uuid()
             stdout_path = f"{base_dir}/{file_name}"
             command_executor.os_helper.stdout_path = stdout_path
-            logger.info(f"📝 Generated FIFO stdout path: {stdout_path}")
+            logger.info(f"Generated FIFO stdout path: {stdout_path}")
         else:
-            logger.error(f"❌ Invalid stdout path: {args.stdout}")
+            logger.error(f"Invalid stdout path: {args.stdout}")
             return 1
 
     try:
@@ -430,17 +430,15 @@ def main() -> int:
             log_level=log_level,
         )
 
-        logger.debug("✅ Terminal initialized successfully")
+        logger.debug("Terminal initialized successfully")
 
         if args.fifo:
-            logger.info(
-                "🤏 Making your dumb shell semi-interactive using 'fifo' action."
-            )
+            logger.info("Making your dumb shell semi-interactive using 'fifo' action.")
 
             fifo_action = command_executor.action_manager.get_action("fifo")
 
             if fifo_action is None:
-                logger.error("❌ FIFO action is not available for the target OS.")
+                logger.error("FIFO action is not available for the target OS.")
                 return 1
 
             command_executor.os_helper.start_named_pipe(
@@ -448,12 +446,12 @@ def main() -> int:
                 read_interval=args.read_interval,
             )
 
-        logger.debug("🚀 Starting terminal session")
+        logger.debug("Starting terminal session")
         exit_code = remote_terminal.start()
 
         # Cleanup: Delete remote working directory if it was created
         if command_executor.has_working_directory:
-            logger.info("🧹 Cleaning up remote working directory...")
+            logger.info("Cleaning up remote working directory...")
             command_executor.delete_working_directory()
 
         return exit_code

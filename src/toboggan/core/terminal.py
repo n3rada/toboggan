@@ -146,15 +146,15 @@ class Terminal:
                 os.chmod(self.__history_file, 0o600)
             except PermissionError as e:
                 logger.warning(
-                    f"⚠️ Could not set secure permissions on history file: {e}"
+                    f"Could not set secure permissions on history file: {e}"
                 )
 
             history_backend = ThreadedHistory(FileHistory(str(self.__history_file)))
-            logger.info(f"💾 Persistent command history: {self.__history_file}")
+            logger.info(f"Persistent command history: {self.__history_file}")
 
         else:
             history_backend = ThreadedHistory(InMemoryHistory())  # in-memory history
-            logger.debug("🗑️ In-memory command history enabled.")
+            logger.debug("In-memory command history enabled.")
 
         # Create prompt session with completer
         self.__prompt_session = PromptSession(
@@ -182,7 +182,7 @@ class Terminal:
         Returns:
             bool: True if terminal should exit completely, False if it should continue.
         """
-        logger.info("🛝 Sliding back up the toboggan")
+        logger.info("Sliding back up the toboggan")
 
         if self.__target.os == "linux" and self.__executor.os_helper.is_fifo_active():
             self.__executor.os_helper.stop_named_pipe()
@@ -206,7 +206,7 @@ class Terminal:
         user_input = ""
 
         logger.info(
-            f"🔧 Prefix set to '{self.__prefix}' — use '{self.__prefix}h' for available commands."
+            f"Prefix set to '{self.__prefix}' — use '{self.__prefix}h' for available commands."
         )
 
         try:
@@ -255,7 +255,7 @@ class Terminal:
                             )
                             continue
                         except Exception as exc:
-                            logger.error(f"❌ Command execution failed: {exc}")
+                            logger.error(f"Command execution failed: {exc}")
                             continue
 
                     try:
@@ -263,7 +263,7 @@ class Terminal:
                             user_input[len(self.__prefix) :].strip()
                         )
                     except ValueError as e:
-                        logger.error(f"❌ Command parsing failed: {e}")
+                        logger.error(f"Command parsing failed: {e}")
                         continue
 
                     if not command_parts:
@@ -292,9 +292,9 @@ class Terminal:
                                     self.__executor.calculate_max_command_size()
                                 )
                         except ValueError as e:
-                            logger.error(f"❌ Invalid command size: {e}")
+                            logger.error(f"Invalid command size: {e}")
                         except Exception as e:
-                            logger.error(f"❌ Failed to set command size: {e}")
+                            logger.error(f"Failed to set command size: {e}")
 
                         continue
 
@@ -303,11 +303,11 @@ class Terminal:
                         if self.__log_level == "DEBUG":
                             self.__log_level = "INFO"
                             logbook.setup_logging(self.__log_level)
-                            logger.info("🔇 Debug mode disabled")
+                            logger.info("Debug mode disabled")
                         else:
                             self.__log_level = "DEBUG"
                             logbook.setup_logging(self.__log_level)
-                            logger.info("🔊 Debug mode enabled")
+                            logger.info("Debug mode enabled")
 
                         continue
 
@@ -316,11 +316,11 @@ class Terminal:
                         if self.__log_level == "TRACE":
                             self.__log_level = "INFO"
                             logbook.setup_logging(self.__log_level)
-                            logger.info("🔇 Trace mode disabled")
+                            logger.info("Trace mode disabled")
                         else:
                             self.__log_level = "TRACE"
                             logbook.setup_logging(self.__log_level)
-                            logger.info("🔊 Trace mode enabled")
+                            logger.info("Trace mode enabled")
 
                         continue
 
@@ -333,7 +333,7 @@ class Terminal:
                                     self.__handle_paths_add(raw_args[1:])
                                 else:
                                     logger.error(
-                                        "❌ No paths provided. Usage: !paths add /path1 /path2 or !paths add /path1:/path2"
+                                        "No paths provided. Usage: !paths add /path1 /path2 or !paths add /path1:/path2"
                                     )
                             elif raw_args and raw_args[0] in ["clear", "c"]:
                                 # Clear cache
@@ -342,14 +342,14 @@ class Terminal:
                                 # Show paths info
                                 print(self.__get_paths_info())
                         except Exception as e:
-                            logger.error(f"❌ Paths command failed: {e}")
+                            logger.error(f"Paths command failed: {e}")
 
                         continue
 
                     try:
                         actions_dict = self.__executor.action_manager.get_actions()
                     except Exception as e:
-                        logger.error(f"❌ Failed to get actions: {e}")
+                        logger.error(f"Failed to get actions: {e}")
                         continue
 
                     # Check if action exists in the file system but failed to load
@@ -362,17 +362,17 @@ class Terminal:
                             if expected_path.exists() and expected_path.is_dir():
                                 # Action directory exists but didn't load - likely syntax/import error
                                 logger.error(
-                                    f"❌ Action '{command}' exists but failed to load. "
+                                    f"Action '{command}' exists but failed to load. "
                                     "Check for syntax errors or missing dependencies."
                                 )
                             else:
                                 # Truly unknown command
                                 logger.error(
-                                    f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
+                                    f"Unknown command: '{command}'. Type '!help' to see available commands."
                                 )
                         except Exception as e:
                             logger.error(
-                                f"❌ Unknown command: '{command}'. Type '!help' to see available commands."
+                                f"Unknown command: '{command}'. Type '!help' to see available commands."
                             )
 
                         continue
@@ -388,7 +388,7 @@ class Terminal:
                             if not action_class:
                                 # Action exists in dict but failed to load from path
                                 logger.error(
-                                    f"❌ Action '{command}' failed to load. Check for syntax errors or missing dependencies."
+                                    f"Action '{command}' failed to load. Check for syntax errors or missing dependencies."
                                 )
                                 continue
 
@@ -439,7 +439,7 @@ class Terminal:
                             # Filter out 'executor' from keyword_args - it's injected automatically
                             if "executor" in keyword_args:
                                 logger.warning(
-                                    "⚠️ Ignoring '--executor' parameter (automatically provided)"
+                                    "Ignoring '--executor' parameter (automatically provided)"
                                 )
                                 keyword_args.pop("executor")
 
@@ -450,10 +450,10 @@ class Terminal:
 
                             if raw_args:
                                 logger.debug(
-                                    f"▶️ Running '{command}' with args: {raw_args}"
+                                    f"Running '{command}' with args: {raw_args}"
                                 )
                             else:
-                                logger.debug(f"▶️ Running '{command}'")
+                                logger.debug(f"Running '{command}'")
 
                             try:
                                 if issubclass(action_class, NamedPipe):
@@ -473,11 +473,11 @@ class Terminal:
 
                             except TypeError as exc:
                                 logger.warning(
-                                    f"⚠️ Incorrect arguments for '{command}': {exc}"
+                                    f"Incorrect arguments for '{command}': {exc}"
                                 )
                                 continue
                             except Exception as exc:
-                                logger.error(f"❌ Action '{command}' failed: {exc}")
+                                logger.error(f"Action '{command}' failed: {exc}")
                                 continue
 
                             if action_output is not None:
@@ -485,12 +485,12 @@ class Terminal:
 
                         except Exception as exc:
                             logger.error(
-                                f"❌ Failed to execute action '{command}': {exc}"
+                                f"Failed to execute action '{command}': {exc}"
                             )
                             continue
 
         except Exception as exc:
-            logger.exception(f"💥 Unhandled exception in terminal: {exc}")
+            logger.exception(f"Unhandled exception in terminal: {exc}")
             return 1
 
         # This should never be reached due to while True loop
@@ -507,7 +507,7 @@ class Terminal:
         actions = self.__executor.action_manager.get_actions()
 
         if not actions:
-            return "❌ No available actions found."
+            return "No available actions found."
 
         # ANSI styles
         BOLD = "\033[1m"
@@ -533,11 +533,11 @@ class Terminal:
             description = details.get("description", "No description available")
             action_colored = f"{GREEN}{action}{RESET}"
             lines.append(
-                f"🔹 {ansi_ljust(action_colored, max_action_length)} → {CYAN}{description}{RESET}"
+                f"{ansi_ljust(action_colored, max_action_length)} → {CYAN}{description}{RESET}"
             )
             if details.get("parameters"):
                 params = ", ".join(details["parameters"])
-                lines.append(f"\t⚙️ Parameters: {params}")
+                lines.append(f"\tParameters: {params}")
 
         lines.append(DIM + "-" * (max_action_length + 50) + RESET)
         lines.append(
@@ -548,31 +548,31 @@ class Terminal:
         lines.append(f"{BOLD}Built-in Commands:{RESET}")
         lines.append(DIM + "-" * (max_action_length + 50) + RESET)
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}help{RESET} ({DIM}h{RESET})', max_action_length)} → "
+            f"{ansi_ljust(f'{GREEN}help{RESET} ({DIM}h{RESET})', max_action_length)} → "
             f"{CYAN}Show this help message.{RESET}"
         )
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}exit{RESET} ({DIM}e, ex{RESET})', max_action_length)} → "
+            f"{ansi_ljust(f'{GREEN}exit{RESET} ({DIM}e, ex{RESET})', max_action_length)} → "
             f"{CYAN}Exit the toboggan shell session.{RESET}"
         )
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}size{RESET}', max_action_length)} → "
+            f"{ansi_ljust(f'{GREEN}size{RESET}', max_action_length)} → "
             f"{CYAN}Probe or manually set the max command size.{RESET}"
         )
-        lines.append(f"\t⚙️ Parameters: [bytes] (optional)")
+        lines.append(f"\tParameters: [bytes] (optional)")
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}debug{RESET}', max_action_length)} → "
+            f"{ansi_ljust(f'{GREEN}debug{RESET}', max_action_length)} → "
             f"{CYAN}Toggle debug logging on/off.{RESET}"
         )
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}trace{RESET}', max_action_length)} → "
+            f"{ansi_ljust(f'{GREEN}trace{RESET}', max_action_length)} → "
             f"{CYAN}Toggle trace logging on/off.{RESET}"
         )
         lines.append(
-            f"🔹 {ansi_ljust(f'{GREEN}paths{RESET}', max_action_length)} → "
+            f"{ansi_ljust(f'{GREEN}paths{RESET}', max_action_length)} → "
             f"{CYAN}Show custom paths and command location cache.{RESET}"
         )
-        lines.append(f"\t⚙️ Subcommands: add <paths>, clear")
+        lines.append(f"\tSubcommands: add <paths>, clear")
 
         return "\n".join(lines)
 
@@ -610,7 +610,7 @@ class Terminal:
         action_info = actions_dict.get(action_name)
 
         if not action_info:
-            lines.append(f"{YELLOW}⚠️  Could not retrieve action information{RESET}")
+            lines.append(f"{YELLOW} Could not retrieve action information{RESET}")
             lines.append("")
             lines.append(f"{BOLD}Usage:{RESET}")
             lines.append(
@@ -758,7 +758,7 @@ class Terminal:
         RESET = "\033[0m"
 
         lines = []
-        lines.append(f"\n{BOLD}📂 Custom Command Paths Configuration{RESET}")
+        lines.append(f"\n{BOLD}Custom Command Paths Configuration{RESET}")
         lines.append(DIM + "-" * 70 + RESET)
 
         # Check if OS helper has custom paths (Linux only)
@@ -767,16 +767,16 @@ class Terminal:
             custom_paths = getattr(os_helper, "_LinuxHelper__custom_paths", [])
 
             if custom_paths:
-                lines.append(f"{GREEN}✓{RESET} Custom paths are configured:")
+                lines.append(f"{GREEN}{RESET} Custom paths are configured:")
                 for i, path in enumerate(custom_paths, 1):
                     lines.append(f"  {i}. {CYAN}{path}{RESET}")
             else:
                 lines.append(
-                    f"{YELLOW}ℹ{RESET} No custom paths configured (using standard detection methods)"
+                    f"{YELLOW}{RESET} No custom paths configured (using standard detection methods)"
                 )
 
             lines.append("")
-            lines.append(f"{BOLD}💾 Command Location Cache{RESET}")
+            lines.append(f"{BOLD}Command Location Cache{RESET}")
             lines.append(DIM + "-" * 70 + RESET)
 
             # Get the cache
@@ -784,7 +784,7 @@ class Terminal:
 
             if cache:
                 lines.append(
-                    f"{GREEN}✓{RESET} Cached command locations ({len(cache)} entries):"
+                    f"{GREEN}{RESET} Cached command locations ({len(cache)} entries):"
                 )
                 lines.append("")
 
@@ -801,7 +801,7 @@ class Terminal:
                             f"  {CYAN}{command.ljust(max_cmd_length)}{RESET} → {DIM}(not found){RESET}"
                         )
             else:
-                lines.append(f"{YELLOW}ℹ{RESET} No commands cached yet")
+                lines.append(f"{YELLOW}{RESET} No commands cached yet")
 
             lines.append("")
             lines.append(f"{DIM}Usage: !paths [add <paths>] [clear]{RESET}")
@@ -816,7 +816,7 @@ class Terminal:
             )
         else:
             lines.append(
-                f"{YELLOW}ℹ{RESET} Custom paths feature is only available for Linux targets"
+                f"{YELLOW}{RESET} Custom paths feature is only available for Linux targets"
             )
 
         lines.append(DIM + "-" * 70 + RESET)
@@ -830,7 +830,7 @@ class Terminal:
             path_args: List of paths to add (can include colon-separated strings)
         """
         if self.__target.os != "linux":
-            logger.error("❌ Custom paths feature is only available for Linux targets")
+            logger.error("Custom paths feature is only available for Linux targets")
             return
 
         os_helper = self.__executor.os_helper
@@ -850,22 +850,22 @@ class Terminal:
             if path not in custom_paths:
                 custom_paths.append(path)
                 added_count += 1
-                logger.success(f"✅ Added custom path: {path}")
+                logger.success(f"Added custom path: {path}")
             else:
-                logger.info(f"ℹ️  Path already exists: {path}")
+                logger.info(f" Path already exists: {path}")
 
         # Update the LinuxHelper's custom paths
         setattr(os_helper, "_LinuxHelper__custom_paths", custom_paths)
 
         if added_count > 0:
-            logger.success(f"📂 Added {added_count} new custom path(s)")
+            logger.success(f"Added {added_count} new custom path(s)")
         else:
-            logger.info("ℹ️  No new paths were added")
+            logger.info(" No new paths were added")
 
     def __handle_paths_clear(self) -> None:
         """Clear the command location cache."""
         if self.__target.os != "linux":
-            logger.error("❌ Custom paths feature is only available for Linux targets")
+            logger.error("Custom paths feature is only available for Linux targets")
             return
 
         os_helper = self.__executor.os_helper
@@ -874,9 +874,9 @@ class Terminal:
 
         if cache_size > 0:
             os_helper.clear_command_cache()
-            logger.success(f"🗑️  Cleared {cache_size} cached command location(s)")
+            logger.success(f" Cleared {cache_size} cached command location(s)")
         else:
-            logger.info("ℹ️  Command cache is already empty")
+            logger.info(" Command cache is already empty")
 
     def __prompt(self) -> str:
         """Generate a dynamic shell prompt based on available target information.

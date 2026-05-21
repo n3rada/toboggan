@@ -63,12 +63,12 @@ class HideAction(BaseAction):
         if self.__openssl_path:
             self.__openssl_path = self.__openssl_path.strip()
             self._AES_KEY, self._AES_IV = generate_key_iv()
-            logger.info("🔑 OpenSSL detected, AES encryption enabled.")
-            logger.debug(f"🔐 AES Key: {self._AES_KEY}")
-            logger.debug(f"🔐 AES IV: {self._AES_IV}")
+            logger.info("OpenSSL detected, AES encryption enabled.")
+            logger.debug(f"AES Key: {self._AES_KEY}")
+            logger.debug(f"AES IV: {self._AES_IV}")
         else:
             logger.warning(
-                "⚠️ OpenSSL not found on target, falling back to base64 obfuscation."
+                "OpenSSL not found on target, falling back to base64 obfuscation."
             )
 
     def run(self, command: str) -> str:

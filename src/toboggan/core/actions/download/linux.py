@@ -40,10 +40,10 @@ class DownloadAction(BaseAction):
         ).strip()
 
         if can_read != "R":
-            logger.error(f"❌ No read permission for {remote_path}.")
+            logger.error(f"No read permission for {remote_path}.")
             return
 
-        logger.info(f"📂 File is accessible: {remote_path}")
+        logger.info(f"File is accessible: {remote_path}")
 
         # Determine final local path
         if local_path is None:
@@ -56,7 +56,7 @@ class DownloadAction(BaseAction):
         else:
             save_path = local_path
 
-        logger.info(f"💾 File will be saved to: {save_path}")
+        logger.info(f"File will be saved to: {save_path}")
 
         # Step 2: Compress and Base64-encode the remote file
         random_file_name = common.generate_fixed_length_token(6) + ".tar.gz"
@@ -75,7 +75,7 @@ class DownloadAction(BaseAction):
             command=f"wc -c {remote_base64_path}"
         ).strip()
         if not wc_output:
-            logger.error(f"❌ Failed to retrieve file size for: {remote_path}")
+            logger.error(f"Failed to retrieve file size for: {remote_path}")
             self._executor.remote_execute(command=f"rm -f {remote_base64_path}")
             return False
 
@@ -83,7 +83,7 @@ class DownloadAction(BaseAction):
         total_chunks = (total_encoded_size + command_size - 1) // command_size
 
         logger.info(
-            f"⬇️ Downloading {remote_path} ({total_chunks} chunks) to {save_path}.tar.gz"
+            f"Downloading {remote_path} ({total_chunks} chunks) to {save_path}.tar.gz"
         )
 
         # Step 4: Download in chunks
@@ -105,9 +105,9 @@ class DownloadAction(BaseAction):
                         temp_file.write(chunk.encode())
                         progress_bar.update(len(chunk))
                     except Exception as exc:
-                        logger.warning(f"⚠️ Error writing chunk {idx + 1}: {exc}")
+                        logger.warning(f"Error writing chunk {idx + 1}: {exc}")
                 else:
-                    logger.warning(f"⚠️ Missing chunk {idx + 1}, skipping.")
+                    logger.warning(f"Missing chunk {idx + 1}, skipping.")
 
         # Step 5: Decode and extract
         self._executor.remote_execute(command=f"rm -f {remote_base64_path}")
@@ -122,9 +122,9 @@ class DownloadAction(BaseAction):
             with tarfile.open(temp_tar_path, "r:gz") as tar:
                 tar.extractall(path=local_path)
 
-            logger.success(f"✅ File download and extraction completed: {local_path}")
+            logger.success(f"File download and extraction completed: {local_path}")
         except Exception as exc:
-            logger.error(f"❌ Failed to decode and extract file: {exc}")
+            logger.error(f"Failed to decode and extract file: {exc}")
             return
         finally:
             Path(temp_download_path).unlink(missing_ok=True)

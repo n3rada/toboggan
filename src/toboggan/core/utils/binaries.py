@@ -31,7 +31,7 @@ class BinaryFetcher:
 
         if self._os not in ["linux", "windows"]:
             raise ValueError(
-                f"❌ Unsupported OS: {self._os}. Only 'linux' and 'windows' are supported."
+                f"Unsupported OS: {self._os}. Only 'linux' and 'windows' are supported."
             )
 
     def get(self, name: str) -> Path | None:
@@ -44,7 +44,7 @@ class BinaryFetcher:
             case "curl":
                 return self._fetch_curl()
             case _:
-                raise ValueError(f"❌ Unknown binary: {name}")
+                raise ValueError(f"Unknown binary: {name}")
 
     def _fetch_kubectl(self) -> Path | None:
         """
@@ -78,7 +78,7 @@ class BinaryFetcher:
             )
 
             # Step 3: Download the binary
-            logger.info(f"⬇️ Downloading kubectl {version} → {destination}")
+            logger.info(f"Downloading kubectl {version} → {destination}")
             bin_resp = httpx.get(binary_url, timeout=30.0, verify=False)
             bin_resp.raise_for_status()
 
@@ -86,11 +86,11 @@ class BinaryFetcher:
             destination.write_bytes(bin_resp.content)
             destination.chmod(0o755)
 
-            logger.success(f"✅ kubectl saved to: {destination}")
+            logger.success(f"kubectl saved to: {destination}")
             return destination
 
         except httpx.HTTPError as exc:
-            logger.error(f"❌ Failed to download kubectl: {exc}")
+            logger.error(f"Failed to download kubectl: {exc}")
             return None
 
     def _fetch_curl(self) -> Path | None:
@@ -141,11 +141,11 @@ class BinaryFetcher:
                             extracted = Path(tmpdir) / member.name
                             destination.write_bytes(extracted.read_bytes())
                             destination.chmod(0o755)
-                            logger.success(f"✅ cURL saved to: {destination}")
+                            logger.success(f"cURL saved to: {destination}")
                             return destination
 
                 raise FileNotFoundError("curl binary not found in archive.")
 
         except Exception as e:
-            logger.error(f"❌ Failed to fetch curl: {e}")
+            logger.error(f"Failed to fetch curl: {e}")
             return None

@@ -138,7 +138,7 @@ class WindowsHelper(base.OSHelperBase):
                 command="$PSVersionTable.PSVersion.Major"
             ).strip()
             if result and result.isdigit():
-                logger.info(f"💠 Detected PowerShell (version {result})")
+                logger.info(f"Detected PowerShell (version {result})")
                 return "powershell"
         except Exception:
             pass
@@ -147,7 +147,7 @@ class WindowsHelper(base.OSHelperBase):
         try:
             result = self._executor.remote_execute(command="echo %CMDCMDLINE%").strip()
             if "cmd.exe" in result.lower():
-                logger.info("📟 Detected CMD")
+                logger.info("Detected CMD")
                 return "cmd"
         except Exception:
             pass
@@ -157,7 +157,7 @@ class WindowsHelper(base.OSHelperBase):
             # Test a PowerShell-specific alias
             result = self._executor.remote_execute(command="Get-Alias ls").strip()
             if "Get-ChildItem" in result:
-                logger.info("💠 Detected PowerShell (alias test)")
+                logger.info("Detected PowerShell (alias test)")
                 return "powershell"
         except Exception:
             pass
@@ -170,7 +170,7 @@ class WindowsHelper(base.OSHelperBase):
     def force_powershell(self) -> None:
         """Force shell type to PowerShell (used when obfuscation is enabled)."""
         if self.__shell_type != 'powershell':
-            logger.info("🔄 Switching from CMD to PowerShell for obfuscation support")
+            logger.info("Switching from CMD to PowerShell for obfuscation support")
             self.__shell_type = 'powershell'
     
     # Properties
