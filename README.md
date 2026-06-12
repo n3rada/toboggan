@@ -1,20 +1,18 @@
 # 🛝 Toboggan
 
-Slide into post-exploitation from RCE with ease.
+A Python post-exploitation framework that turns web shells, command injection, and blind RCE into a semi-interactive shell on Linux and Windows targets.
 
 <p align="center">
-    <img src="/media/example.jpg" alt="">
+    <img src="/media/example.jpg" alt="toboggan post-exploitation shell example">
 </p>
 
-Toboggan is a post-exploitation framework that transforms web shells, command injection vulnerabilities, and blind RCE into an upgradable semi-interactive shell on both **Linux** and **Windows** targets. It's the perfect reverse shell alternative for firewalled targets, providing a forward shell handler (`mkfifo`) inside a targeted environment.
+Toboggan bridges the gap between having Remote Code Execution (RCE) and having a usable shell. It wraps any arbitrary command execution primitive into an interactive session with tab completion, history, and modular post-exploitation actions. When a reverse shell is not an option (firewall, NAT, outbound filtering), the built-in forward shell using named pipes (`mkfifo`) gives you stdin/stdout communication through the same HTTP channel.
 
-This works with:
-- **Web shells** (PHP, ASP, JSP backdoors)
-- **Command injection** vulnerabilities
-- **HTTP-based RCE** (web application exploits)
-- **Blind command execution**, where output appears elsewhere (e.g., logfile)
-- **SQL injection** with command execution (`xp_cmdshell`, etc.)
-- Any custom RCE vector you can script
+- **Input sources**: web shells (PHP, ASP, JSP), command injection, HTTP-based RCE, blind command execution, SQL injection with `xp_cmdshell`, or any custom Python `execute()` function
+- **Forward shell**: named-pipe (`mkfifo`) semi-interactive session for firewalled targets with no outbound connectivity
+- **Obfuscation**: AES encryption or base64 encoding of every command to bypass WAF and AV detection
+- **Modular actions**: built-in post-exploitation actions for Linux and Windows (file transfer, privilege escalation, SSH backdoor, SUID hunting, shell upgrade, and more)
+- **Bring Your Own Module**: point toboggan at any Python script that exposes an `execute(command, timeout)` function
 
 ## 📦 Installation
 
