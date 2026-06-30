@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "toboggan"
 version = "0.9.3"
-description = "Turn any RCE primitive into a semi-interactive shell with forward shell and post-exploitation actions."
+description = "Turn any RCE primitive into a semi-interactive shell with forward shell (mkfifo) and post-exploitation actions."
 authors = [
     { name = "n3rada", email = "72791564+n3rada@users.noreply.github.com" }
 ]
@@ -15,7 +15,7 @@ requires-python = ">=3.11,<4.0"
 
 keywords = [
     "post-exploitation", "web-shell", "rce", "command-injection", "blind-rce",
-    "forward-shell", "forward-shell-mkfifo", "reverse-shell", "mkfifo", "named-pipe",
+    "forward-shell", "reverse-shell", "mkfifo", "named-pipe",
     "semi-interactive-shell", "red-team", "pentesting", "offensive-security",
     "privilege-escalation", "shell-upgrade", "obfuscation", "ctf", "python",
     "linux", "windows",
