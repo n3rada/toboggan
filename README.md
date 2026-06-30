@@ -6,7 +6,7 @@ A Python post-exploitation framework that turns web shells, command injection, a
     <img src="/media/example.jpg" alt="toboggan post-exploitation shell example">
 </p>
 
-Toboggan bridges the gap between having Remote Code Execution (RCE) and having a usable shell. It wraps any arbitrary command execution primitive into an interactive session with tab completion, history, and modular post-exploitation actions. When a reverse shell is not an option (firewall, NAT, outbound filtering), the built-in forward shell using named pipes (`mkfifo`) gives you stdin/stdout communication through the same HTTP channel.
+Toboggan bridges the gap between having Remote Code Execution (RCE) and having a usable shell. It wraps any arbitrary command execution primitive into an interactive session with history and modular post-exploitation actions. When a reverse shell is not an option (firewall, NAT, outbound filtering), the built-in forward shell using named pipes (`mkfifo`) gives you stdin/stdout communication through the same HTTP channel.
 
 - **Input sources**: web shells (PHP, ASP, JSP), command injection, HTTP-based RCE, blind command execution, SQL injection with `xp_cmdshell`, or any custom Python `execute()` function
 - **Forward shell**: named-pipe (`mkfifo`) semi-interactive session for firewalled targets with no outbound connectivity
