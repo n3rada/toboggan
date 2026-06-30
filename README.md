@@ -10,12 +10,7 @@ Toboggan bridges the gap between having Remote Code Execution (RCE) [PoC](https:
 
 Point `toboggan` at any Python script that exposes an `execute(command, timeout)` function. It will wrap any command execution primitive into an interactive session with history and modular post-exploitation actions.
 
-When a reverse shell is not an option (firewall, NAT, outbound filtering), the built-in forward shell using named pipes (`mkfifo`) gives you stdin/stdout communication through the same channel.
-
-- **Input sources**: web shells (PHP, ASP, JSP), command injection, HTTP-based RCE, blind command execution, SQL injection with `xp_cmdshell`, or any custom Python `execute()` function
-- **Forward shell**: named-pipe (`mkfifo`) semi-interactive session for firewalled targets with no outbound connectivity
-- **Obfuscation**: pluggable command obfuscation to bypass WAF and AV detection
-- **Modular actions**: built-in post-exploitation actions for Linux and Windows (file transfer, privilege escalation, SSH backdoor, SUID hunting, shell upgrade, and more)
+When a reverse shell is not an option (firewall, NAT, outbound filtering), the built-in forward shell in Linux using named pipes (`mkfifo`) gives you stdin/stdout communication through the same channel.
 
 ## 📦 Installation
 
