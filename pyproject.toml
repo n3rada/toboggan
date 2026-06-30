@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "toboggan"
 version = "0.9.3"
-description = "Post-exploitation toolkit for turning web shells and RCE into interactive shells."
+description = "Turn any RCE primitive into a semi-interactive shell with post-exploitation actions."
 authors = [
     { name = "n3rada", email = "72791564+n3rada@users.noreply.github.com" }
 ]
