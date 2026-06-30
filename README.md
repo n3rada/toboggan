@@ -190,15 +190,21 @@ toboggan ~/phpexploit.py --proxy
 
 ### 🔐 Obfuscation
 
-Obfuscate all commands to evade detection:
+`--obfuscate` (`-O`) wraps each command in a shell-level transformation (using the `obfuscate`/`deobfuscate` actions) before it reaches the target. This is useful against WAF or AV filters that inspect the command string:
+
 ```shell
 toboggan ~/phpexploit.py --obfuscate --os "linux"
 ```
 
-Base64-encode every command before execution:
+`-b64` (`--base64`) encodes the command at the transport level: whatever string Toboggan would send to `execute()` gets base64-encoded first. The target must decode and eval it. Use this when the execution channel requires it or when the module is built to handle it:
+
 ```shell
 toboggan ~/phpexploit.py -b64
 ```
+
+Both flags can be combined. When active together, commands are obfuscated first at the shell level, and the resulting pipeline is then base64-encoded before reaching `execute()`. Toboggan will warn you when both are active so the layering is intentional, not accidental.
+
+Both layers can also be toggled at runtime with `!obfuscate` and `!b64` inside the REPL.
 
 ## 🏗️ Forward Shell (Named Pipes)
 
@@ -324,6 +330,7 @@ toboggan ~/exploit.py        # Then type !<action> -h for action-specific help
 | `!paths add <paths>` | Add custom paths for command lookup |
 | `!paths clear` | Clear the command location cache |
 | `!obfuscate` | Toggle command obfuscation on/off |
+| `!b64` | Toggle base64 wrapping of commands before `execute()` |
 
 ## ⚠️ Disclaimer
 
