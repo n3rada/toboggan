@@ -260,6 +260,10 @@ class Executor(metaclass=SingletonMeta):
     def obfuscation(self) -> bool:
         return self.__obfuscation
 
+    @property
+    def base64_wrapping(self) -> bool:
+        return self.__base64_wrapping
+
     # Public methods
 
     def toggle_obfuscation(self) -> bool:
@@ -282,6 +286,28 @@ class Executor(metaclass=SingletonMeta):
 
         self.__obfuscation = True
         logger.success("Obfuscation enabled")
+        if self.__base64_wrapping:
+            logger.warning(
+                "Both obfuscation and base64 wrapping are active: commands will be "
+                "obfuscated first, then the resulting pipeline will be base64-encoded "
+                "before reaching execute()"
+            )
+        return True
+
+    def toggle_base64(self) -> bool:
+        if self.__base64_wrapping:
+            self.__base64_wrapping = False
+            logger.success("Base64 wrapping disabled")
+            return False
+
+        self.__base64_wrapping = True
+        logger.success("Base64 wrapping enabled")
+        if self.__obfuscation:
+            logger.warning(
+                "Both obfuscation and base64 wrapping are active: commands will be "
+                "obfuscated first, then the resulting pipeline will be base64-encoded "
+                "before reaching execute()"
+            )
         return True
 
     def one_shot_execute(self, command: str = None, debug: bool = False) -> None:

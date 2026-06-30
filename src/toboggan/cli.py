@@ -337,7 +337,13 @@ def main() -> int:
         execution_module = wrapper.module
 
     if args.base64:
-        logger.info("Base64 encoding enabled for all commands.")
+        logger.info("Base64 wrapping enabled: every command will be base64-encoded before reaching execute().")
+        if args.obfuscate:
+            logger.warning(
+                "Both --obfuscate and -b64 are active: commands will be obfuscated "
+                "first, then the resulting pipeline will be base64-encoded before "
+                "reaching execute()"
+            )
 
     # Validate working directory if provided
     if args.working_directory:
