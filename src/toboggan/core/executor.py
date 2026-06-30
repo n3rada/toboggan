@@ -76,11 +76,11 @@ class Executor(metaclass=SingletonMeta):
             if self.__os == "windows" and hasattr(self._os_helper, "force_powershell"):
                 self._os_helper.force_powershell()
 
-            self.__obfuscation_action = self.__action_manager.get_action("hide")(
+            self.__obfuscation_action = self.__action_manager.get_action("obfuscate")(
                 executor=self
             )
 
-            self.__unobfuscation_action = self.__action_manager.get_action("unhide")(
+            self.__unobfuscation_action = self.__action_manager.get_action("deobfuscate")(
                 executor=self
             )
 
@@ -255,7 +255,34 @@ class Executor(metaclass=SingletonMeta):
         self._command_max_size = size
         logger.info(f"Command max size set to: {self._command_max_size} bytes")
 
+    # Properties
+    @property
+    def obfuscation(self) -> bool:
+        return self.__obfuscation
+
     # Public methods
+
+    def toggle_obfuscation(self) -> bool:
+        if self.__obfuscation:
+            self.__obfuscation = False
+            logger.success("Obfuscation disabled")
+            return False
+
+        self.__obfuscation = False
+
+        if self.__os == "windows" and hasattr(self._os_helper, "force_powershell"):
+            self._os_helper.force_powershell()
+
+        self.__obfuscation_action = self.__action_manager.get_action("obfuscate")(
+            executor=self
+        )
+        self.__unobfuscation_action = self.__action_manager.get_action("deobfuscate")(
+            executor=self
+        )
+
+        self.__obfuscation = True
+        logger.success("Obfuscation enabled")
+        return True
 
     def one_shot_execute(self, command: str = None, debug: bool = False) -> None:
         """Execute a command without returning nothing and with a fast timeout.

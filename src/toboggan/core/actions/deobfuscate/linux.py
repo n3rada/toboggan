@@ -1,4 +1,4 @@
-# toboggan/core/actions/unhide/linux.py
+# toboggan/core/actions/deobfuscate/linux.py
 
 # Built-in imports
 import base64
@@ -10,9 +10,9 @@ from loguru import logger
 from toboggan.core.action import BaseAction
 
 
-class UnHideAction(BaseAction):
+class DeobfuscateAction(BaseAction):
     """
-    Reverse the HideAction obfuscation transformation.
+    Reverse the ObfuscateAction transformation.
 
     **IMPORTANT**: This action performs local Python-based decoding and does NOT
     execute any commands on the remote system. It only uses pure Python operations
@@ -23,7 +23,7 @@ class UnHideAction(BaseAction):
     """
 
     DESCRIPTION = (
-        "Reverse the HideAction transformation (rev → base64 → gzip decompress)."
+        "Reverse the ObfuscateAction transformation (rev + base64 decode)."
     )
 
     def run(self, command: str) -> str:

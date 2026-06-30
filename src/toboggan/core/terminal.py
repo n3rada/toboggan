@@ -45,6 +45,7 @@ class TerminalCompleter(Completer):
             "debug": "Toggle debug mode on/off",
             "trace": "Toggle trace mode on/off",
             "paths": "Show custom paths and command location cache",
+            "obfuscate": "Toggle command obfuscation on/off",
         }
 
     def get_completions(
@@ -324,6 +325,12 @@ class Terminal:
 
                         continue
 
+                    if command == "obfuscate":
+                        enabled = self.__executor.toggle_obfuscation()
+                        state = "on" if enabled else "off"
+                        logger.info(f"Obfuscation is now {state}")
+                        continue
+
                     if command == "paths":
                         try:
                             # Handle paths subcommands
@@ -573,6 +580,10 @@ class Terminal:
             f"{CYAN}Show custom paths and command location cache.{RESET}"
         )
         lines.append(f"\tSubcommands: add <paths>, clear")
+        lines.append(
+            f"{ansi_ljust(f'{GREEN}obfuscate{RESET}', max_action_length)} → "
+            f"{CYAN}Toggle command obfuscation on/off.{RESET}"
+        )
 
         return "\n".join(lines)
 

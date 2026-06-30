@@ -242,7 +242,7 @@ class ActionsManager:
             User actions can override system actions with the same name.
             Actions without valid BaseAction classes are skipped with a warning.
         """
-        ignored_actions = {"hide", "unhide"}
+        ignored_actions = {"obfuscate", "deobfuscate"}
         actions = {}
 
         for source_path in [self.__system_actions_path, self.__user_actions_path]:

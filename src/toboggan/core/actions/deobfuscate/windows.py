@@ -1,4 +1,4 @@
-# toboggan/core/actions/unhide/windows.py
+# toboggan/core/actions/deobfuscate/windows.py
 
 # Built-in imports
 import base64
@@ -10,12 +10,12 @@ from loguru import logger
 from toboggan.core.action import BaseAction
 
 
-class UnHideAction(BaseAction):
+class DeobfuscateAction(BaseAction):
     """
-    Reverse the HideAction obfuscation transformation for Windows.
+    Reverse the ObfuscateAction transformation for Windows.
     """
 
-    DESCRIPTION = "Reverse the HideAction transformation (reverse → base64 decode)."
+    DESCRIPTION = "Reverse the ObfuscateAction transformation (reverse + base64 decode)."
 
     def run(self, command: str) -> str:
         try:

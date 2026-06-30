@@ -1,4 +1,4 @@
-# toboggan/core/actions/hide/windows.py
+# toboggan/core/actions/obfuscate/windows.py
 
 # Built-in imports
 import base64
@@ -36,7 +36,7 @@ def encrypt_command(command: str, key_hex: str, iv_hex: str) -> str:
     return base64.b64encode(encrypted).decode()
 
 
-class HideAction(BaseAction):
+class ObfuscateAction(BaseAction):
     """
     Obfuscate and execute commands using AES-256-CBC encryption or base64 encoding.
 

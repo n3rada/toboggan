@@ -37,11 +37,11 @@ class TestActionsManagerValidation:
         found = set(actions.keys())
         assert expected.issubset(found), f"Missing actions: {expected - found}"
 
-    def test_windows_hide_unhide_excluded(self):
+    def test_windows_obfuscate_deobfuscate_excluded(self):
         manager = ActionsManager(target_os="windows")
         actions = manager.get_actions()
-        assert "hide" not in actions
-        assert "unhide" not in actions
+        assert "obfuscate" not in actions
+        assert "deobfuscate" not in actions
 
     def test_windows_actions_have_path(self):
         manager = ActionsManager(target_os="windows")
@@ -54,11 +54,11 @@ class TestActionsManagerValidation:
         action_cls = manager.get_action("download")
         assert action_cls is not None
 
-    def test_hide_unhide_excluded(self):
+    def test_obfuscate_deobfuscate_excluded(self):
         manager = ActionsManager(target_os="linux")
         actions = manager.get_actions()
-        assert "hide" not in actions
-        assert "unhide" not in actions
+        assert "obfuscate" not in actions
+        assert "deobfuscate" not in actions
 
     def test_actions_have_path(self):
         manager = ActionsManager(target_os="linux")
