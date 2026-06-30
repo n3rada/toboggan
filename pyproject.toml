@@ -15,9 +15,9 @@ requires-python = ">=3.11,<4.0"
 
 keywords = [
     "post-exploitation", "web-shell", "rce", "command-injection", "blind-rce",
-    "forward-shell", "reverse-shell", "mkfifo", "named-pipe",
-    "red-team", "pentesting", "offensive-security", "privilege-escalation",
-    "shell-upgrade", "obfuscation", "ctf", "python",
+    "forward-shell", "forward-shell-mkfifo", "reverse-shell", "mkfifo", "named-pipe",
+    "semi-interactive-shell", "red-team", "pentesting", "offensive-security",
+    "privilege-escalation", "shell-upgrade", "obfuscation", "ctf", "python",
     "linux", "windows",
 ]
 
