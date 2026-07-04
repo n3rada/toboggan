@@ -1,12 +1,10 @@
 # 🛝 Toboggan
 
-A Python post-exploitation framework that turns web shells, command injection, and blind RCE into a semi-interactive shell on Linux and Windows targets.
+Toboggan bridges the gap between having Remote Code Execution (RCE) [PoC](https://github.com/n3rada/toboggan#-rce-module-interface) and having a usable semi-interactive shell on Linux and Windows targets.
 
 <p align="center">
     <img src="/media/example.jpg" alt="toboggan post-exploitation shell example">
 </p>
-
-Toboggan bridges the gap between having Remote Code Execution (RCE) [PoC](https://github.com/n3rada/toboggan#-rce-module-interface) and having a usable shell. 
 
 Point `toboggan` at any Python script that exposes an `execute(command, timeout)` function. It will wrap any command execution primitive into an interactive session with history and modular post-exploitation actions.
 
