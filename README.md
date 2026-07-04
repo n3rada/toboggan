@@ -240,38 +240,7 @@ toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
 
 Actions are modular plugins executed via the `!` prefix inside the terminal session. Use `!help` to list all available actions.
 
-### 🐧 Linux Actions
-
-| Action | Description |
-|---|---|
-| [`download`](src/toboggan/core/actions/download/linux.py) | Retrieve a file remotely, compress it, and save it locally |
-| [`upload`](src/toboggan/core/actions/upload/linux.py) | Compress, encode, and upload a local file to the remote system |
-| [`fifo`](src/toboggan/core/actions/fifo/linux.py) | Start a semi-interactive session using named pipes |
-| [`upgrade`](src/toboggan/core/actions/upgrade/linux.py) | Attempt to upgrade a limited shell to a TTY |
-| [`netcheck`](src/toboggan/core/actions/netcheck/linux.py) | Check outbound connectivity (ICMP, DNS, HTTP) |
-| [`ip`](src/toboggan/core/actions/ip/linux.py) | Display network interfaces and IP addresses |
-| [`users`](src/toboggan/core/actions/users/linux.py) | Enumerate system users |
-| [`history`](src/toboggan/core/actions/history/linux.py) | Retrieve all users' shell command history |
-| [`path`](src/toboggan/core/actions/path/linux.py) | List remote system's PATH entries |
-| [`privbins`](src/toboggan/core/actions/privbins/linux.py) | Find SUID/SGID binaries for privilege escalation |
-| [`read_others`](src/toboggan/core/actions/read_others/linux.py) | Scan other users' home directories for readable files |
-| [`ssh_find`](src/toboggan/core/actions/ssh_find/linux.py) | Search for SSH private keys on the system |
-| [`ssh_backdoor`](src/toboggan/core/actions/ssh_backdoor/linux.py) | Generate and drop an SSH key into a user's `.ssh` directory |
-| [`peas`](src/toboggan/core/actions/peas/linux.py) | Upload and execute [linpeas.sh](https://github.com/peass-ng/PEASS-ng) on the target |
-| [`kube_check`](src/toboggan/core/actions/kube_check/linux.py) | Check for Kubernetes environment indicators |
-| [`drop_bin`](src/toboggan/core/actions/drop_bin/linux.py) | Upload a binary to the target and make it executable |
-| [`drop_static`](src/toboggan/core/actions/drop_static/linux.py) | Drop a prebuilt static binary (curl, kubectl) |
-
-### 🪟 Windows Actions
-
-| Action | Description |
-|---|---|
-| [`download`](src/toboggan/core/actions/download/windows.py) | Retrieve a file remotely |
-| [`upload`](src/toboggan/core/actions/upload/windows.py) | Encode and upload a local file |
-| [`netcheck`](src/toboggan/core/actions/netcheck/windows.py) | Check outbound connectivity |
-| [`history`](src/toboggan/core/actions/history/windows.py) | Retrieve shell command history |
-
-## 🧩 Bring Your Own Actions (BYOA)
+### 🧩 Bring Your Own Actions (BYOA)
 
 Custom actions can be placed in the user action directory. Toboggan loads user actions with priority over built-in ones, allowing you to override or extend functionality.
 
@@ -286,7 +255,7 @@ Each action is a Python file inside a subdirectory named after the action, with 
 actions/
   my_action/
     linux.py    # Linux implementation
-    windows.py  # Windows implementation (optional)
+    windows.py  # Windows implementation
 ```
 
 Your action class must inherit from `BaseAction` and implement the `run()` method. See [DEVELOPMENT.md](DEVELOPMENT.md) for the full guide on creating actions.
