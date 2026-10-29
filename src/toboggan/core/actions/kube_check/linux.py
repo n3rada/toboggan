@@ -70,8 +70,13 @@ class KubeCheckAction(BaseAction):
                     "Same /etc/passwd inside and outside — likely no escape or already on host."
                 )
 
+        curl_path = self._executor.os_helper.get_command_location("curl").strip()
+        if not curl_path:
+            logger.warning("No usable curl binary found.")
+            return
+
         # Base curl command
-        curl_base = f"curl -sS --cacert {cert_path} -H 'Authorization: Bearer {token}'"
+        curl_base = f"{curl_path} -sS --cacert {cert_path} -H 'Authorization: Bearer {token}'"
 
         namespace = (
             self._executor.remote_execute(f"cat {namespace_path}").strip() or "default"
@@ -142,7 +147,7 @@ class KubeCheckAction(BaseAction):
         ).strip()
 
         if node_ip:
-            kubelet_cmd = f"curl -sk https://{node_ip}:10250/pods"
+            kubelet_cmd = f"{curl_path} -sk https://{node_ip}:10250/pods"
             result = self._executor.remote_execute(kubelet_cmd, timeout=5)
             if result:
                 logger.success(f"Kubelet at {node_ip}:10250 responded.")
