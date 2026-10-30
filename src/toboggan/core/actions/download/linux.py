@@ -1,18 +1,20 @@
 # toboggan/core/actions/download/linux.py
 
-# Standard library imports
+# Built-in imports
 import base64
+import shlex
 import tarfile
 from pathlib import Path
 import tempfile
 
-# Third party library imports
+# External library imports
 from loguru import logger
 from tqdm import tqdm
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.utils import common
+from toboggan.core.utils.transfer import receive_chunks, validate_chunk_size
 
 
 class DownloadAction(BaseAction):
@@ -20,7 +22,10 @@ class DownloadAction(BaseAction):
 
     DESCRIPTION = "Retrieve a file remotely, compress it, and save it locally."
 
-    def run(self, remote_path: str, local_path: str = None, command_size: int = 4096):
+    def run(
+        self, remote_path: str, local_path: str | None = None,
+        command_size: int | str | None = None,
+    ) -> bool:
         """
         Attempts to compress, encode, and retrieve a remote file in chunks, saving it locally.
 
@@ -28,33 +33,61 @@ class DownloadAction(BaseAction):
             remote_path (str): Path to the remote file.
             local_path (str, optional): Path where the file should be saved. If a directory, saves inside.
                                         If None, saves in the current working directory.
-            command_size (int, optional): Size of each chunk to be retrieved. Defaults to 4096.
+            command_size (int, optional): Initial chunk size. Defaults to the executor's
+                                         command_max_size; reduced if responses are short.
 
         Returns:
             bool: True if the file was successfully downloaded and extracted, False otherwise.
         """
 
-        # Check if the file is readable
-        can_read = self._executor.remote_execute(
-            command=f"test -r {remote_path} && echo R || echo U"
-        ).strip()
+        try:
+            if command_size is not None:
+                command_size = validate_chunk_size(command_size)
+        except ValueError as exc:
+            logger.error(str(exc))
+            return False
+
+        commands = {
+            name: self._os_helper.get_command_location(name)
+            for name in ("test", "printf", "tar", "base64", "wc", "dd", "rm")
+        }
+        missing = [name for name, command in commands.items() if not command]
+        if missing:
+            logger.error(f"Required download commands unavailable: {', '.join(missing)}")
+            return False
+
+        try:
+            can_read = self._executor.remote_execute(
+                command=(
+                    f"{commands['test']} -r {shlex.quote(remote_path)} && "
+                    f"{commands['printf']} R || {commands['printf']} U"
+                ),
+                retry=False, raise_on_failure=True, debug=False,
+            ).strip()
+        except Exception as exc:
+            logger.error(f"Cannot check remote file accessibility: {exc}")
+            return False
 
         if can_read != "R":
             logger.error(f"No read permission for {remote_path}.")
-            return
+            return False
 
         logger.info(f"File is accessible: {remote_path}")
 
-        # Determine final local path
-        if local_path is None:
-            local_path = Path.cwd()
-        else:
-            local_path = Path(local_path)
+        if command_size is None:
+            try:
+                command_size = self._executor.ensure_command_max_size()
+            except Exception as exc:
+                logger.error(f"Cannot determine download chunk size: {exc}")
+                return False
 
-        if local_path.is_dir():
-            save_path = local_path / Path(remote_path).name
+        # Determine final local path
+        local_destination = Path.cwd() if local_path is None else Path(local_path)
+
+        if local_destination.is_dir():
+            save_path = local_destination / Path(remote_path).name
         else:
-            save_path = local_path
+            save_path = local_destination
 
         logger.info(f"File will be saved to: {save_path}")
 
@@ -63,71 +96,68 @@ class DownloadAction(BaseAction):
         remote_archive = f"{self._executor.working_directory}/{random_file_name}"
         remote_base64_path = f"{remote_archive}.b64"
 
-        # Tar and encode
-        tar_path = self._executor.os_helper.get_command_location("tar")
-        base64_path = self._executor.os_helper.get_command_location("base64")
-        self._executor.remote_execute(
-            command=f"{tar_path} czf - {remote_path} | {base64_path} -w0 > {remote_base64_path}"
-        )
+        encoded_remote = shlex.quote(remote_base64_path)
 
-        # Step 3: Get the encoded file size
-        wc_output = self._executor.remote_execute(
-            command=f"wc -c {remote_base64_path}"
-        ).strip()
-        if not wc_output:
-            logger.error(f"Failed to retrieve file size for: {remote_path}")
-            self._executor.remote_execute(command=f"rm -f {remote_base64_path}")
-            return False
-
-        total_encoded_size = int(wc_output.split()[0])
-        total_chunks = (total_encoded_size + command_size - 1) // command_size
-
-        logger.info(
-            f"Downloading {remote_path} ({total_chunks} chunks) to {save_path}.tar.gz"
-        )
-
-        # Step 4: Download in chunks
-        temp_download_path = tempfile.mktemp(suffix=".b64")
-        with (
-            open(temp_download_path, "wb") as temp_file,
-            tqdm(
-                total=total_encoded_size, unit="B", unit_scale=True, desc="Downloading"
-            ) as progress_bar,
-        ):
-            for idx in range(total_chunks):
-                offset = idx * command_size
-                chunk = self._executor.remote_execute(
-                    command=f"dd if={remote_base64_path} bs=1 skip={offset} count={command_size} 2>/dev/null"
-                ).strip()
-
-                if chunk:
-                    try:
-                        temp_file.write(chunk.encode())
-                        progress_bar.update(len(chunk))
-                    except Exception as exc:
-                        logger.warning(f"Error writing chunk {idx + 1}: {exc}")
-                else:
-                    logger.warning(f"Missing chunk {idx + 1}, skipping.")
-
-        # Step 5: Decode and extract
-        self._executor.remote_execute(command=f"rm -f {remote_base64_path}")
+        def read_chunk(offset: int, size: int) -> str:
+            return self._executor.remote_execute(
+                command=(
+                    f"{commands['dd']} if={encoded_remote} bs=1 skip={offset} "
+                    f"count={size} 2>/dev/null"
+                ),
+                timeout=30, retry=False, raise_on_failure=True, debug=False,
+            )
 
         try:
-            decoded_data = base64.b64decode(Path(temp_download_path).read_bytes())
-            temp_tar_path = temp_download_path.replace(".b64", ".tar.gz")
-            with open(temp_tar_path, "wb") as tar_file:
-                tar_file.write(decoded_data)
+            self._executor.remote_execute(
+                command=(
+                    f"{commands['tar']} czf - {shlex.quote(remote_path)} | "
+                    f"{commands['base64']} -w0 > {encoded_remote}"
+                ),
+                timeout=60, retry=False, raise_on_failure=True,
+            )
+            wc_output = self._executor.remote_execute(
+                command=f"{commands['wc']} -c < {encoded_remote}",
+                retry=False, raise_on_failure=True,
+            ).strip()
+            if not wc_output or not wc_output.split()[0].isdigit():
+                raise ValueError(f"Failed to retrieve file size for: {remote_path}")
+            total_encoded_size = int(wc_output.split()[0])
+            logger.info(
+                f"Downloading {remote_path} ({total_encoded_size} encoded bytes, "
+                f"initial chunk size {command_size}) to {save_path}.tar.gz"
+            )
 
-            # Extract contents
-            with tarfile.open(temp_tar_path, "r:gz") as tar:
-                tar.extractall(path=local_path)
-
-            logger.success(f"File download and extraction completed: {local_path}")
+            with tempfile.TemporaryDirectory() as temp_dir:
+                encoded_path = Path(temp_dir) / "download.b64"
+                archive_path = Path(temp_dir) / "download.tar.gz"
+                with (
+                    encoded_path.open("wb") as temp_file,
+                    tqdm(
+                        total=total_encoded_size, unit="B", unit_scale=True,
+                        desc="Downloading",
+                    ) as progress_bar,
+                ):
+                    receive_chunks(
+                        read_chunk, temp_file, total_encoded_size, command_size,
+                        progress_bar.update,
+                    )
+                archive_path.write_bytes(
+                    base64.b64decode(encoded_path.read_bytes(), validate=True)
+                )
+                with tarfile.open(archive_path, "r:gz") as tar:
+                    tar.extractall(path=local_destination)
+            logger.success(f"File download and extraction completed: {local_destination}")
+            return True
         except Exception as exc:
-            logger.error(f"Failed to decode and extract file: {exc}")
-            return
+            logger.error(f"File download failed: {exc}")
+            return False
         finally:
-            Path(temp_download_path).unlink(missing_ok=True)
-            Path(temp_tar_path).unlink(missing_ok=True)
-
-        return
+            try:
+                self._executor.remote_execute(
+                    command=f"{commands['rm']} -f {encoded_remote}",
+                    retry=False, raise_on_failure=True, debug=False
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"Could not remove remote download data {remote_base64_path}: {exc}"
+                )

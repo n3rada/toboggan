@@ -1,207 +1,143 @@
-# toboggan/core/actions/upload/windows.py
-
-# Standard library imports
+# Built-in imports
 import base64
 import hashlib
+import ntpath
+import re
 from pathlib import Path
 
-# Related third-party imports
+# External library imports
 from loguru import logger
 from tqdm import tqdm
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.utils.common import generate_fixed_length_token
+from toboggan.core.utils.transfer import send_chunks, validate_chunk_size
 
 
 class UploadAction(BaseAction):
-    """Handles secure file uploads to a Windows remote system."""
+    """Encode and upload a local file, verifying writes and the final checksum."""
 
-    DESCRIPTION = "Encode and upload a local file to a remote Windows system."
+    DESCRIPTION = "Encode and upload a local file to a Windows remote system."
 
-    def run(self, local_path: str, remote_path: str = None):
-        """
-        Encodes and transfers a local file to a remote Windows system in chunks.
+    def _command(self, script: str) -> str:
+        if self._os_helper.shell_type == "powershell":
+            return script
+        # EncodedCommand requires UTF-16LE, including when invoked from CMD.
+        # https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_exe
+        encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+        return f"powershell -nop -EncodedCommand {encoded}"
 
-        Args:
-            local_path (str): Path to the local file.
-            remote_path (str, optional): Destination path on the remote system.
-                                         Can be a directory or full file path.
-                                         Defaults to the current working directory.
-        """
-        # Normalize path and handle potential encoding issues
-        local_path = str(local_path).strip()
-        
-        # On Windows, handle both forward and backward slashes
+    def run(
+        self, local_path: str, remote_path: str | None = None,
+        command_size: int | str | None = None,
+    ) -> bool:
+        """Upload using the session size or a per-transfer command-size override."""
         local_file = Path(local_path)
-        
-        # Additional validation with resolved path
-        try:
-            if not local_file.exists():
-                # Try resolving the path in case of relative paths or symlinks
-                local_file = local_file.resolve()
-        except Exception as e:
-            logger.error(f"Error resolving path '{local_path}': {e}")
-            return
-        
-        if not local_file.exists():
-            logger.error(f"Local file does not exist: {local_path}")
-            logger.debug(f"Attempted to access: {local_file}")
-            return
-            
         if not local_file.is_file():
-            logger.error(f"Path is not a file: {local_path}")
-            return
+            logger.error(f"Local file does not exist: {local_path}")
+            return False
+        try:
+            limit = validate_chunk_size(
+                self._executor.ensure_command_max_size()
+                if command_size is None else command_size
+            )
+            raw_bytes = local_file.read_bytes()
+        except Exception as exc:
+            logger.error(f"Cannot prepare upload: {exc}")
+            return False
 
-        current_working_directory = self._executor.target.pwd.rstrip("\\")
-
-        # Default remote path to current working directory if not provided
+        directory = self._executor.target.pwd
         if not remote_path:
-            remote_path = f"{current_working_directory}\\{local_file.name}"
+            remote_path = ntpath.join(directory, local_file.name)
         else:
-            # Normalize to Windows path
             remote_path = remote_path.replace("/", "\\")
-
-            # Handle relative paths
-            if remote_path.startswith(".\\"):
-                remote_path = remote_path.lstrip(".\\")
-
-            # If not absolute path, make it relative to current directory
-            if not (remote_path[1:3] == ":\\" or remote_path.startswith("\\\\")):
-                remote_path = f"{current_working_directory}\\{remote_path}"
-
-            # If remote_path looks like a directory (ends with \), append filename
+            if not ntpath.isabs(remote_path):
+                remote_path = ntpath.join(directory, remote_path)
             if remote_path.endswith("\\"):
-                base_path = remote_path.rstrip("\\")
-                remote_path = f"{base_path}\\{local_file.name}"
+                remote_path += local_file.name
 
-        logger.info(f"Uploading {local_path} to {remote_path}")
-
-        # Define remote encoded path early
-        remote_encoded_path = (
-            f"{self._executor.working_directory}\\{generate_fixed_length_token(24)}.b64"
+        remote_encoded_path = ntpath.join(
+            self._executor.working_directory, generate_fixed_length_token(24) + ".b64"
         )
+        staged = "'" + remote_encoded_path.replace("'", "''") + "'"
+        destination = "'" + remote_path.replace("'", "''") + "'"
+        encoded_file = base64.b64encode(raw_bytes).decode("ascii")
+        local_md5 = hashlib.md5(raw_bytes).hexdigest()
 
-        # Clean up any leftover encoded file from previous runs
-        self._executor.remote_execute(
-            f'Remove-Item -LiteralPath "{remote_encoded_path}" -Force -EA 0',
-            retry=False,
+        def make_command(offset: int, chunk: str) -> str:
+            # Truncate unacknowledged bytes before retrying the same offset.
+            # https://learn.microsoft.com/en-us/dotnet/api/system.io.filestream.setlength
+            return self._command(
+                "$ErrorActionPreference='Stop';"
+                f"$f=[IO.File]::OpenWrite({staged});"
+                f"try{{$f.SetLength({offset});$f.Position={offset};"
+                f"$b=[Text.Encoding]::ASCII.GetBytes('{chunk}');"
+                "$f.Write($b,0,$b.Length);$f.Length}finally{$f.Dispose()}"
+            )
+
+        decode_cmd = self._command(
+            "$ErrorActionPreference='Stop';"
+            f"$b=[Convert]::FromBase64String([IO.File]::ReadAllText({staged}));"
+            f"[IO.File]::WriteAllBytes({destination},$b)"
         )
+        checksum_cmd = self._command(
+            "$ErrorActionPreference='Stop';"
+            "$md5=[Security.Cryptography.MD5]::Create();"
+            f"$f=[IO.File]::OpenRead({destination});"
+            "try{[BitConverter]::ToString($md5.ComputeHash($f)).Replace('-','')}"
+            "finally{$f.Dispose();$md5.Dispose()}"
+        )
+        cleanup_cmd = self._command(
+            f"if(Test-Path -LiteralPath {staged}){{"
+            f"Remove-Item -LiteralPath {staged} -Force -ErrorAction Stop}}"
+        )
+        if any(
+            len(command.encode("utf-8")) > limit
+            for command in (make_command(0, ""), decode_cmd, checksum_cmd, cleanup_cmd)
+        ):
+            logger.error("Command size is too small for the upload command overhead.")
+            return False
 
-        # Step 1: Base64 encode the file
-        raw_bytes = local_file.read_bytes()
-        encoded_file = base64.b64encode(raw_bytes).decode("utf-8")
-
-        # Calculate local MD5 of original file
-        local_md5 = hashlib.md5(raw_bytes).hexdigest().upper()
-        logger.info(f"Local MD5: {local_md5}")
-
-        command_size = self._executor.command_max_size
-        encoded_size = len(encoded_file)
-        total_chunks = (encoded_size + command_size - 1) // command_size
+        def execute(command: str) -> str:
+            return self._executor.remote_execute(
+                command, timeout=30, retry=False, raise_on_failure=True, debug=False
+            )
 
         logger.info(
-            f"Encoded file size: {encoded_size} bytes ({total_chunks} chunks)"
+            f"Uploading {local_path} to {remote_path} "
+            f"({len(encoded_file)} encoded bytes, command limit {limit})."
         )
-
-        # Step 2: Upload in chunks
-        logger.info(
-            f"Uploading {local_file.name} in chunks to: {self._executor.working_directory}"
-        )
-
         try:
             with tqdm(
-                total=encoded_size, unit="B", unit_scale=True, desc="Uploading"
-            ) as progress_bar:
-                for idx in range(total_chunks):
-                    chunk = encoded_file[idx * command_size : (idx + 1) * command_size]
-
-                    if self._os_helper.shell_type == "powershell":
-                        # Use Add-Content for appending
-                        upload_cmd = f'Add-Content -LiteralPath "{remote_encoded_path}" -Value "{chunk}" -NoNewline -EA Stop'
-                    else:
-                        # CMD: invoke PowerShell
-                        # Escape double quotes for CMD
-                        escaped_chunk = chunk.replace('"', '`"')
-                        upload_cmd = f'powershell -nop -c "Add-Content -LiteralPath \\"{remote_encoded_path}\\" -Value \\"{escaped_chunk}\\" -NoNewline -EA Stop"'
-
-                    self._executor.remote_execute(upload_cmd, timeout=30, debug=False)
-                    progress_bar.update(len(chunk))
-
-        except KeyboardInterrupt:
-            logger.warning("Upload interrupted by user. Cleaning up...")
+                total=len(encoded_file), unit="B", unit_scale=True, desc="Uploading",
+                disable=logger._core.min_level <= logger.level("TRACE").no,
+            ) as progress:
+                send_chunks(execute, make_command, encoded_file, limit, progress.update)
             self._executor.remote_execute(
-                f'Remove-Item -LiteralPath "{remote_encoded_path}" -Force -EA 0',
-                retry=False,
+                decode_cmd, timeout=60, retry=False, raise_on_failure=True
             )
-            return
+            remote_md5 = execute(checksum_cmd).strip()
+            if not re.fullmatch(r"[0-9a-fA-F]{32}", remote_md5):
+                raise ValueError("Remote file checksum unavailable or invalid.")
+            if remote_md5.lower() != local_md5:
+                raise ValueError("MD5 mismatch; the uploaded file may be corrupted.")
+            logger.success(f"File uploaded and checksum verified: {remote_path}")
+            return True
+        except KeyboardInterrupt:
+            logger.warning("Upload interrupted; cleaning up staged data.")
+            return False
         except Exception as exc:
             logger.error(f"Upload failed: {exc}")
-            self._executor.remote_execute(
-                f'Remove-Item -LiteralPath "{remote_encoded_path}" -Force -EA 0',
-                retry=False,
-            )
-            return
-
-        logger.success(f"Remote encoded file created: {remote_encoded_path}")
-
-        # Step 3: Decode remotely
-        logger.info(f"Decoding remotely to {remote_path}")
-
-        if self._os_helper.shell_type == "powershell":
-            # Use explicit ASCII encoding for base64 data
-            decode_cmd = f"""
-$ProgressPreference='SilentlyContinue'
-$enc = [IO.File]::ReadAllText("{remote_encoded_path}", [Text.Encoding]::ASCII)
-$bytes = [Convert]::FromBase64String($enc)
-[IO.File]::WriteAllBytes("{remote_path}", $bytes)
-""".strip()
-        else:
-            # CMD: invoke PowerShell with explicit ASCII encoding
-            decode_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $enc = [IO.File]::ReadAllText('{remote_encoded_path}', [Text.Encoding]::ASCII); $bytes = [Convert]::FromBase64String($enc); [IO.File]::WriteAllBytes('{remote_path}', $bytes)" """.strip()
-
-        result = self._executor.remote_execute(decode_cmd, retry=True, timeout=60)
-
-        # Cleanup encoded file
-        self._executor.remote_execute(
-            f'Remove-Item -LiteralPath "{remote_encoded_path}" -Force -EA 0',
-            retry=False,
-        )
-
-        # Step 4: Verify with MD5 checksum
-        logger.info("Verifying file integrity")
-
-        if self._os_helper.shell_type == "powershell":
-            # Use .NET directly for better compatibility (Get-FileHash requires PS 4.0+)
-            md5_cmd = f"""
-$ProgressPreference='SilentlyContinue'
-$md5 = [System.Security.Cryptography.MD5]::Create()
-$fs = [IO.File]::OpenRead("{remote_path}")
-$hash = $md5.ComputeHash($fs)
-$fs.Close()
-$md5.Dispose()
-[BitConverter]::ToString($hash).Replace('-','')
-""".strip()
-        else:
-            # CMD: invoke PowerShell with .NET MD5
-            md5_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $md5 = [System.Security.Cryptography.MD5]::Create(); $fs = [IO.File]::OpenRead('{remote_path}'); $hash = $md5.ComputeHash($fs); $fs.Close(); $md5.Dispose(); [BitConverter]::ToString($hash).Replace('-','')" """.strip()
-
-        remote_md5 = self._executor.remote_execute(md5_cmd, timeout=30).strip()
-
-        if not remote_md5 or len(remote_md5) != 32:
-            logger.error(f"Failed to verify the file at {remote_path}.")
-            if remote_md5:
-                logger.debug(f"Received MD5 output: {remote_md5}")
-            return
-
-        logger.info(f"Remote MD5: {remote_md5}")
-
-        if remote_md5.upper() != local_md5.upper():
-            logger.warning("MD5 mismatch!")
-            logger.warning("The uploaded file may be corrupted.")
-        else:
-            logger.success("MD5 checksum matched.")
-
-        logger.success(f"File uploaded successfully: {remote_path}")
-
-        return
+            return False
+        finally:
+            try:
+                output = execute(cleanup_cmd).strip()
+                if output:
+                    logger.warning(
+                        f"Cleanup of {remote_encoded_path} returned: {output}"
+                    )
+            except Exception as exc:
+                logger.warning(
+                    f"Could not remove staged upload {remote_encoded_path}: {exc}"
+                )

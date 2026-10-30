@@ -494,7 +494,9 @@ class Terminal:
                                 logger.error(f"Action '{command}' failed: {exc}")
                                 continue
 
-                            if action_output is not None:
+                            if action_output is not None and not isinstance(
+                                action_output, bool
+                            ):
                                 print(action_output)
 
                         except Exception as exc:

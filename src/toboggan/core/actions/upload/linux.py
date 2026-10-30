@@ -1,144 +1,129 @@
-# toboggan/core/actions/upload/linux.py
-
-# Standard library imports
+# Built-in imports
 import base64
 import hashlib
+import posixpath
+import re
+import shlex
 from pathlib import Path
 
-# Related third-party imports
+# External library imports
 from loguru import logger
 from tqdm import tqdm
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.utils.common import generate_fixed_length_token
+from toboggan.core.utils.transfer import send_chunks, validate_chunk_size
 
 
 class UploadAction(BaseAction):
-    """Handles secure file uploads to a remote system."""
+    """Encode and upload a local file, verifying writes and the final checksum."""
 
-    DESCRIPTION = "Compress, encode, and upload a local file to a remote system."
+    DESCRIPTION = "Encode and upload a local file to a remote system."
 
-    def run(self, local_path: str, remote_path: str = None):
-        """
-        Compresses, encodes, and transfers a local file to a remote system in chunks.
-
-        Args:
-            local_path (str): Path to the local file.
-            remote_path (str, optional): Destination path on the remote system.
-                                         Can be a directory or full file path.
-                                         Defaults to the current working directory.
-        """
+    def run(
+        self, local_path: str, remote_path: str | None = None,
+        command_size: int | str | None = None,
+    ) -> bool:
+        """Upload using the session size or a per-transfer command-size override."""
         local_file = Path(local_path)
-        if not local_file.exists() or not local_file.is_file():
+        if not local_file.is_file():
             logger.error(f"Local file does not exist: {local_path}")
-            return
+            return False
+        try:
+            limit = validate_chunk_size(
+                self._executor.ensure_command_max_size()
+                if command_size is None else command_size
+            )
+            raw_bytes = local_file.read_bytes()
+        except Exception as exc:
+            logger.error(f"Cannot prepare upload: {exc}")
+            return False
 
-        current_working_directory = self._executor.target.pwd.rstrip("/")
-
-        # Default remote path to current working directory if not provided
+        directory = self._executor.target.pwd
         if not remote_path:
-            remote_path = f"{current_working_directory}/{local_file.name}"
+            remote_path = posixpath.join(directory, local_file.name)
         else:
-
-            if remote_path.startswith("./"):
-                remote_path = remote_path.lstrip("./")
-
-            if not remote_path.startswith("/"):
-                remote_path = f"{current_working_directory}/{remote_path}"
-
-            # If remote_path looks like a directory (ends with /), append filename
+            if not posixpath.isabs(remote_path):
+                remote_path = posixpath.join(directory, remote_path)
             if remote_path.endswith("/"):
-                remote_path = f"{remote_path.rstrip('/')}/{local_file.name}"
+                remote_path += local_file.name
 
-        logger.info(f"Uploading {local_path} to {remote_path}")
+        commands = {
+            name: self._os_helper.get_command_location(name)
+            for name in ("printf", "dd", "wc", "base64", "md5sum", "rm")
+        }
+        missing = [name for name, command in commands.items() if not command]
+        if missing:
+            logger.error(f"Required upload commands unavailable: {', '.join(missing)}")
+            return False
 
         remote_encoded_path = (
             f"{self._executor.working_directory}/{generate_fixed_length_token(24)}"
         )
-
-        # Clean up any leftover encoded file from previous runs
-        self._executor.remote_execute(f"rm -f {remote_encoded_path}")
-
-        # Step 1: Compress & base64 encode the file
-        raw_bytes = local_file.read_bytes()
-        encoded_file = base64.b64encode(raw_bytes).decode("utf-8")
-
-        # Calculate local MD5 of original file
+        staged = shlex.quote(remote_encoded_path)
+        destination = shlex.quote(remote_path)
+        encoded_file = base64.b64encode(raw_bytes).decode("ascii")
         local_md5 = hashlib.md5(raw_bytes).hexdigest()
-        logger.info(f"Local MD5: {local_md5}")
 
-        # Calculate effective chunk size accounting for command overhead
-        # Command format: printf %s {chunk} >> {remote_encoded_path}
-        command_overhead = len("printf %s ") + len(" >> ") + len(remote_encoded_path)
-        command_size = max(1, self._executor.command_max_size - command_overhead)
+        def make_command(offset: int, chunk: str) -> str:
+            # Without conv=notrunc, dd discards any old tail beyond the seek offset.
+            # https://www.gnu.org/software/coreutils/manual/html_node/dd-invocation.html
+            return (
+                f"{commands['printf']} %s '{chunk}' | {commands['dd']} of={staged} "
+                f"bs=1 seek={offset} 2>/dev/null && {commands['wc']} -c < {staged}"
+            )
 
-        encoded_size = len(encoded_file)
-        total_chunks = (encoded_size + command_size - 1) // command_size
+        decode_cmd = f"{commands['base64']} -d {staged} > {destination}"
+        checksum_cmd = f"{commands['md5sum']} {destination}"
+        cleanup_cmd = f"{commands['rm']} -f {staged}"
+        if any(
+            len(command.encode("utf-8")) > limit
+            for command in (make_command(0, ""), decode_cmd, checksum_cmd, cleanup_cmd)
+        ):
+            logger.error("Command size is too small for the upload command overhead.")
+            return False
+
+        def execute(command: str) -> str:
+            return self._executor.remote_execute(
+                command, timeout=30, retry=False, raise_on_failure=True, debug=False
+            )
 
         logger.info(
-            f"Encoded file size: {encoded_size} bytes ({total_chunks} chunks, {command_size}B each)"
+            f"Uploading {local_path} to {remote_path} "
+            f"({len(encoded_file)} encoded bytes, command limit {limit})."
         )
-
-        # Step 2: Upload in chunks
-        logger.info(
-            f"Uploading {local_file.name} in chunks inside: {self._executor.working_directory}"
-        )
-
-        # Disable progress bar when trace logging is enabled to avoid polluting output
-        use_progress_bar = logger._core.min_level > logger.level("TRACE").no
-
         try:
-            if use_progress_bar:
-                with tqdm(
-                    total=encoded_size, unit="B", unit_scale=True, desc="Uploading"
-                ) as progress_bar:
-                    for idx in range(total_chunks):
-                        chunk = encoded_file[idx * command_size : (idx + 1) * command_size]
-                        self._executor.remote_execute(
-                            f"printf %s {chunk} >> {remote_encoded_path}"
-                        )
-                        progress_bar.update(len(chunk))
-            else:
-                for idx in range(total_chunks):
-                    chunk = encoded_file[idx * command_size : (idx + 1) * command_size]
-                    self._executor.remote_execute(
-                        f"printf %s {chunk} >> {remote_encoded_path}"
-                    )
+            with tqdm(
+                total=len(encoded_file), unit="B", unit_scale=True, desc="Uploading",
+                disable=logger._core.min_level <= logger.level("TRACE").no,
+            ) as progress:
+                send_chunks(execute, make_command, encoded_file, limit, progress.update)
+            self._executor.remote_execute(
+                decode_cmd, timeout=60, retry=False, raise_on_failure=True
+            )
+            checksum = execute(checksum_cmd).strip()
+            remote_md5 = checksum.split()[0] if checksum else ""
+            if not re.fullmatch(r"[0-9a-fA-F]{32}", remote_md5):
+                raise ValueError("Remote file checksum unavailable or invalid.")
+            if remote_md5.lower() != local_md5:
+                raise ValueError("MD5 mismatch; the uploaded file may be corrupted.")
+            logger.success(f"File uploaded and checksum verified: {remote_path}")
+            return True
         except KeyboardInterrupt:
-            logger.warning("Upload interrupted by user. Cleaning up...")
-            self._executor.remote_execute(f"rm -f {remote_encoded_path}")
-            return
-
-        logger.success(f"Remote encoded file path: {remote_encoded_path}")
-
-        # Step 3: Decode and decompress remotely
-        logger.info(f"Decoding and extracting remotely to {remote_path}")
-        base64_path = self._executor.os_helper.get_command_location("base64")
-        self._executor.remote_execute(
-            f"{base64_path} -d {remote_encoded_path}|dd of={remote_path} bs=1024",
-            retry=True,
-            timeout=60,
-        )
-
-        self._executor.remote_execute(f"rm -f {remote_encoded_path}")
-
-        # Check if the file was created successfully
-        md5sum_path = self._executor.os_helper.get_command_location("md5sum")
-        md5sum = self._executor.remote_execute(f"{md5sum_path} {remote_path}").strip()
-
-        if not md5sum:
-            logger.error(f"Failed to create the file at {remote_path}.")
-            return
-
-        remote_md5 = md5sum.split()[0]
-        logger.info(f"Remote MD5: {remote_md5}")
-        if remote_md5 != local_md5:
-            logger.warning("MD5 mismatch!")
-            logger.warning("The uploaded file may be corrupted.")
-        else:
-            logger.success("MD5 checksum matched.")
-
-        logger.success(f"File uploaded: {remote_path}")
-
-        return
+            logger.warning("Upload interrupted; cleaning up staged data.")
+            return False
+        except Exception as exc:
+            logger.error(f"Upload failed: {exc}")
+            return False
+        finally:
+            try:
+                output = execute(cleanup_cmd).strip()
+                if output:
+                    logger.warning(
+                        f"Cleanup of {remote_encoded_path} returned: {output}"
+                    )
+            except Exception as exc:
+                logger.warning(
+                    f"Could not remove staged upload {remote_encoded_path}: {exc}"
+                )
