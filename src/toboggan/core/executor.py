@@ -62,6 +62,7 @@ class Executor(metaclass=SingletonMeta):
             self._os_helper = WindowsHelper(self)
 
         self._command_max_size = 2048  # Default chunk size for remote commands
+        self._command_max_size_configured = False
 
         self.__action_manager = action.ActionsManager(target_os=self.__os)
 
@@ -253,7 +254,21 @@ class Executor(metaclass=SingletonMeta):
             return
 
         self._command_max_size = size
+        self._command_max_size_configured = True
         logger.info(f"Command max size set to: {self._command_max_size} bytes")
+
+    def ensure_command_max_size(self) -> int:
+        """Probe once when a transfer needs a size that has not been configured."""
+        if not self._command_max_size_configured:
+            logger.info("Probing command size before downloading.")
+            size = self.calculate_max_command_size()
+            if size <= 0:
+                raise ValueError(
+                    "Could not determine command size; set !size or a download override."
+                )
+            self._command_max_size = size
+            self._command_max_size_configured = True
+        return self._command_max_size
 
     # Properties
     @property
