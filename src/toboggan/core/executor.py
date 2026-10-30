@@ -260,11 +260,11 @@ class Executor(metaclass=SingletonMeta):
     def ensure_command_max_size(self) -> int:
         """Probe once when a transfer needs a size that has not been configured."""
         if not self._command_max_size_configured:
-            logger.info("Probing command size before downloading.")
+            logger.info("Probing command size before file transfer.")
             size = self.calculate_max_command_size()
             if size <= 0:
                 raise ValueError(
-                    "Could not determine command size; set !size or a download override."
+                    "Could not determine command size; set !size or a transfer override."
                 )
             self._command_max_size = size
             self._command_max_size_configured = True

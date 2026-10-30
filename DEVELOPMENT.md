@@ -133,7 +133,7 @@ All raw terminal commands and action commands eventually call [`Executor.remote_
 
 Obfuscation and base64 wrapping have different contracts. The obfuscation actions create executable target-side decoding pipelines and encoded responses: [`Linux implementation`](src/toboggan/core/actions/obfuscate/linux.py) and [`Windows implementation`](src/toboggan/core/actions/obfuscate/windows.py). `-b64` only encodes the string handed to `execute()`; the transport or target must decode and evaluate it.
 
-The maximum command size is initially 2048 bytes. `!size` can probe or set it. Downloads automatically probe and cache a size when none has been configured; a per-download `command_size` override bypasses this probe. Short download responses reduce the transfer's chunk size without changing the session setting. `remote_execute()` does not automatically split arbitrary commands.
+The maximum command size is initially 2048 bytes. `!size` can probe or set it. Uploads and downloads automatically probe and cache a size when none has been configured; a per-transfer `command_size` override bypasses this probe. Short transfers reduce their chunk size without changing the session setting. Upload payloads account for the complete command, including paths, offsets, and the CMD-to-PowerShell wrapper, before executor transformations. Writes use explicit offsets and acknowledge the staged file length, allowing retries without duplicate appends; a final checksum mismatch fails the upload. `remote_execute()` does not automatically split arbitrary commands.
 
 ### Linux Command Discovery
 
@@ -159,7 +159,8 @@ The Linux [`FIFO action`](src/toboggan/core/actions/fifo/linux.py) creates an in
 ### Files, State, and Cleanup
 
 - The executor creates its remote working directory lazily, when an action first needs it, and attempts recursive deletion on normal exit. See [`Executor.working_directory`](src/toboggan/core/executor.py).
-- Upload and download actions stage encoded data remotely and use local temporary files: [`upload actions`](src/toboggan/core/actions/upload/) and [`download actions`](src/toboggan/core/actions/download/).
+- File transfers stage encoded data remotely; downloads also use local temporary files: [`upload actions`](src/toboggan/core/actions/upload/) and [`download actions`](src/toboggan/core/actions/download/).
+- Uploads stage one random Base64 file in the remote working directory (with a `.b64` suffix on Windows). The staged file is removed in `finally` on completion, failure, or interruption. The destination is retained even if checksum verification fails, and the failure is reported; no local temporary files are created by upload.
 - Downloads stage a random `.tar.gz.b64` file on Linux, or `.zip` and `.zip.b64` files on Windows, inside the executor's remote working directory. Cleanup is attempted in `finally`, including when preparation, size retrieval, transfer, or extraction fails. Local encoded data and archives live in a `TemporaryDirectory` that is removed on success or failure; extracted output remains at the requested destination. Cleanup failures report the remote paths for manual removal.
 - The FIFO action creates random remote paths under `/dev/shm`, `/tmp`, or `/var/tmp` unless paths are supplied.
 - `ssh_backdoor` modifies `authorized_keys` and writes a private key to the operator's current directory. See [`ssh_backdoor/linux.py`](src/toboggan/core/actions/ssh_backdoor/linux.py).
