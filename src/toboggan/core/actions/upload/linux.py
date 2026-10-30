@@ -1,3 +1,4 @@
+# Built-in imports
 import base64
 import hashlib
 import posixpath
@@ -5,9 +6,11 @@ import re
 import shlex
 from pathlib import Path
 
+# External library imports
 from loguru import logger
 from tqdm import tqdm
 
+# Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.utils.common import generate_fixed_length_token
 from toboggan.core.utils.transfer import send_chunks, validate_chunk_size
@@ -19,7 +22,8 @@ class UploadAction(BaseAction):
     DESCRIPTION = "Encode and upload a local file to a remote system."
 
     def run(
-        self, local_path: str, remote_path: str = None, command_size: int = None
+        self, local_path: str, remote_path: str | None = None,
+        command_size: int | str | None = None,
     ) -> bool:
         """Upload using the session size or a per-transfer command-size override."""
         local_file = Path(local_path)
@@ -47,7 +51,7 @@ class UploadAction(BaseAction):
 
         commands = {
             name: self._os_helper.get_command_location(name)
-            for name in ("dd", "wc", "base64", "md5sum", "rm")
+            for name in ("printf", "dd", "wc", "base64", "md5sum", "rm")
         }
         missing = [name for name, command in commands.items() if not command]
         if missing:
@@ -64,8 +68,9 @@ class UploadAction(BaseAction):
 
         def make_command(offset: int, chunk: str) -> str:
             # Without conv=notrunc, dd discards any old tail beyond the seek offset.
+            # https://www.gnu.org/software/coreutils/manual/html_node/dd-invocation.html
             return (
-                f"printf %s '{chunk}' | {commands['dd']} of={staged} "
+                f"{commands['printf']} %s '{chunk}' | {commands['dd']} of={staged} "
                 f"bs=1 seek={offset} 2>/dev/null && {commands['wc']} -c < {staged}"
             )
 

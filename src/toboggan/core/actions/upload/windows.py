@@ -1,12 +1,15 @@
+# Built-in imports
 import base64
 import hashlib
 import ntpath
 import re
 from pathlib import Path
 
+# External library imports
 from loguru import logger
 from tqdm import tqdm
 
+# Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.utils.common import generate_fixed_length_token
 from toboggan.core.utils.transfer import send_chunks, validate_chunk_size
@@ -20,11 +23,14 @@ class UploadAction(BaseAction):
     def _command(self, script: str) -> str:
         if self._os_helper.shell_type == "powershell":
             return script
+        # EncodedCommand requires UTF-16LE, including when invoked from CMD.
+        # https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_exe
         encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
         return f"powershell -nop -EncodedCommand {encoded}"
 
     def run(
-        self, local_path: str, remote_path: str = None, command_size: int = None
+        self, local_path: str, remote_path: str | None = None,
+        command_size: int | str | None = None,
     ) -> bool:
         """Upload using the session size or a per-transfer command-size override."""
         local_file = Path(local_path)
@@ -60,6 +66,8 @@ class UploadAction(BaseAction):
         local_md5 = hashlib.md5(raw_bytes).hexdigest()
 
         def make_command(offset: int, chunk: str) -> str:
+            # Truncate unacknowledged bytes before retrying the same offset.
+            # https://learn.microsoft.com/en-us/dotnet/api/system.io.filestream.setlength
             return self._command(
                 "$ErrorActionPreference='Stop';"
                 f"$f=[IO.File]::OpenWrite({staged});"

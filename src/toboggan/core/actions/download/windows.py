@@ -1,12 +1,12 @@
 # toboggan/core/actions/download/windows.py
 
-# Standard library imports
+# Built-in imports
 import base64
 import zipfile
 from pathlib import Path
 import tempfile
 
-# Third party library imports
+# External library imports
 from loguru import logger
 from tqdm import tqdm
 
@@ -21,7 +21,10 @@ class DownloadAction(BaseAction):
 
     DESCRIPTION = "Retrieve a file remotely, compress it, and save it locally."
 
-    def run(self, remote_path: str, local_path: str = None, command_size: int = None):
+    def run(
+        self, remote_path: str, local_path: str | None = None,
+        command_size: int | str | None = None,
+    ) -> bool:
         """
         Attempts to compress, encode, and retrieve a remote file in chunks, saving it locally.
 
@@ -49,15 +52,18 @@ class DownloadAction(BaseAction):
         # Check if the file exists and is accessible
         if self._os_helper.shell_type == "powershell":
             # Use literal path with -LiteralPath to avoid escaping issues
-            can_read = self._executor.remote_execute(
-                command=f'(Test-Path -LiteralPath "{remote_path}" -PathType Leaf).ToString()'
-            ).strip()
+            check_cmd = f'(Test-Path -LiteralPath "{remote_path}" -PathType Leaf).ToString()'
         else:
+            check_cmd = f'if exist "{remote_path}" (echo True) else (echo False)'
+        try:
             can_read = self._executor.remote_execute(
-                command=f'if exist "{remote_path}" (echo True) else (echo False)'
+                command=check_cmd, retry=False, raise_on_failure=True, debug=False,
             ).strip()
+        except Exception as exc:
+            logger.error(f"Cannot check remote file accessibility: {exc}")
+            return False
 
-        if "True" not in can_read:
+        if can_read != "True":
             logger.error(f"File not found or not accessible: {remote_path}")
             return False
 
@@ -71,15 +77,12 @@ class DownloadAction(BaseAction):
                 return False
 
         # Determine final local path
-        if local_path is None:
-            local_path = Path.cwd()
-        else:
-            local_path = Path(local_path)
+        local_destination = Path.cwd() if local_path is None else Path(local_path)
 
-        if local_path.is_dir():
-            save_path = local_path / Path(remote_path).name
+        if local_destination.is_dir():
+            save_path = local_destination / Path(remote_path).name
         else:
-            save_path = local_path
+            save_path = local_destination
 
         logger.info(f"File will be saved to: {save_path}")
 
@@ -181,8 +184,8 @@ class DownloadAction(BaseAction):
                     base64.b64decode(encoded_path.read_bytes(), validate=True)
                 )
                 with zipfile.ZipFile(archive_path, "r") as zip_ref:
-                    zip_ref.extractall(path=local_path)
-            logger.success(f"File downloaded and extracted to: {local_path}")
+                    zip_ref.extractall(path=local_destination)
+            logger.success(f"File downloaded and extracted to: {local_destination}")
             return True
         except Exception as exc:
             logger.error(f"File download failed: {exc}")

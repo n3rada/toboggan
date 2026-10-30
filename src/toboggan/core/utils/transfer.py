@@ -1,9 +1,11 @@
 """Shared validation and chunk handling for file transfers."""
 
+# Built-in imports
 import re
 from collections.abc import Callable
 from typing import BinaryIO
 
+# External library imports
 from loguru import logger
 
 

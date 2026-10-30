@@ -1,13 +1,13 @@
 # toboggan/core/actions/download/linux.py
 
-# Standard library imports
+# Built-in imports
 import base64
 import shlex
 import tarfile
 from pathlib import Path
 import tempfile
 
-# Third party library imports
+# External library imports
 from loguru import logger
 from tqdm import tqdm
 
@@ -22,7 +22,10 @@ class DownloadAction(BaseAction):
 
     DESCRIPTION = "Retrieve a file remotely, compress it, and save it locally."
 
-    def run(self, remote_path: str, local_path: str = None, command_size: int = None):
+    def run(
+        self, remote_path: str, local_path: str | None = None,
+        command_size: int | str | None = None,
+    ) -> bool:
         """
         Attempts to compress, encode, and retrieve a remote file in chunks, saving it locally.
 
@@ -44,10 +47,26 @@ class DownloadAction(BaseAction):
             logger.error(str(exc))
             return False
 
-        # Check if the file is readable
-        can_read = self._executor.remote_execute(
-            command=f"test -r {shlex.quote(remote_path)} && echo R || echo U"
-        ).strip()
+        commands = {
+            name: self._os_helper.get_command_location(name)
+            for name in ("test", "printf", "tar", "base64", "wc", "dd", "rm")
+        }
+        missing = [name for name, command in commands.items() if not command]
+        if missing:
+            logger.error(f"Required download commands unavailable: {', '.join(missing)}")
+            return False
+
+        try:
+            can_read = self._executor.remote_execute(
+                command=(
+                    f"{commands['test']} -r {shlex.quote(remote_path)} && "
+                    f"{commands['printf']} R || {commands['printf']} U"
+                ),
+                retry=False, raise_on_failure=True, debug=False,
+            ).strip()
+        except Exception as exc:
+            logger.error(f"Cannot check remote file accessibility: {exc}")
+            return False
 
         if can_read != "R":
             logger.error(f"No read permission for {remote_path}.")
@@ -63,15 +82,12 @@ class DownloadAction(BaseAction):
                 return False
 
         # Determine final local path
-        if local_path is None:
-            local_path = Path.cwd()
-        else:
-            local_path = Path(local_path)
+        local_destination = Path.cwd() if local_path is None else Path(local_path)
 
-        if local_path.is_dir():
-            save_path = local_path / Path(remote_path).name
+        if local_destination.is_dir():
+            save_path = local_destination / Path(remote_path).name
         else:
-            save_path = local_path
+            save_path = local_destination
 
         logger.info(f"File will be saved to: {save_path}")
 
@@ -80,14 +96,6 @@ class DownloadAction(BaseAction):
         remote_archive = f"{self._executor.working_directory}/{random_file_name}"
         remote_base64_path = f"{remote_archive}.b64"
 
-        commands = {
-            name: self._os_helper.get_command_location(name)
-            for name in ("tar", "base64", "wc", "dd", "rm")
-        }
-        missing = [name for name, command in commands.items() if not command]
-        if missing:
-            logger.error(f"Required download commands unavailable: {', '.join(missing)}")
-            return False
         encoded_remote = shlex.quote(remote_base64_path)
 
         def read_chunk(offset: int, size: int) -> str:
@@ -137,8 +145,8 @@ class DownloadAction(BaseAction):
                     base64.b64decode(encoded_path.read_bytes(), validate=True)
                 )
                 with tarfile.open(archive_path, "r:gz") as tar:
-                    tar.extractall(path=local_path)
-            logger.success(f"File download and extraction completed: {local_path}")
+                    tar.extractall(path=local_destination)
+            logger.success(f"File download and extraction completed: {local_destination}")
             return True
         except Exception as exc:
             logger.error(f"File download failed: {exc}")
