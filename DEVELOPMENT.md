@@ -268,6 +268,25 @@ User-defined actions follow the same structure but live in the user data directo
 
 User actions take priority over built-in ones with the same name, allowing overrides.
 
+## 🤝 Contribution and Commit Conventions
+
+- Submit one focused commit for a completed change. Amend it during iteration instead of adding fixup commits.
+- Keep the subject short and on one line using the [Conventional Commits 1.0.0 specification](https://www.conventionalcommits.org/en/v1.0.0/): `type(scope): summary` or `type: summary`.
+- Use `feat`, `fix`, `refactor`, `test`, `docs`, or `chore` as appropriate. Omit the scope rather than using empty parentheses.
+- Commit with the human contributor's configured identity. Never add an AI or LLM as a co-author or include AI-generated attribution trailers.
+- The human contributor is responsible for understanding, reviewing, and owning every submitted change.
+- Preserve another contributor's commits and authorship on shared pull requests unless a history rewrite is explicitly agreed.
+
+Examples:
+
+- `feat(fifo): support a custom shell`
+- `fix(kube-check): preserve API group restrictions`
+- `refactor(actions): centralize argument parsing`
+- `test(upload): cover interrupted transfers`
+- `docs: explain command discovery`
+
+Avoid vague subjects such as `fix stuff`, empty scopes such as `feat(): add an action`, multi-line commit subjects, and `Co-authored-by` trailers for AI tools.
+
 ## 🧪 Testing
 
 Run the test suite with:

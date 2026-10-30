@@ -6,6 +6,8 @@ Toboggan turns an existing remote command execution primitive into a semi-intera
 
 Read [`DEVELOPMENT.md`](DEVELOPMENT.md) when changing execution, OS detection, target command discovery, command transformations, actions, FIFO behavior, or local and remote artifacts. For focused changes, read only the relevant section and its linked source files.
 
+When preparing a commit, first pull the current branch from its configured upstream with `git pull --rebase --autostash`; never commit against stale remote history. Then follow the human contribution and commit conventions in [`DEVELOPMENT.md`](DEVELOPMENT.md).
+
 ## Core contracts
 
 - A user execution module exposes `execute(command, timeout)` and returns clean command output as text.
