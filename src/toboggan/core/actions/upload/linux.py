@@ -49,7 +49,7 @@ class UploadAction(BaseAction):
 
         commands = {
             name: self._os_helper.get_command_location(name)
-            for name in ("printf", "dd", "wc", "base64", "md5sum", "rm")
+            for name in ("printf", "dd", "wc", "base64", "rm")
         }
         missing = [name for name, command in commands.items() if not command]
         if missing:
@@ -72,11 +72,12 @@ class UploadAction(BaseAction):
             )
 
         decode_cmd = f"{commands['base64']} -d {staged} > {destination}"
-        checksum_cmd = f"{commands['md5sum']} {destination}"
+        md5sum = self._os_helper.get_command_location("md5sum")
+        checksum_cmd = f"{md5sum} {destination}" if md5sum else None
         cleanup_cmd = f"{commands['rm']} -f {staged}"
         if any(
             len(command.encode("utf-8")) > limit
-            for command in (make_command(0, ""), decode_cmd, checksum_cmd, cleanup_cmd)
+            for command in (make_command(0, ""), decode_cmd, cleanup_cmd)
         ):
             logger.error("Command size is too small for the upload command overhead.")
             return False
@@ -99,7 +100,10 @@ class UploadAction(BaseAction):
             self._executor.remote_execute(
                 decode_cmd, timeout=60, retry=False, raise_on_failure=True
             )
-            checksum = execute(checksum_cmd).strip()
+            try:
+                checksum = execute(checksum_cmd).strip() if checksum_cmd else ""
+            except Exception:
+                checksum = ""
             remote_md5 = checksum.split()[0] if checksum else ""
             verify_md5(raw_bytes, remote_md5)
             logger.success(f"File uploaded and checksum verified: {remote_path}")

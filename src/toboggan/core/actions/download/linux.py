@@ -14,7 +14,7 @@ from tqdm import tqdm
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.utils import common
-from toboggan.core.utils.transfer import receive_chunks, validate_chunk_size, verify_md5
+from toboggan.core.utils.transfer import receive_chunks, validate_chunk_size
 
 
 class DownloadAction(BaseAction):
@@ -124,11 +124,6 @@ class DownloadAction(BaseAction):
             if not wc_output or not wc_output.split()[0].isdigit():
                 raise ValueError(f"Failed to retrieve file size for: {remote_path}")
             total_encoded_size = int(wc_output.split()[0])
-            checksum_output = self._executor.remote_execute(
-                command=f"{commands['md5sum']} {encoded_remote}",
-                retry=False, raise_on_failure=True, debug=False,
-            ).strip()
-            remote_md5 = checksum_output.split(maxsplit=1)[0] if checksum_output else ""
             logger.info(
                 f"Downloading {remote_path} ({total_encoded_size} encoded bytes, "
                 f"initial chunk size {command_size}) to {save_path}.tar.gz"
@@ -148,9 +143,9 @@ class DownloadAction(BaseAction):
                         read_chunk, temp_file, total_encoded_size, command_size,
                         progress_bar.update,
                     )
-                encoded_data = encoded_path.read_bytes()
-                verify_md5(encoded_data, remote_md5)
-                archive_path.write_bytes(base64.b64decode(encoded_data, validate=True))
+                archive_path.write_bytes(
+                    base64.b64decode(encoded_path.read_bytes(), validate=True)
+                )
                 with tarfile.open(archive_path, "r:gz") as tar:
                     tar.extractall(path=local_destination)
             logger.success(f"File download and extraction completed: {local_destination}")

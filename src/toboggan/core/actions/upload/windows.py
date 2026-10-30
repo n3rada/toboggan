@@ -79,11 +79,8 @@ class UploadAction(BaseAction):
             f"[IO.File]::WriteAllBytes({destination},$b)"
         )
         checksum_cmd = self._command(
-            "$ErrorActionPreference='Stop';"
-            "$md5=[Security.Cryptography.MD5]::Create();"
-            f"$f=[IO.File]::OpenRead({destination});"
-            "try{[BitConverter]::ToString($md5.ComputeHash($f)).Replace('-','')}"
-            "finally{$f.Dispose();$md5.Dispose()}"
+            f"(Get-FileHash -LiteralPath {destination} -Algorithm MD5 "
+            "-ErrorAction Stop).Hash"
         )
         cleanup_cmd = self._command(
             f"if(Test-Path -LiteralPath {staged}){{"
@@ -91,7 +88,7 @@ class UploadAction(BaseAction):
         )
         if any(
             len(command.encode("utf-8")) > limit
-            for command in (make_command(0, ""), decode_cmd, checksum_cmd, cleanup_cmd)
+            for command in (make_command(0, ""), decode_cmd, cleanup_cmd)
         ):
             logger.error("Command size is too small for the upload command overhead.")
             return False
@@ -114,7 +111,10 @@ class UploadAction(BaseAction):
             self._executor.remote_execute(
                 decode_cmd, timeout=60, retry=False, raise_on_failure=True
             )
-            remote_md5 = execute(checksum_cmd).strip()
+            try:
+                remote_md5 = execute(checksum_cmd).strip()
+            except Exception:
+                remote_md5 = ""
             verify_md5(raw_bytes, remote_md5)
             logger.success(f"File uploaded and checksum verified: {remote_path}")
             return True

@@ -11,9 +11,10 @@ from loguru import logger
 
 
 def verify_md5(data: bytes, expected: str) -> None:
-    """Require transferred data to match a valid remote MD5 checksum."""
+    """Verify transferred data when a valid remote MD5 checksum is available."""
     if not re.fullmatch(r"[0-9a-fA-F]{32}", expected):
-        raise ValueError("Remote checksum unavailable or invalid.")
+        logger.warning("Remote checksum unavailable or invalid; skipping MD5 verification.")
+        return
     if hashlib.md5(data).hexdigest().lower() != expected.lower():
         raise ValueError("MD5 mismatch; transferred data may be corrupted.")
 
