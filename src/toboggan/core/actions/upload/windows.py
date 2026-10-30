@@ -1,8 +1,6 @@
 # Built-in imports
 import base64
-import hashlib
 import ntpath
-import re
 from pathlib import Path
 
 # External library imports
@@ -12,7 +10,7 @@ from tqdm import tqdm
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.utils.common import generate_fixed_length_token
-from toboggan.core.utils.transfer import send_chunks, validate_chunk_size
+from toboggan.core.utils.transfer import send_chunks, validate_chunk_size, verify_md5
 
 
 class UploadAction(BaseAction):
@@ -63,7 +61,6 @@ class UploadAction(BaseAction):
         staged = "'" + remote_encoded_path.replace("'", "''") + "'"
         destination = "'" + remote_path.replace("'", "''") + "'"
         encoded_file = base64.b64encode(raw_bytes).decode("ascii")
-        local_md5 = hashlib.md5(raw_bytes).hexdigest()
 
         def make_command(offset: int, chunk: str) -> str:
             # Truncate unacknowledged bytes before retrying the same offset.
@@ -118,10 +115,7 @@ class UploadAction(BaseAction):
                 decode_cmd, timeout=60, retry=False, raise_on_failure=True
             )
             remote_md5 = execute(checksum_cmd).strip()
-            if not re.fullmatch(r"[0-9a-fA-F]{32}", remote_md5):
-                raise ValueError("Remote file checksum unavailable or invalid.")
-            if remote_md5.lower() != local_md5:
-                raise ValueError("MD5 mismatch; the uploaded file may be corrupted.")
+            verify_md5(raw_bytes, remote_md5)
             logger.success(f"File uploaded and checksum verified: {remote_path}")
             return True
         except KeyboardInterrupt:

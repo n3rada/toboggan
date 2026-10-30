@@ -13,7 +13,7 @@ from tqdm import tqdm
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.utils import common
-from toboggan.core.utils.transfer import receive_chunks, validate_chunk_size
+from toboggan.core.utils.transfer import receive_chunks, validate_chunk_size, verify_md5
 
 
 class DownloadAction(BaseAction):
@@ -143,6 +143,20 @@ class DownloadAction(BaseAction):
                 raise ValueError(f"Failed to retrieve encoded file size for: {remote_path}")
 
             total_encoded_size = int(size_output)
+            checksum_cmd = (
+                "$md5=[Security.Cryptography.MD5]::Create();"
+                f"$f=[IO.File]::OpenRead('{escaped_path}');"
+                "try{[BitConverter]::ToString($md5.ComputeHash($f)).Replace('-','')}"
+                "finally{$f.Dispose();$md5.Dispose()}"
+            )
+            if self._os_helper.shell_type != "powershell":
+                encoded_checksum = base64.b64encode(
+                    checksum_cmd.encode("utf-16le")
+                ).decode()
+                checksum_cmd = f"powershell -nop -EncodedCommand {encoded_checksum}"
+            remote_md5 = self._executor.remote_execute(
+                command=checksum_cmd, retry=False, raise_on_failure=True, debug=False,
+            ).strip()
             logger.info(
                 f"Downloading {remote_path} ({total_encoded_size} encoded bytes, "
                 f"initial chunk size {command_size})"
@@ -180,9 +194,9 @@ class DownloadAction(BaseAction):
                         read_chunk, temp_file, total_encoded_size, command_size,
                         progress_bar.update,
                     )
-                archive_path.write_bytes(
-                    base64.b64decode(encoded_path.read_bytes(), validate=True)
-                )
+                encoded_data = encoded_path.read_bytes()
+                verify_md5(encoded_data, remote_md5)
+                archive_path.write_bytes(base64.b64decode(encoded_data, validate=True))
                 with zipfile.ZipFile(archive_path, "r") as zip_ref:
                     zip_ref.extractall(path=local_destination)
             logger.success(f"File downloaded and extracted to: {local_destination}")

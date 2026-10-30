@@ -1,12 +1,21 @@
 """Shared validation and chunk handling for file transfers."""
 
 # Built-in imports
+import hashlib
 import re
 from collections.abc import Callable
 from typing import BinaryIO
 
 # External library imports
 from loguru import logger
+
+
+def verify_md5(data: bytes, expected: str) -> None:
+    """Require transferred data to match a valid remote MD5 checksum."""
+    if not re.fullmatch(r"[0-9a-fA-F]{32}", expected):
+        raise ValueError("Remote checksum unavailable or invalid.")
+    if hashlib.md5(data).hexdigest().lower() != expected.lower():
+        raise ValueError("MD5 mismatch; transferred data may be corrupted.")
 
 
 def validate_chunk_size(size: int | str) -> int:
