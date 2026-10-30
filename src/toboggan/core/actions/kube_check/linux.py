@@ -1,14 +1,22 @@
+# Built-in imports
 import ipaddress
 import json
 import re
 import shlex
+from collections.abc import Iterable, Iterator
 from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import quote, urlencode
 
+# External library imports
 from loguru import logger
 
+# Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.utils.jwt import parse_jwt
+
+JsonObject = dict[str, Any]
+PermissionGroup = tuple[tuple[str, ...], list[str], tuple[str, ...], tuple[str, ...]]
 
 
 class KubeCheckAction(BaseAction):
@@ -19,6 +27,10 @@ class KubeCheckAction(BaseAction):
 
     def run(self) -> None:
         logger.info("Kubernetes pod enumeration")
+        self._cat = self._os_helper.get_command_location("cat")
+        if not self._cat:
+            logger.warning("No usable cat command found.")
+            return
         token = self._read_file("token")
         if not token or token.startswith("cat:"):
             logger.warning("No Kubernetes service account token found.")
@@ -38,6 +50,9 @@ class KubeCheckAction(BaseAction):
         logger.info(f"Namespace: {namespace}; API: {self._api}")
         self._review_identity(claims.get("sub"))
 
+        # SelfSubjectRulesReview reports the authenticated caller's allowed API
+        # operations without trying each one individually.
+        # https://kubernetes.io/docs/reference/access-authn-authz/authorization/#checking-api-access
         rules = self._request(
             "/apis/authorization.k8s.io/v1/selfsubjectrulesreviews",
             "Permission review",
@@ -51,6 +66,8 @@ class KubeCheckAction(BaseAction):
         if rules is not None:
             self._summarize_rules(rules)
 
+        # Bound tokens record the Pod identity under this Kubernetes claim.
+        # https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/#bound-service-account-token-volume-mechanism
         kube_claims = self._mapping(claims.get("kubernetes.io"))
         pod_claim = self._mapping(kube_claims.get("pod"))
         pod = self._find_pod(namespace, pod_claim.get("name"), pod_claim.get("uid"))
@@ -59,7 +76,7 @@ class KubeCheckAction(BaseAction):
         else:
             logger.warning("Current Pod configuration unavailable.")
 
-    def _namespace(self, claims: dict) -> str | None:
+    def _namespace(self, claims: JsonObject) -> str | None:
         kube_claims = self._mapping(claims.get("kubernetes.io"))
         claimed = kube_claims.get("namespace") or claims.get(
             "kubernetes.io/serviceaccount/namespace"
@@ -76,11 +93,16 @@ class KubeCheckAction(BaseAction):
         return None
 
     def _prepare_api(self) -> bool:
+        printf = self._os_helper.get_command_location("printf")
+        curl = self._os_helper.get_command_location("curl")
+        if not printf or not curl:
+            logger.warning("Kubernetes API checks require printf and curl.")
+            return False
         try:
             environment = self._executor.remote_execute(
-                'printf "%s\\n%s" "$KUBERNETES_SERVICE_HOST" '
+                f'{printf} "%s\\n%s" "$KUBERNETES_SERVICE_HOST" '
                 '"${KUBERNETES_SERVICE_PORT_HTTPS:-${KUBERNETES_SERVICE_PORT:-443}}"',
-                debug=False,
+                retry=False, raise_on_failure=True, debug=False,
             ).strip().splitlines()
         except Exception as exc:  # user-defined execution backends
             logger.warning(
@@ -91,24 +113,21 @@ class KubeCheckAction(BaseAction):
         if not self._api:
             logger.warning("Kubernetes API address unavailable or invalid.")
             return False
-        curl = self._os_helper.get_command_location("curl")
-        if not curl:
-            logger.warning("No usable curl command found.")
-            return False
+        # https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/
         self._curl = (
             f"{curl} -sS --connect-timeout 3 --max-time 10 "
             f"--cacert {shlex.quote(self.SERVICE_ACCOUNT_DIR + '/ca.crt')} "
             '-H "Authorization: Bearer '
-            f'$(cat {shlex.quote(self.SERVICE_ACCOUNT_DIR + "/token")})"'
+            f'$({self._cat} {shlex.quote(self.SERVICE_ACCOUNT_DIR + "/token")})"'
         )
         return True
 
     @staticmethod
-    def _mapping(value) -> dict:
+    def _mapping(value: Any) -> JsonObject:
         return value if isinstance(value, dict) else {}
 
     @staticmethod
-    def _text(value) -> str:
+    def _text(value: Any) -> str:
         """Keep remote values on one line."""
         encoded = json.dumps(value, sort_keys=True)
         if isinstance(value, str) and value and value == value.strip():
@@ -118,15 +137,15 @@ class KubeCheckAction(BaseAction):
     def _read_file(self, name: str) -> str:
         try:
             return self._executor.remote_execute(
-                f"cat {shlex.quote(self.SERVICE_ACCOUNT_DIR + '/' + name)}",
-                debug=False,
+                f"{self._cat} {shlex.quote(self.SERVICE_ACCOUNT_DIR + '/' + name)}",
+                retry=False, raise_on_failure=True, debug=False,
             ).strip()
         except Exception as exc:  # user-defined execution backends
             logger.warning(f"Cannot read service account {name}: {type(exc).__name__}.")
             return ""
 
     @staticmethod
-    def _valid_namespace(value) -> bool:
+    def _valid_namespace(value: Any) -> bool:
         return isinstance(value, str) and bool(
             re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", value)
         )
@@ -145,8 +164,8 @@ class KubeCheckAction(BaseAction):
         return f"https://{host}:{port}"
 
     def _request(
-        self, path: str, label: str, payload: dict | None = None, *, kind: str
-    ) -> dict | None:
+        self, path: str, label: str, payload: JsonObject | None = None, *, kind: str
+    ) -> JsonObject | None:
         """One remote call per request; distinguish HTTP and transport failures."""
         method = "POST" if payload is not None else "GET"
         url = self._api + path
@@ -161,7 +180,7 @@ class KubeCheckAction(BaseAction):
         try:
             raw = self._executor.remote_execute(
                 command + " -w '\\n%{http_code}'",
-                timeout=15, retry=False, debug=False,
+                timeout=15, retry=False, raise_on_failure=True, debug=False,
             )
         except Exception as exc:  # user-defined execution backends
             logger.warning(f"{label}: request failed ({type(exc).__name__}).")
@@ -193,7 +212,7 @@ class KubeCheckAction(BaseAction):
         logger.success(f"{label}: {method} {url} - HTTP {status}.")
         return response
 
-    def _summarize_token(self, claims: dict) -> None:
+    def _summarize_token(self, claims: JsonObject) -> None:
         if not claims:
             return
         logger.info(
@@ -222,7 +241,7 @@ class KubeCheckAction(BaseAction):
         else:
             logger.info(f"Token expires at {expires:%Y-%m-%d %H:%M:%S} UTC.")
 
-    def _review_identity(self, subject) -> None:
+    def _review_identity(self, subject: Any) -> None:
         response = self._request(
             "/apis/authentication.k8s.io/v1/selfsubjectreviews",
             "Identity review",
@@ -243,7 +262,7 @@ class KubeCheckAction(BaseAction):
             logger.warning("API identity differs from the token subject.")
 
     @staticmethod
-    def _group_rules(rules: list) -> list:
+    def _group_rules(rules: list[JsonObject]) -> list[PermissionGroup]:
         """Merge identical grants without broadening group or name restrictions."""
         grants = {}
         for rule in rules:
@@ -264,7 +283,7 @@ class KubeCheckAction(BaseAction):
         ]
 
     @staticmethod
-    def _batches(items: list[str]):
+    def _batches(items: Iterable[str]) -> Iterator[str]:
         batch = []
         for item in items:
             if batch and len(", ".join(batch + [item])) > 100:
@@ -274,7 +293,7 @@ class KubeCheckAction(BaseAction):
         if batch:
             yield ", ".join(batch)
 
-    def _summarize_rules(self, review: dict) -> None:
+    def _summarize_rules(self, review: JsonObject) -> None:
         status = self._mapping(review.get("status"))
         if status.get("incomplete") is not False:
             logger.warning(
@@ -299,7 +318,7 @@ class KubeCheckAction(BaseAction):
             for batch in self._batches(rule.get("nonResourceURLs", [])):
                 logger.info(f"Permission [non-resource URLs]: {batch} - {verbs}")
 
-    def _find_pod(self, namespace: str, name, uid) -> dict | None:
+    def _find_pod(self, namespace: str, name: Any, uid: Any) -> JsonObject | None:
         path = f"/api/v1/namespaces/{quote(namespace, safe='')}/pods"
         if isinstance(name, str) and name:
             pod = self._request(
@@ -316,6 +335,11 @@ class KubeCheckAction(BaseAction):
         continuation = ""
         for _ in range(self.MAX_POD_PAGES):
             query = {"limit": self.POD_PAGE_SIZE}
+            # All resources support metadata.name; filter when a bound token gave us
+            # the Pod name so a bounded fallback cannot miss it in a busy namespace.
+            # https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
+            if isinstance(name, str) and name:
+                query["fieldSelector"] = f"metadata.name={name}"
             if continuation:
                 query["continue"] = continuation
             page = self._request(
@@ -346,7 +370,7 @@ class KubeCheckAction(BaseAction):
         logger.warning("Pod listing reached the page limit; results are partial.")
         return None
 
-    def _summarize_pod(self, pod: dict) -> None:
+    def _summarize_pod(self, pod: JsonObject) -> None:
         metadata, spec, status = (
             pod.get("metadata", {}), pod.get("spec", {}), pod.get("status", {}),
         )
@@ -395,8 +419,8 @@ class KubeCheckAction(BaseAction):
                 )
 
     def _summarize_container(
-        self, label: str, container: dict, runtime: dict,
-        pod_security: dict, volumes: dict,
+        self, label: str, container: JsonObject, runtime: JsonObject,
+        pod_security: JsonObject, volumes: dict[str, JsonObject],
     ) -> None:
         name = self._text(container.get("name", "unknown"))
         state = self._mapping(runtime.get("state"))
@@ -423,8 +447,10 @@ class KubeCheckAction(BaseAction):
             risks.append("privileged")
         if run_as_user == 0:
             risks.append("configured to run as root")
-        if security.get("allowPrivilegeEscalation") is True:
-            risks.append("allowPrivilegeEscalation")
+        # The API default is true; report it unless the Pod explicitly disables it.
+        # https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+        if security.get("allowPrivilegeEscalation") is not False:
+            risks.append("privilege escalation not disabled")
         if security.get("procMount") == "Unmasked":
             risks.append("unmasked proc filesystem")
         added = self._mapping(security.get("capabilities")).get("add")
@@ -436,18 +462,27 @@ class KubeCheckAction(BaseAction):
             volume = volumes.get(mount.get("name"), {})
             kind = next((key for key in volume if key != "name"), "unknown")
             config = self._mapping(volume.get(kind))
+            # VolumeMount.readOnly defaults to false (read-write).
+            # https://kubernetes.io/docs/reference/kubernetes-api/core/pod-v1/#VolumeMount
             read_only = (
-                mount.get("readOnly") or config.get("readOnly")
+                mount.get("readOnly") is True or config.get("readOnly") is True
                 or kind in ("secret", "configMap", "projected", "downwardAPI")
             )
-            access = "read-only" if read_only else "read-only not declared"
-            log = logger.warning if kind == "hostPath" else logger.info
+            access = "read-only" if read_only else "read-write"
+            propagation = mount.get("mountPropagation")
+            if propagation:
+                access += f"; {propagation} propagation"
+            log = (
+                logger.warning
+                if kind == "hostPath" or propagation == "Bidirectional"
+                else logger.info
+            )
             log(
                 f"{name} mount {self._text(mount.get('mountPath'))}: "
                 f"{self._volume_source(kind, config)} ({access})"
             )
 
-    def _volume_source(self, kind: str, config: dict) -> str:
+    def _volume_source(self, kind: str, config: JsonObject) -> str:
         references = {
             "secret": ("Secret", "secretName"),
             "configMap": ("ConfigMap", "name"),
