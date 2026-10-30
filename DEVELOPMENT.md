@@ -7,48 +7,88 @@ This guide covers the technical architecture, project layout, and instructions f
 Toboggan's runtime is a pipeline: the CLI parses arguments and loads an **execution module** (user script, Burp request, or shell wrapper), feeds it to the **Executor** singleton, which drives the **Terminal** prompt loop. Every command typed by the operator flows through optional obfuscation, the executor, and back.
 
 ```mermaid
-flowchart LR
-    subgraph Input Sources
-        A["User Module<br/><code>execute(cmd, timeout)</code>"]
-        B["Burp Request<br/><code>--request</code>"]
-        C["Shell Wrapper<br/><code>--exec-wrapper</code>"]
-    end
+%% Generated with https://gitdiagram.com/n3rada/toboggan and corrected against the source
+flowchart TD
 
-    subgraph CLI
-        D["cli.py<br/>Argument parsing<br/>& module loading"]
-    end
+subgraph group_operator["Operator machine"]
+  node_operator(("Operator"))
+  node_cli["CLI<br/>cli.py"]
+  node_terminal["Interactive terminal<br/>terminal.py"]
+  node_history["Optional command history"]
+  node_executor["Command executor<br/>executor.py"]
+  node_transform["Obfuscation / transport base64"]
+  node_action_manager["Action manager<br/>action.py"]
+  node_actions["File transfer and<br/>post-exploitation actions"]
+  node_fifo["Linux FIFO action"]
+  node_os_helpers["Linux / Windows helpers"]
+  node_target["Target context<br/>target.py"]
+  node_utilities["Logs, tokens, JWTs,<br/>and binary cache"]
+end
 
-    subgraph Core
-        E["Executor<br/><i>Singleton</i>"]
-        F["OSHelper<br/><code>LinuxHelper</code> | <code>WindowsHelper</code>"]
-        G["ActionsManager<br/>System + User actions"]
-        H["Target<br/>OS · user · hostname · arch"]
-    end
+subgraph group_backends["Exactly one selected execution backend"]
+  node_rce_module["User RCE module"]
+  node_burp["Burp request<br/>burpsuite.py"]
+  node_wrapper["Command wrapper<br/>os_command.py"]
+end
 
-    subgraph Terminal
-        I["Terminal<br/>prompt-toolkit REPL"]
-        J["TerminalCompleter<br/>Tab completion"]
-    end
+node_remote_target(("Remote system"))
+node_persistent_shell["Persistent shell process<br/>stdin FIFO + output file"]
 
-    subgraph Actions
-        K["Built-in Actions<br/><code>core/actions/*/linux.py</code><br/><code>core/actions/*/windows.py</code>"]
-        L["User Actions (BYOA)<br/><code>XDG_DATA_HOME/toboggan/actions/</code>"]
-    end
+node_operator -->|"starts"| node_cli
+node_cli -->|"configures"| node_executor
+node_cli -->|"opens"| node_terminal
+node_terminal -->|"raw command"| node_executor
+node_terminal -->|"records locally"| node_history
+node_terminal -->|"!action"| node_action_manager
+node_action_manager -->|"runs"| node_actions
+node_action_manager -->|"starts"| node_fifo
+node_actions -->|"remote_execute()"| node_executor
+node_fifo -->|"write and poll commands"| node_executor
+node_executor -->|"uses"| node_os_helpers
+node_executor -->|"stores"| node_target
+node_executor -->|"optionally applies"| node_transform
+node_executor -->|"uses"| node_utilities
 
-    A --> D
-    B --> D
-    C --> D
-    D --> E
-    E --- F
-    E --- G
-    E --- H
-    E --> I
-    I --- J
-    I -- "!action" --> G
-    I -- "raw cmd" --> E
-    G --> K
-    G --> L
+node_executor -.->|"calls execute(command, timeout) on one"| node_rce_module
+node_executor -.->|"calls execute(command, timeout) on one"| node_burp
+node_executor -.->|"calls execute(command, timeout) on one"| node_wrapper
+node_rce_module -->|"RCE transport"| node_remote_target
+node_burp -->|"HTTP request"| node_remote_target
+node_wrapper -->|"wrapped local command"| node_remote_target
+node_remote_target -.->|"transport response"| node_rce_module
+node_remote_target -.->|"HTTP response"| node_burp
+node_remote_target -.->|"command output"| node_wrapper
+node_rce_module -.->|"clean text"| node_executor
+node_burp -.->|"response text"| node_executor
+node_wrapper -.->|"decoded stdout"| node_executor
+node_fifo -->|"creates and controls"| node_persistent_shell
+node_persistent_shell --- node_remote_target
+
+click node_cli "https://github.com/n3rada/toboggan/blob/main/src/toboggan/cli.py"
+click node_executor "https://github.com/n3rada/toboggan/blob/main/src/toboggan/core/executor.py"
+click node_terminal "https://github.com/n3rada/toboggan/blob/main/src/toboggan/core/terminal.py"
+click node_action_manager "https://github.com/n3rada/toboggan/blob/main/src/toboggan/core/action.py"
+click node_actions "https://github.com/n3rada/toboggan/tree/main/src/toboggan/core/actions"
+click node_fifo "https://github.com/n3rada/toboggan/blob/main/src/toboggan/core/actions/fifo/linux.py"
+click node_os_helpers "https://github.com/n3rada/toboggan/tree/main/src/toboggan/core/helpers"
+click node_target "https://github.com/n3rada/toboggan/blob/main/src/toboggan/core/target.py"
+click node_utilities "https://github.com/n3rada/toboggan/tree/main/src/toboggan/core/utils"
+click node_burp "https://github.com/n3rada/toboggan/blob/main/src/toboggan/core/handlers/burpsuite.py"
+click node_wrapper "https://github.com/n3rada/toboggan/blob/main/src/toboggan/core/handlers/os_command.py"
+
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+class node_cli,node_terminal,node_executor toneBlue
+class node_rce_module,node_burp,node_wrapper toneAmber
+class node_action_manager,node_actions,node_fifo,node_persistent_shell toneMint
+class node_history,node_transform,node_os_helpers,node_target,node_utilities toneRose
+class node_operator,node_remote_target toneIndigo
 ```
+
+The initial architecture diagram was generated with [GitDiagram](https://gitdiagram.com/n3rada/toboggan) and corrected to match the implementation.
 
 ### Key Components
 
