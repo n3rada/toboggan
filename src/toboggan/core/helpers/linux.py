@@ -4,6 +4,7 @@
 import secrets
 import random
 import re
+import shlex
 
 # External library imports
 from loguru import logger
@@ -23,6 +24,7 @@ class LinuxHelper(base.OSHelperBase):
         self.__named_pipe_instance = None
 
         self.__is_busybox_present = None
+        self.__busybox_path = "/bin/busybox"
         self.__busybox_commands = set()
 
         self.__detection_method = None
@@ -198,28 +200,48 @@ class LinuxHelper(base.OSHelperBase):
 
         return any(re.search(pattern, stdout_pathput) for pattern in prompt_patterns)
 
-    def check_busybox(self) -> bool:
+    def check_busybox(self, path: str | None = None) -> bool:
         """
         Checks if BusyBox is present and loads its available commands into a set.
+
+        Args:
+            path: Exact dropped BusyBox path, or None to check standard locations.
+
         Returns:
             bool: True if BusyBox is found, False otherwise.
         """
         logger.info("Checking for BusyBox presence on the target system.")
-        try:
-            result = self._executor.remote_execute(command="/bin/busybox", debug=False)
-
-            if result and "Currently defined functions:" in result:
+        for candidate in [path] if path else ["/bin/busybox", "/usr/bin/busybox"]:
+            try:
+                result = self._executor.remote_execute(
+                    command=f"{shlex.quote(candidate)} --list",
+                    retry=False, raise_on_failure=True, debug=False,
+                )
+                commands = self.__parse_busybox_commands(result)
+            except Exception:
+                continue
+            if commands:
                 self.__is_busybox_present = True
-                self.__busybox_commands = self.__parse_busybox_commands(result)
-                logger.success("BusyBox detected and command list parsed.")
+                self.__busybox_path = candidate
+                self.__busybox_commands = commands
+                self.__command_location_cache.clear()
+                self.__command_location_cache["busybox"] = candidate
+                logger.success(f"BusyBox detected and registered: {candidate}")
                 return True
+        logger.warning("BusyBox not found or output not recognized.")
+        self.__is_busybox_present = False
+        return False
 
-            logger.warning("BusyBox not found or output not recognized.")
-            self.__is_busybox_present = False
-            return False
-        except Exception as exc:
-            logger.error(f"Error while checking BusyBox: {exc}")
-            return False
+    def register_command(self, command: str, path: str) -> None:
+        """Register the exact path of an operator-dropped executable."""
+        if not command or not path:
+            raise ValueError("A command name and path are required for registration.")
+        self.__command_location_cache[command] = path
+        logger.debug(f"Registered dropped command: {command} -> {path}")
+
+    def register_busybox(self, path: str) -> bool:
+        """Validate a dropped BusyBox and register all of its available applets."""
+        return self.check_busybox(path)
 
     def get_command_location(self, command: str) -> str:
         """
@@ -284,7 +306,7 @@ class LinuxHelper(base.OSHelperBase):
         # Wrap a full command with /bin/busybox if its base command is supported.
         if self.__is_busybox_present:
             if command in self.__busybox_commands:
-                location = f"/bin/busybox {command}"
+                location = f"{shlex.quote(self.__busybox_path)} {command}"
                 self.__command_location_cache[command] = location
                 logger.trace(f"Cached busybox command: {command} -> {location}")
                 return location
@@ -363,7 +385,7 @@ class LinuxHelper(base.OSHelperBase):
         Returns:
             set[str]: Set of supported BusyBox function names.
         """
-        collecting = False
+        collecting = "Currently defined functions:" not in output
         commands = set()
 
         for line in output.strip().splitlines():

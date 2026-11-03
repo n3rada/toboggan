@@ -150,6 +150,14 @@ Actions should use `self._os_helper.get_command_location()` when utility availab
 
 BusyBox detection is lazy through `LinuxHelper.is_busybox_present`; `get_command_location()` itself does not trigger the check. Preserve that distinction or test and document an intentional change to it.
 
+### Static Binary Deployment
+
+`!drop_bin <local_path> [remote_path]` uploads an operator-supplied binary. `!drop_static <name> [remote_path]` instead resolves a supported build (`busybox`, `curl`, or `kubectl`), validates its SHA-256, uploads it, makes it executable, and registers the exact remote path with Linux command discovery. Curl uses GitHub's latest static-curl release metadata, while kubectl uses Kubernetes' current `stable.txt` and matching checksum. BusyBox retains a known official static fallback because its binary directory has no equivalent current-release contract.
+
+Static binaries use versioned operating-system and architecture cache paths beneath the operator's XDG cache. Architecture aliases must be normalised explicitly; unknown or unsupported combinations fail rather than selecting a guessed build. Release fetching intentionally disables HTTPS certificate verification for intercepted assessment environments. The resolved digest is stored beside each cache entry, and a release-lookup failure may use only the latest matching cache entry that still passes that digest.
+
+A dropped BusyBox is validated with `--list`, after which its applets resolve as `<dropped-path> <applet>`. Registration clears earlier cached misses. This is explicit operator-triggered target modification, never an automatic side effect of a failed command lookup. A transfer still requires the upload and executable-permission primitives needed to bootstrap the binary.
+
 ### Actions and FIFO Sessions
 
 [`ActionsManager`](src/toboggan/core/action.py) discovers compatible `linux.py` or `windows.py` files beneath [`core/actions/`](src/toboggan/core/actions/) and the platform user-data directory. User modules take precedence over built-ins. Standard actions inherit `BaseAction`; persistent channels inherit `NamedPipe`.

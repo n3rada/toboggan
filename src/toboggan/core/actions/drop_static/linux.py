@@ -1,3 +1,8 @@
+# toboggan/core/actions/drop_static/linux.py
+
+# Built-in imports
+import posixpath
+
 # External library imports
 from loguru import logger
 
@@ -8,32 +13,56 @@ from toboggan.core.utils.binaries import BinaryFetcher
 
 
 class DropStaticBinary(BaseAction):
-    DESCRIPTION = f"Drop a prebuilt static binary to the target within this list: {BinaryFetcher.list_available()}."
+    DESCRIPTION = (
+        "Fetch, verify, drop, and register one supported static binary: "
+        f"{BinaryFetcher.list_available()}."
+    )
 
-    def run(self, name: str = None, remote_path: str = None) -> None:
+    def run(self, name: str = None, remote_path: str = None) -> bool:
         if not name:
             logger.warning("No binary name provided.")
-            available = BinaryFetcher.list_available()
             logger.info("Available static binaries:")
-            for b in available:
-                print(f"  • {b}")
-            return
+            for binary in BinaryFetcher.list_available():
+                print(f"  • {binary}")
+            return False
 
-        os = self._executor.target.os.lower()
-        arch = self._executor.target.architecture or "x86_64"
+        name = name.lower()
+        if name not in BinaryFetcher.list_available():
+            logger.error(f"Unknown static binary: {name}")
+            return False
+        arch = self._executor.target.architecture
+        if not arch:
+            logger.error("Cannot select a static binary for an unknown architecture.")
+            return False
+        logger.info(f"Preparing static {name} for linux/{arch}.")
 
         try:
-            fetcher = BinaryFetcher(os=os, arch=arch)
+            fetcher = BinaryFetcher(os_name=self._executor.target.os, arch=arch)
             local_path = fetcher.get(name)
-        except Exception as e:
-            logger.error(f"Failed to fetch binary: {e}")
-            return
+        except Exception as exc:
+            logger.error(f"Failed to fetch binary: {exc}")
+            return False
 
-        if not local_path or not local_path.exists():
+        if not local_path or not local_path.is_file():
             logger.error("Binary download failed or path invalid.")
-            return
+            return False
 
-        DropBinary(self._executor).run(
-            local_path=str(local_path),
-            remote_path=remote_path,
-        )
+        if not remote_path:
+            remote_path = f"{self._executor.working_directory}/{name}"
+        elif not posixpath.isabs(remote_path):
+            remote_path = posixpath.join(self._executor.target.pwd, remote_path)
+
+        logger.info(f"Uploading {name} from {local_path} to: {remote_path}")
+        if not DropBinary(self._executor).run(
+            local_path=str(local_path), remote_path=remote_path
+        ):
+            return False
+
+        if name == "busybox":
+            if not self._os_helper.register_busybox(remote_path):
+                logger.warning(f"BusyBox dropped but could not be registered: {remote_path}")
+                return False
+        else:
+            self._os_helper.register_command(name, remote_path)
+        logger.success(f"Static binary registered: {name} -> {remote_path}")
+        return True
