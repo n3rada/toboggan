@@ -23,7 +23,10 @@ class TestXdgStateDir:
             os.environ, {"TOBOGGAN_LOG_DIR": "/custom/logs"}, clear=False
         ):
             result = _xdg_state_dir()
-            assert result == Path("/custom/logs")
+            # The override is resolved to an absolute path (on Windows this
+            # prepends the current drive, e.g. C:\custom\logs).
+            assert result == Path("/custom/logs").resolve()
+            assert result.is_absolute()
 
     # -- POSIX ---------------------------------------------------------------
 
