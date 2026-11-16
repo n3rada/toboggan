@@ -276,6 +276,12 @@ Toboggan follows [XDG Base Directory](https://specifications.freedesktop.org/bas
 > [!TIP]
 > Override the log directory with the `TOBOGGAN_LOG_DIR` environment variable.
 
+Console logs go to stderr, so stdout carries only remote command output. The log file, `toboggan.jsonl`, holds one JSON object per line (`ts`, `level`, `msg`, `module`, `function`, `line`, `exception`, plus `extra` when bound). It rotates at 10 MB and is kept 14 days; tune these with `TOBOGGAN_LOG_MAX_BYTES` and `TOBOGGAN_LOG_RETENTION_DAYS`.
+
+```shell
+jq -r 'select(.level == "ERROR") | "\(.ts) \(.msg)"' ~/.local/state/toboggan/logs/toboggan.jsonl
+```
+
 ## ❓ Help
 
 ```shell

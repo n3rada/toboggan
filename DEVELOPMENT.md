@@ -173,7 +173,7 @@ The Linux [`FIFO action`](src/toboggan/core/actions/fifo/linux.py) creates an in
 - The FIFO action creates random remote paths under `/dev/shm`, `/tmp`, or `/var/tmp` unless paths are supplied.
 - `ssh_backdoor` modifies `authorized_keys` and writes a private key to the operator's current directory. See [`ssh_backdoor/linux.py`](src/toboggan/core/actions/ssh_backdoor/linux.py).
 - `drop_bin`, `drop_static`, and `peas` deliberately leave useful target artifacts or asynchronous work behind. See [`core/actions/`](src/toboggan/core/actions/).
-- Logs, optional persistent command history, and downloaded static binaries use XDG or platform data directories. See [`logbook.py`](src/toboggan/core/utils/logbook.py), [`terminal.py`](src/toboggan/core/terminal.py), and [`binaries.py`](src/toboggan/core/utils/binaries.py).
+- Logs (rotating JSONL file `toboggan.jsonl`), optional persistent command history, and downloaded static binaries use XDG or platform data directories. See [`logbook.py`](src/toboggan/core/utils/logbook.py), [`terminal.py`](src/toboggan/core/terminal.py), and [`binaries.py`](src/toboggan/core/utils/binaries.py).
 
 Cleanup is best-effort. Transport failure, forceful termination, or a failed partial action can leave remote artifacts behind, so actions that create them should retain enough information to remove them explicitly.
 

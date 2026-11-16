@@ -18,8 +18,11 @@ Is this message about...
 """
 
 # Built-in imports
+import json
 import os
 import sys
+import traceback
+from datetime import timezone
 from pathlib import Path
 
 # Third party library imports
@@ -64,6 +67,56 @@ def _format_message(record):
         f"<fg {color}>{{message}}</fg {color}>"
         "\n{exception}"
     )
+
+
+_JSON_EXTRA_KEY = "_toboggan_json"
+
+
+def _serialize_record(record) -> str:
+    """Serialize a Loguru record into one compact, flat JSON line."""
+    exception = record["exception"]
+    exception_text = None
+    if exception is not None:
+        exception_text = "".join(
+            traceback.format_exception(
+                exception.type, exception.value, exception.traceback
+            )
+        )
+
+    payload = {
+        "ts": record["time"]
+        .astimezone(timezone.utc)
+        .isoformat(timespec="milliseconds")
+        .replace("+00:00", "Z"),
+        "level": record["level"].name,
+        "msg": record["message"],
+        "module": record["name"],
+        "function": record["function"],
+        "line": record["line"],
+        "exception": exception_text,
+    }
+
+    extra = {
+        key: value
+        for key, value in record["extra"].items()
+        if not key.startswith("_")
+    }
+    if extra:
+        payload["extra"] = extra
+
+    return json.dumps(
+        payload, ensure_ascii=False, default=str, separators=(",", ":")
+    )
+
+
+def _format_json(record) -> str:
+    """Loguru format callable emitting one JSON object per line (JSONL).
+
+    Loguru treats the returned value as a ``str.format`` template, so the JSON
+    (which contains braces) is stashed in ``extra`` and referenced from there.
+    """
+    record["extra"][_JSON_EXTRA_KEY] = _serialize_record(record)
+    return "{extra[" + _JSON_EXTRA_KEY + "]}\n"
 
 
 def _xdg_state_dir(app_name: str = "toboggan") -> Path:
@@ -114,25 +167,18 @@ def setup_logging(level: str = "INFO"):
         colorize=True,
     )
 
-    # --- File handler (rotating, UTC timestamps)
+    # --- File handler (rotating JSONL, one object per line, UTC timestamps)
     log_dir = _xdg_state_dir()
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / "toboggan.log"
+    log_file = log_dir / "toboggan.jsonl"
 
     # Configurable rotation & retention
     max_bytes = os.getenv("TOBOGGAN_LOG_MAX_BYTES", "10 MB")
     retention_days = int(os.getenv("TOBOGGAN_LOG_RETENTION_DAYS", "14"))
 
-    # File format without colors
-    file_format = (
-        "{time:YYYY-MM-DD HH:mm:ss.SSS!UTC} (UTC) "
-        "[{level:7}] {message}\n"
-        "{exception}"
-    )
-
     logger.add(
         log_file,
-        format=file_format,
+        format=_format_json,
         level=level,
         rotation=max_bytes,
         retention=f"{retention_days} days",
