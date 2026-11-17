@@ -101,7 +101,7 @@ The initial architecture diagram was generated with [GitDiagram](https://gitdiag
 | **OSHelper** | [`core/helpers/`](src/toboggan/core/helpers/) | Abstract [`base.py`](src/toboggan/core/helpers/base.py) + OS-specific [`linux.py`](src/toboggan/core/helpers/linux.py) and [`windows.py`](src/toboggan/core/helpers/windows.py) for user lookup, path formatting, command location, named-pipe lifecycle |
 | **ActionsManager** | [`core/action.py`](src/toboggan/core/action.py) | Discovers and dynamically loads action modules from both system ([`core/actions/`](src/toboggan/core/actions/)) and user directories; resolves OS-specific files (`linux.py` / `windows.py`) |
 | **Handlers** | [`core/handlers/`](src/toboggan/core/handlers/) | Built-in execution backends: [`os_command.py`](src/toboggan/core/handlers/os_command.py) (shell wrapper via `subprocess`) and [`burpsuite.py`](src/toboggan/core/handlers/burpsuite.py) (Burp XML request replay via `httpx`) |
-| **Utilities** | [`core/utils/`](src/toboggan/core/utils/) | Shared helpers: [`common.py`](src/toboggan/core/utils/common.py) (encoding, tokens, path validation, HTML analysis), [`jwt.py`](src/toboggan/core/utils/jwt.py) (JWT parsing), [`logbook.py`](src/toboggan/core/utils/logbook.py) (Loguru setup + XDG log paths), [`binaries.py`](src/toboggan/core/utils/binaries.py) (static binary management) |
+| **Utilities** | [`core/utils/`](src/toboggan/core/utils/) | Shared helpers: [`common.py`](src/toboggan/core/utils/common.py) (encoding, tokens, path validation, HTML analysis), [`jwt.py`](src/toboggan/core/utils/jwt.py) (JWT parsing), [`logbook.py`](src/toboggan/core/utils/logbook.py) (Loguru setup + XDG log paths), [`binaries.py`](src/toboggan/core/utils/binaries.py) (static binary management), [`navigator.py`](src/toboggan/core/utils/navigator.py) (reusable full-screen browser that fetches nested data on demand) |
 
 ## 🔬 Execution Internals
 
@@ -162,6 +162,8 @@ A dropped BusyBox is validated with `--list`, after which its applets resolve as
 
 [`ActionsManager`](src/toboggan/core/action.py) discovers compatible `linux.py` or `windows.py` files beneath [`core/actions/`](src/toboggan/core/actions/) and the platform user-data directory. User modules take precedence over built-ins. Standard actions inherit `BaseAction`; persistent channels inherit `NamedPipe`.
 
+Actions that let the operator browse remote data expose a `loader` with `list(path)` and `read(path)` and hand it to [`browse_tree()`](src/toboggan/core/utils/navigator.py), which fetches one directory listing or one leaf per keypress as the operator descends and caches what it fetched. Browsing is therefore lazy and opsec-friendly: one keypress maps to at most one target request, and nothing is dumped up front. The loader must raise `LoaderError` on failure (shown in place), and the caller suppresses host logging (`logger.disable`/`logger.enable`) around the full-screen app so remote-exec output cannot corrupt the screen. The app is safe to start because the terminal's `PromptSession` is idle while an action runs; fall back to plain output when stdin/stdout is not a TTY. [`imds`](src/toboggan/core/actions/imds/common.py) is the reference: its Linux module ([`linux.py`](src/toboggan/core/actions/imds/linux.py), curl/wget) only sends one HTTP request, while path rules, IMDSv2 negotiation, the capped recursive walk, and the `ImdsLoader` live in the shared `common.py`. It ships a Linux module only, so `!imds` is offered on Linux targets.
+
 The Linux [`FIFO action`](src/toboggan/core/actions/fifo/linux.py) creates an input FIFO and starts a long-lived `tail -f <stdin> | <shell> > <stdout> 2>&1` pipeline. Each operator command is written to the FIFO through the original RCE channel, while a daemon thread polls and truncates the output file. This preserves shell state but does not provide a real PTY or forward control characters. On exit, Toboggan stops the poller, kills the recorded pipeline process, and removes both paths.
 
 ### Files, State, and Cleanup
@@ -172,6 +174,7 @@ The Linux [`FIFO action`](src/toboggan/core/actions/fifo/linux.py) creates an in
 - Downloads stage a random `.tar.gz.b64` file on Linux, or `.zip` and `.zip.b64` files on Windows, inside the executor's remote working directory. Cleanup is attempted in `finally`, including when preparation, size retrieval, transfer, or extraction fails. Local encoded data and archives live in a `TemporaryDirectory` that is removed on success or failure; extracted output remains at the requested destination. Cleanup failures report the remote paths for manual removal.
 - The FIFO action creates random remote paths under `/dev/shm`, `/tmp`, or `/var/tmp` unless paths are supplied.
 - `ssh_backdoor` modifies `authorized_keys` and writes a private key to the operator's current directory. See [`ssh_backdoor/linux.py`](src/toboggan/core/actions/ssh_backdoor/linux.py).
+- `imds` and `kube_check` only send HTTP requests from the target and create no remote files.
 - `drop_bin`, `drop_static`, and `peas` deliberately leave useful target artifacts or asynchronous work behind. See [`core/actions/`](src/toboggan/core/actions/).
 - Logs (rotating JSONL file `toboggan.jsonl`), optional persistent command history, and downloaded static binaries use XDG or platform data directories. See [`logbook.py`](src/toboggan/core/utils/logbook.py), [`terminal.py`](src/toboggan/core/terminal.py), and [`binaries.py`](src/toboggan/core/utils/binaries.py).
 
@@ -196,6 +199,7 @@ src/toboggan/
     │   ├── fifo/            #   linux.py (mkfifo forward shell)
     │   ├── obfuscate/        #   Target-side AES/base64 command wrapping
     │   ├── deobfuscate/      #   Decode obfuscated command output
+    │   ├── imds/            #   common.py (shared IMDS logic) + linux.py (curl/wget)
     │   └── ...              #   netcheck, ip, users, history, privbins, ssh_find, …
     ├── handlers/            # Execution backends
     │   ├── os_command.py    #   subprocess wrapper (--exec-wrapper)
@@ -208,7 +212,8 @@ src/toboggan/
         ├── common.py        # Encoding, tokens, path validation, HTML analysis
         ├── jwt.py           # JWT parsing and TokenReader
         ├── logbook.py       # Loguru config, XDG log directory resolution
-        └── binaries.py      # Static binary cache management
+        ├── binaries.py      # Static binary cache management
+        └── navigator.py     # TreeNavigator + browse_tree() (prompt_toolkit TUI)
 ```
 
 ## 🎬 Adding a New Action
@@ -223,6 +228,8 @@ src/toboggan/core/actions/
     linux.py      # Linux implementation
     windows.py    # Windows implementation (optional)
 ```
+
+Ship only the module(s) the action's workflow actually needs. An action that is inherently Linux/Unix-centric (such as [`imds`](src/toboggan/core/actions/imds/) or [`kube_check`](src/toboggan/core/actions/kube_check/)) provides `linux.py` alone and is simply offered on Linux targets; do not add a `windows.py` for symmetry — add it later only when there is a real need. Share OS-agnostic logic in a `common.py` the OS-specific modules import.
 
 ### Step 2: Implement the Action Class
 

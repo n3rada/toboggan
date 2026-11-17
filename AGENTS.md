@@ -13,6 +13,7 @@ When preparing a commit, first pull the current branch from its configured upstr
 - A user execution module exposes `execute(command, timeout)` and returns clean command output as text.
 - Keep transport-specific behavior in execution modules or handlers; keep target-side execution behavior in the executor, helpers, and actions.
 - Put platform-dependent operations in OS-specific helpers or `linux.py`/`windows.py` action modules.
+- Do not add a `windows.py` variant for an action whose workflow is inherently Linux/Unix-centric (e.g. `imds`, `kube_check`). Ship the `linux.py` module only; the action is then offered on Linux targets, and a Windows variant is added later only when there is a real need for it. The reverse holds for Windows-only workflows.
 - Preserve Linux command-discovery fallback order and caching unless intentionally redesigning it.
 - User actions override built-in actions with the same name.
 - Custom execution modules and actions are trusted local Python code, not sandboxed extensions.
