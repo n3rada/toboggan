@@ -16,7 +16,7 @@ See the source-linked [Development Guide](DEVELOPMENT.md) for the architecture a
 
 Prefer using [`uv`](https://docs.astral.sh/uv/), a fast Python package manager that installs tools in isolated environments. Alternatively, [`pipx`](https://pypa.github.io/pipx/) or `pip` work as well.
 
-### With [uv](https://docs.astral.sh/uv/) (recommended)
+### With uv (recommended)
 
 [`uv tool install`](https://docs.astral.sh/uv/guides/tools/#installing-tools) persistently installs the tool and adds it to your `PATH`, similar to `pipx`:
 
