@@ -1,24 +1,28 @@
 # toboggan/core/utils/common.py
 
 # Built-in imports
-import secrets
-import pathlib
+from __future__ import annotations
+
 import base64
-import io
 import gzip
+import io
+import pathlib
+import secrets
 import uuid
+from typing import ClassVar
 
 # Third party library imports
 from loguru import logger
-from lxml import html, etree
+from lxml import etree, html
+
 
 class SingletonMeta(type):
-    """
-    Metaclass for implementing Singleton pattern.
+    """Metaclass for implementing Singleton pattern.
+
     Ensures only one instance of a class exists.
     """
 
-    _instances = {}
+    _instances: ClassVar[dict] = {}
 
     def __call__(cls, *args, **kwargs):
         """Ensure only one instance of the class is created."""
@@ -29,13 +33,13 @@ class SingletonMeta(type):
 
 
 def base64_for_powershell(command: str) -> str:
-    # Encode the command as UTF-16LE, PowerShell's default encoding
+    """Encode a command as a UTF-16LE Base64 string for PowerShell execution."""
     encoded_command = base64.b64encode(command.encode("utf-16le")).decode("ascii")
     return encoded_command
 
 
 def compress_with_gzip(command: str) -> bytes:
-    # Compress command with GZip and return bytes
+    """Compress a command string with gzip and return the resulting bytes."""
     out = io.BytesIO()
     with gzip.GzipFile(fileobj=out, mode="w") as f:
         f.write(command.encode("utf-8"))
@@ -58,20 +62,19 @@ def generate_uuid() -> str:
     return str(uuid.uuid4())
 
 
-def random_float_in_range(
-    min_value: float, max_value: float, precision: float = 10**10
-) -> float:
+def random_float_in_range(min_value: float, max_value: float, precision: float = 10**10) -> float:
+    """Return a cryptographically random float between min_value and max_value."""
     rand_int = secrets.randbelow(precision)
     normalized_float = min_value + (max_value - min_value) * (rand_int / precision)
     return normalized_float
 
 
 def is_valid_directory_path(path: str) -> bool:
-    """
-    Validates if the provided path is a valid Unix or Windows directory path.
+    """Validates if the provided path is a valid Unix or Windows directory path.
 
     Args:
         path (str): The directory path to validate.
+
     Returns:
         bool: True if the path is valid absolute path, False otherwise.
     """
@@ -85,20 +88,17 @@ def is_valid_directory_path(path: str) -> bool:
             # Unix path
             p = pathlib.PurePosixPath(path)
             return p.is_absolute()
-    except Exception as e:
+    except Exception:
         return False
 
+
 def normalize_html_text(body: str) -> str:
-    """
-    Remove scripts, styles, comments and return only normalized visible text.
-    """
+    """Remove scripts, styles, comments and return only normalized visible text."""
     try:
         doc = html.fromstring(body)
 
         # Remove script/style/meta/noscript/iframe/svg
-        for bad in doc.xpath(
-            "//script|//style|//noscript|//meta|//iframe|//svg|//link|//head"
-        ):
+        for bad in doc.xpath("//script|//style|//noscript|//meta|//iframe|//svg|//link|//head"):
             bad.drop_tree()
 
         # Remove HTML comments
@@ -116,9 +116,10 @@ def normalize_html_text(body: str) -> str:
         logger.trace(f"HTML normalization failed: {e}")
         return body.lower()
 
+
 def extract_html_title(body: str) -> str | None:
-    """
-    Extract the <title> from HTML if present.
+    """Extract the <title> from HTML if present.
+
     Returns None if not found or invalid HTML.
     """
     try:
@@ -133,6 +134,7 @@ def extract_html_title(body: str) -> str | None:
 
 
 def analyze_response(body: str) -> bool:
+    """Return True if the response body does not contain known blocking indicators."""
     if not body:
         return False
 
@@ -143,7 +145,6 @@ def analyze_response(body: str) -> bool:
         logger.debug(f"Webpage content: {output}")
     else:
         logger.info(f"Title of the webpage is: {output}")
-   
 
     blocked_keywords = [
         "access denied",
@@ -167,13 +168,12 @@ def analyze_response(body: str) -> bool:
     return True
 
 
-
 def is_valid_file_path(path: str) -> bool:
-    r"""
-    Validates if the provided path is a valid Unix or Windows file path (not ending with / or \).
+    r"""Validates if the provided path is a valid Unix or Windows file path (not ending with / or \).
 
     Args:
         path (str): The file path to validate.
+
     Returns:
         bool: True if the path is valid and doesn't end with / or \, False otherwise.
     """
@@ -187,5 +187,5 @@ def is_valid_file_path(path: str) -> bool:
             # Unix path
             p = pathlib.PurePosixPath(path)
             return p.is_absolute() and not path.endswith("/")
-    except Exception as e:
+    except Exception:
         return False

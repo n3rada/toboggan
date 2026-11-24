@@ -5,17 +5,18 @@ import gzip
 import uuid
 
 import pytest
+
 from toboggan.core.utils.common import (
+    analyze_response,
     base64_for_powershell,
     compress_with_gzip,
-    generate_variable_length_token,
+    extract_html_title,
     generate_fixed_length_token,
     generate_uuid,
+    generate_variable_length_token,
     is_valid_directory_path,
     is_valid_file_path,
     normalize_html_text,
-    extract_html_title,
-    analyze_response,
 )
 
 

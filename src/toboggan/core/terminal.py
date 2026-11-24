@@ -1,29 +1,27 @@
 # toboggan/core/terminal.py
 
 # Built-in imports
-import shlex
 import os
 import re
+import shlex
+from collections.abc import Iterable
 from pathlib import Path
-import tempfile
-from typing import Iterable
 
 # External library imports
 from loguru import logger
-
 from modwrap import ModuleWrapper
-
 from prompt_toolkit import PromptSession
-from prompt_toolkit.auto_suggest import ThreadedAutoSuggest, AutoSuggestFromHistory
-from prompt_toolkit.history import ThreadedHistory, InMemoryHistory, FileHistory
-from prompt_toolkit.cursor_shapes import CursorShape
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory, ThreadedAutoSuggest
 from prompt_toolkit.completion import Completer, Completion
+from prompt_toolkit.cursor_shapes import CursorShape
 from prompt_toolkit.document import Document
+from prompt_toolkit.history import FileHistory, InMemoryHistory, ThreadedHistory
+
+from .action import NamedPipe
+from .executor import Executor
 
 # Local library imports
 from .utils import logbook
-from .executor import Executor
-from .action import NamedPipe
 
 
 class TerminalCompleter(Completer):
@@ -49,9 +47,8 @@ class TerminalCompleter(Completer):
             "b64": "Toggle base64 wrapping of commands before execute()",
         }
 
-    def get_completions(
-        self, document: Document, complete_event
-    ) -> Iterable[Completion]:
+    def get_completions(self, document: Document, complete_event) -> Iterable[Completion]:
+        """Yield completions for built-in commands and available actions."""
         text = document.text_before_cursor
 
         # If text is empty or doesn't start with prefix, no completions
@@ -75,9 +72,7 @@ class TerminalCompleter(Completer):
                 yield Completion(
                     action_name,
                     start_position=0,
-                    display_meta=action_info.get(
-                        "description", "No description available"
-                    ),
+                    display_meta=action_info.get("description", "No description available"),
                 )
             return
 
@@ -90,9 +85,7 @@ class TerminalCompleter(Completer):
             if action_name.startswith(text):
                 yield Completion(
                     action_name[len(text) :],
-                    display_meta=action_info.get(
-                        "description", "No description available"
-                    ),
+                    display_meta=action_info.get("description", "No description available"),
                 )
 
 
@@ -121,24 +114,14 @@ class Terminal:
         if history:
             # Store history alongside logs in XDG_STATE_HOME
             if os.name == "nt":
-                base = Path(
-                    os.environ.get(
-                        "LOCALAPPDATA", str(Path.home() / "AppData" / "Local")
-                    )
-                )
+                base = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local")))
             else:
-                base = Path(
-                    os.environ.get(
-                        "XDG_STATE_HOME", str(Path.home() / ".local" / "state")
-                    )
-                )
+                base = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state")))
             self.__history_dir = base / "toboggan" / "history"
             self.__history_dir.mkdir(parents=True, exist_ok=True)
 
             # Create unique history file using hostname
-            self.__history_file = (
-                self.__history_dir / f"{executor.target.hostname}_history"
-            )
+            self.__history_file = self.__history_dir / f"{executor.target.hostname}_history"
 
             # Create the history file first if it doesn't exist
             self.__history_file.touch(exist_ok=True)
@@ -147,9 +130,7 @@ class Terminal:
             try:
                 os.chmod(self.__history_file, 0o600)
             except PermissionError as e:
-                logger.warning(
-                    f"Could not set secure permissions on history file: {e}"
-                )
+                logger.warning(f"Could not set secure permissions on history file: {e}")
 
             history_backend = ThreadedHistory(FileHistory(str(self.__history_file)))
             logger.info(f"Persistent command history: {self.__history_file}")
@@ -207,9 +188,7 @@ class Terminal:
         result = None
         user_input = ""
 
-        logger.info(
-            f"Prefix set to '{self.__prefix}' — use '{self.__prefix}h' for available commands."
-        )
+        logger.info(f"Prefix set to '{self.__prefix}' — use '{self.__prefix}h' for available commands.")
 
         try:
             while True:
@@ -236,34 +215,25 @@ class Terminal:
                     continue
                 else:
                     if not user_input.startswith(self.__prefix):
-                        if (
-                            self.__target.os == "linux"
-                            and self.__executor.os_helper.is_fifo_active()
-                        ):
+                        if self.__target.os == "linux" and self.__executor.os_helper.is_fifo_active():
                             self.__executor.os_helper.fifo_execute(user_input)
                             continue
 
                         try:
-                            if result := self.__executor.remote_execute(
-                                command=user_input
-                            ):
+                            if result := self.__executor.remote_execute(command=user_input):
                                 print(result)
 
                             continue
                         except KeyboardInterrupt:
                             print("\r", end="", flush=True)  # Clear the ^C
-                            logger.warning(
-                                "Keyboard interruption received during remote command execution."
-                            )
+                            logger.warning("Keyboard interruption received during remote command execution.")
                             continue
                         except Exception as exc:
                             logger.error(f"Command execution failed: {exc}")
                             continue
 
                     try:
-                        command_parts = shlex.split(
-                            user_input[len(self.__prefix) :].strip()
-                        )
+                        command_parts = shlex.split(user_input[len(self.__prefix) :].strip())
                     except ValueError as e:
                         logger.error(f"Command parsing failed: {e}")
                         continue
@@ -290,9 +260,7 @@ class Terminal:
                             if raw_args:
                                 self.__executor.command_max_size = int(raw_args[0])
                             else:
-                                self.__executor.command_max_size = (
-                                    self.__executor.calculate_max_command_size()
-                                )
+                                self.__executor.command_max_size = self.__executor.calculate_max_command_size()
                         except ValueError as e:
                             logger.error(f"Invalid command size: {e}")
                         except Exception as e:
@@ -381,23 +349,15 @@ class Terminal:
                                 )
                             else:
                                 # Truly unknown command
-                                logger.error(
-                                    f"Unknown command: '{command}'. Type '!help' to see available commands."
-                                )
-                        except Exception as e:
-                            logger.error(
-                                f"Unknown command: '{command}'. Type '!help' to see available commands."
-                            )
+                                logger.error(f"Unknown command: '{command}'. Type '!help' to see available commands.")
+                        except Exception:
+                            logger.error(f"Unknown command: '{command}'. Type '!help' to see available commands.")
 
                         continue
 
                     if targeted_action := actions_dict.get(command):
                         try:
-                            action_class = (
-                                self.__executor.action_manager.load_action_from_path(
-                                    targeted_action["path"]
-                                )
-                            )
+                            action_class = self.__executor.action_manager.load_action_from_path(targeted_action["path"])
 
                             if not action_class:
                                 # Action exists in dict but failed to load from path
@@ -430,9 +390,7 @@ class Terminal:
                                     key = key.replace("-", "_")
 
                                     # If next token exists and is not another --flag, treat it as value
-                                    if i + 1 < len(raw_args) and not raw_args[
-                                        i + 1
-                                    ].startswith("--"):
+                                    if i + 1 < len(raw_args) and not raw_args[i + 1].startswith("--"):
                                         keyword_args[key] = raw_args[i + 1]
                                         i += 2
                                     else:
@@ -452,9 +410,7 @@ class Terminal:
 
                             # Filter out 'executor' from keyword_args - it's injected automatically
                             if "executor" in keyword_args:
-                                logger.warning(
-                                    "Ignoring '--executor' parameter (automatically provided)"
-                                )
+                                logger.warning("Ignoring '--executor' parameter (automatically provided)")
                                 keyword_args.pop("executor")
 
                             # Check for help flag
@@ -463,9 +419,7 @@ class Terminal:
                                 continue
 
                             if raw_args:
-                                logger.debug(
-                                    f"Running '{command}' with args: {raw_args}"
-                                )
+                                logger.debug(f"Running '{command}' with args: {raw_args}")
                             else:
                                 logger.debug(f"Running '{command}'")
 
@@ -479,30 +433,22 @@ class Terminal:
                                 action = action_class(self.__executor)
 
                                 if positional_args or keyword_args:
-                                    action_output = action.run(
-                                        *positional_args, **keyword_args
-                                    )
+                                    action_output = action.run(*positional_args, **keyword_args)
                                 else:
                                     action_output = action.run()
 
                             except TypeError as exc:
-                                logger.warning(
-                                    f"Incorrect arguments for '{command}': {exc}"
-                                )
+                                logger.warning(f"Incorrect arguments for '{command}': {exc}")
                                 continue
                             except Exception as exc:
                                 logger.error(f"Action '{command}' failed: {exc}")
                                 continue
 
-                            if action_output is not None and not isinstance(
-                                action_output, bool
-                            ):
+                            if action_output is not None and not isinstance(action_output, bool):
                                 print(action_output)
 
                         except Exception as exc:
-                            logger.error(
-                                f"Failed to execute action '{command}': {exc}"
-                            )
+                            logger.error(f"Failed to execute action '{command}': {exc}")
                             continue
 
         except Exception as exc:
@@ -548,17 +494,13 @@ class Terminal:
         for action, details in sorted(actions.items()):
             description = details.get("description", "No description available")
             action_colored = f"{GREEN}{action}{RESET}"
-            lines.append(
-                f"{ansi_ljust(action_colored, max_action_length)} → {CYAN}{description}{RESET}"
-            )
+            lines.append(f"{ansi_ljust(action_colored, max_action_length)} → {CYAN}{description}{RESET}")
             if details.get("parameters"):
                 params = ", ".join(details["parameters"])
                 lines.append(f"\tParameters: {params}")
 
         lines.append(DIM + "-" * (max_action_length + 50) + RESET)
-        lines.append(
-            f"{BOLD}Usage:{RESET} Type '!action_name' followed by parameters if required.\n"
-        )
+        lines.append(f"{BOLD}Usage:{RESET} Type '!action_name' followed by parameters if required.\n")
 
         # Built-in commands
         lines.append(f"{BOLD}Built-in Commands:{RESET}")
@@ -575,20 +517,18 @@ class Terminal:
             f"{ansi_ljust(f'{GREEN}size{RESET}', max_action_length)} → "
             f"{CYAN}Probe or manually set the max command size.{RESET}"
         )
-        lines.append(f"\tParameters: [bytes] (optional)")
+        lines.append("\tParameters: [bytes] (optional)")
         lines.append(
-            f"{ansi_ljust(f'{GREEN}debug{RESET}', max_action_length)} → "
-            f"{CYAN}Toggle debug logging on/off.{RESET}"
+            f"{ansi_ljust(f'{GREEN}debug{RESET}', max_action_length)} → {CYAN}Toggle debug logging on/off.{RESET}"
         )
         lines.append(
-            f"{ansi_ljust(f'{GREEN}trace{RESET}', max_action_length)} → "
-            f"{CYAN}Toggle trace logging on/off.{RESET}"
+            f"{ansi_ljust(f'{GREEN}trace{RESET}', max_action_length)} → {CYAN}Toggle trace logging on/off.{RESET}"
         )
         lines.append(
             f"{ansi_ljust(f'{GREEN}paths{RESET}', max_action_length)} → "
             f"{CYAN}Show custom paths and command location cache.{RESET}"
         )
-        lines.append(f"\tSubcommands: add <paths>, clear")
+        lines.append("\tSubcommands: add <paths>, clear")
         lines.append(
             f"{ansi_ljust(f'{GREEN}obfuscate{RESET}', max_action_length)} → "
             f"{CYAN}Toggle command obfuscation on/off.{RESET}"
@@ -637,9 +577,7 @@ class Terminal:
             lines.append(f"{YELLOW} Could not retrieve action information{RESET}")
             lines.append("")
             lines.append(f"{BOLD}Usage:{RESET}")
-            lines.append(
-                f"  {GREEN}!{action_name}{RESET} {DIM}[--param value ..]{RESET}"
-            )
+            lines.append(f"  {GREEN}!{action_name}{RESET} {DIM}[--param value ..]{RESET}")
             lines.append(DIM + "-" * 70 + RESET)
             return "\n".join(lines)
 
@@ -678,9 +616,7 @@ class Terminal:
                     if default_value is None and "default" not in param_info:
                         # Required parameter (no default key means required)
                         status = f"{GREEN}[required]{RESET}"
-                        lines.append(
-                            f"  {YELLOW}--{cli_param_name}{RESET} {DIM}({param_type}){RESET} {status}"
-                        )
+                        lines.append(f"  {YELLOW}--{cli_param_name}{RESET} {DIM}({param_type}){RESET} {status}")
                     else:
                         # Optional parameter with default
                         lines.append(
@@ -735,9 +671,7 @@ class Terminal:
                         cli_param_name = param_name.replace("_", "-")
                         default_value = param_str[param_str.index("(") + 1 : -1].strip()
 
-                        lines.append(
-                            f"  {YELLOW}--{cli_param_name}{RESET} {DIM}[default: {default_value}]{RESET}"
-                        )
+                        lines.append(f"  {YELLOW}--{cli_param_name}{RESET} {DIM}[default: {default_value}]{RESET}")
                     else:
                         # Required parameter (no default)
                         param_name = param_str.strip()
@@ -795,9 +729,7 @@ class Terminal:
                 for i, path in enumerate(custom_paths, 1):
                     lines.append(f"  {i}. {CYAN}{path}{RESET}")
             else:
-                lines.append(
-                    f"{YELLOW}{RESET} No custom paths configured (using standard detection methods)"
-                )
+                lines.append(f"{YELLOW}{RESET} No custom paths configured (using standard detection methods)")
 
             lines.append("")
             lines.append(f"{BOLD}Command Location Cache{RESET}")
@@ -807,9 +739,7 @@ class Terminal:
             cache = os_helper.command_location_cache
 
             if cache:
-                lines.append(
-                    f"{GREEN}{RESET} Cached command locations ({len(cache)} entries):"
-                )
+                lines.append(f"{GREEN}{RESET} Cached command locations ({len(cache)} entries):")
                 lines.append("")
 
                 # Find longest command name for alignment
@@ -817,31 +747,19 @@ class Terminal:
 
                 for command, location in sorted(cache.items()):
                     if location:
-                        lines.append(
-                            f"  {CYAN}{command.ljust(max_cmd_length)}{RESET} → {GREEN}{location}{RESET}"
-                        )
+                        lines.append(f"  {CYAN}{command.ljust(max_cmd_length)}{RESET} → {GREEN}{location}{RESET}")
                     else:
-                        lines.append(
-                            f"  {CYAN}{command.ljust(max_cmd_length)}{RESET} → {DIM}(not found){RESET}"
-                        )
+                        lines.append(f"  {CYAN}{command.ljust(max_cmd_length)}{RESET} → {DIM}(not found){RESET}")
             else:
                 lines.append(f"{YELLOW}{RESET} No commands cached yet")
 
             lines.append("")
             lines.append(f"{DIM}Usage: !paths [add <paths>] [clear]{RESET}")
-            lines.append(
-                f"{DIM}  - !paths add /opt/bin /usr/local/bin   # Add space-separated paths{RESET}"
-            )
-            lines.append(
-                f"{DIM}  - !paths add /opt/bin:/usr/local/bin  # Add colon-separated paths{RESET}"
-            )
-            lines.append(
-                f"{DIM}  - !paths clear                        # Clear command cache{RESET}"
-            )
+            lines.append(f"{DIM}  - !paths add /opt/bin /usr/local/bin   # Add space-separated paths{RESET}")
+            lines.append(f"{DIM}  - !paths add /opt/bin:/usr/local/bin  # Add colon-separated paths{RESET}")
+            lines.append(f"{DIM}  - !paths clear                        # Clear command cache{RESET}")
         else:
-            lines.append(
-                f"{YELLOW}{RESET} Custom paths feature is only available for Linux targets"
-            )
+            lines.append(f"{YELLOW}{RESET} Custom paths feature is only available for Linux targets")
 
         lines.append(DIM + "-" * 70 + RESET)
 

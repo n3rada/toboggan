@@ -1,25 +1,24 @@
 # toboggan/core/helpers/linux.py
 
 # Built-in imports
-import secrets
 import random
 import re
+import secrets
 import shlex
 
 # External library imports
 from loguru import logger
 
+from ..action import NamedPipe
+
 # Local application/library specific imports
 from . import base
-from ..action import NamedPipe
 
 
 class LinuxHelper(base.OSHelperBase):
-    """
-    Unix-specific operations like handling binaries and shell paths.
-    """
+    """Unix-specific operations like handling binaries and shell paths."""
 
-    def __init__(self, executor, custom_paths: list = None):
+    def __init__(self, executor, custom_paths: list | None = None):
         super().__init__(executor)
         self.__named_pipe_instance = None
 
@@ -36,20 +35,21 @@ class LinuxHelper(base.OSHelperBase):
         self.__custom_paths = custom_paths or []
 
         if self.__custom_paths:
-            logger.info(
-                f"Custom command paths configured: {', '.join(self.__custom_paths)}"
-            )
+            logger.info(f"Custom command paths configured: {', '.join(self.__custom_paths)}")
 
         logger.trace("Initialized LinuxHelper.")
 
     def get_current_user(self):
+        """Return the current user via whoami."""
         whoami_path = self.get_command_location("whoami")
         return self._executor.remote_execute(command=whoami_path).strip()
 
     def get_hostname(self) -> str:
+        """Return the hostname of the remote system."""
         return self._executor.remote_execute(command="hostname").strip()
 
     def fifo_execute(self, command: str) -> None:
+        """Send a command through the active named pipe."""
         self.__named_pipe_instance.execute(command)
 
     def start_named_pipe(self, action_class, **kwargs) -> None:
@@ -80,7 +80,6 @@ class LinuxHelper(base.OSHelperBase):
 
     def format_working_directory(self) -> str:
         """Generate a temp directory path in vmware-root style format."""
-
         # Generate vmware-root style path: /tmp/vmware-root_1234-1234567890
         # Shorter path reduces command overhead in constrained environments
         pid_like = random.randint(1000, 9999)
@@ -89,13 +88,13 @@ class LinuxHelper(base.OSHelperBase):
 
     def random_system_file_name(
         self,
-        prefix_pool: list = None,
-        suffix_pool: list = None,
-        path_pool: list = None,
+        prefix_pool: list | None = None,
+        suffix_pool: list | None = None,
+        path_pool: list | None = None,
         hex_suffix_length: int = 4,
         add_dot_prefix: bool = True,
     ) -> str:
-
+        """Generate a random file name that blends with common system files."""
         if prefix_pool is None:
             prefix_pool = [
                 "audit",
@@ -178,11 +177,11 @@ class LinuxHelper(base.OSHelperBase):
         return random_system_file_name
 
     def get_current_path(self) -> str:
+        """Return the current working directory via pwd."""
         return self._executor.remote_execute(command="pwd").strip()
 
     def is_shell_prompt_in(self, stdout_pathput: str) -> bool:
-        """
-        Detects if the command output is a shell prompt.
+        """Detects if the command output is a shell prompt.
 
         Args:
             stdout_pathput (str): The latest command output to analyze.
@@ -201,8 +200,7 @@ class LinuxHelper(base.OSHelperBase):
         return any(re.search(pattern, stdout_pathput) for pattern in prompt_patterns)
 
     def check_busybox(self, path: str | None = None) -> bool:
-        """
-        Checks if BusyBox is present and loads its available commands into a set.
+        """Checks if BusyBox is present and loads its available commands into a set.
 
         Args:
             path: Exact dropped BusyBox path, or None to check standard locations.
@@ -215,7 +213,9 @@ class LinuxHelper(base.OSHelperBase):
             try:
                 result = self._executor.remote_execute(
                     command=f"{shlex.quote(candidate)} --list",
-                    retry=False, raise_on_failure=True, debug=False,
+                    retry=False,
+                    raise_on_failure=True,
+                    debug=False,
                 )
                 commands = self.__parse_busybox_commands(result)
             except Exception:
@@ -244,8 +244,7 @@ class LinuxHelper(base.OSHelperBase):
         return self.check_busybox(path)
 
     def get_command_location(self, command: str) -> str:
-        """
-        Retrieves the full path of a command using multiple detection methods.
+        """Retrieves the full path of a command using multiple detection methods.
 
         Tries multiple methods for maximum compatibility across different Unix-like systems:
         1. Custom paths (if provided via --paths)
@@ -266,7 +265,6 @@ class LinuxHelper(base.OSHelperBase):
         Returns:
             str: The full path of the command if found, else an empty string.
         """
-
         # Check cache first
         if command in self.__command_location_cache:
             logger.trace(
@@ -285,22 +283,16 @@ class LinuxHelper(base.OSHelperBase):
 
                 # Check if the command exists at this custom path
                 try:
-                    check_result = self._executor.remote_execute(
-                        f"test -x {full_path} && echo E", debug=False
-                    ).strip()
+                    check_result = self._executor.remote_execute(f"test -x {full_path} && echo E", debug=False).strip()
 
                     if check_result == "E":
                         self.__command_location_cache[command] = full_path
-                        logger.trace(
-                            f"Cached command from custom path: {command} -> {full_path}"
-                        )
+                        logger.trace(f"Cached command from custom path: {command} -> {full_path}")
                         return full_path
                 except ValueError:
                     raise
                 except Exception as exc:
-                    logger.trace(
-                        f"Command not found at custom path: {full_path} - Exception: {exc}"
-                    )
+                    logger.trace(f"Command not found at custom path: {full_path} - Exception: {exc}")
                     continue  # Try next custom path
 
         # Wrap a full command with /bin/busybox if its base command is supported.
@@ -313,9 +305,7 @@ class LinuxHelper(base.OSHelperBase):
 
         # Try the previously successful detection method first
         if self.__detection_method is not None:
-            result = self._executor.remote_execute(
-                f"{self.__detection_method} {command}", debug=False
-            ).strip()
+            result = self._executor.remote_execute(f"{self.__detection_method} {command}", debug=False).strip()
 
             if result and "not found" not in result.lower():
                 self.__command_location_cache[command] = result
@@ -338,14 +328,10 @@ class LinuxHelper(base.OSHelperBase):
 
         for method in detection_methods:
             try:
-                location = self._executor.remote_execute(
-                    f"{method}  {command}", debug=False
-                ).strip()
+                location = self._executor.remote_execute(f"{method}  {command}", debug=False).strip()
 
                 # Clean up output (some methods return extra text)
-                if location and not any(
-                    word in location.lower() for word in wrong_detection_words
-                ):
+                if location and not any(word in location.lower() for word in wrong_detection_words):
                     # Extract just the path if there's extra text
                     # Example: "bash is /bin/bash" -> "/bin/bash"
                     if " " in location:
@@ -358,13 +344,9 @@ class LinuxHelper(base.OSHelperBase):
                     # Validate it's an actual path
                     if location.startswith("/"):
                         self.__detection_method = method
-                        logger.info(
-                            f"Working detection method found: {self.__detection_method}"
-                        )
+                        logger.info(f"Working detection method found: {self.__detection_method}")
                         self.__command_location_cache[command] = location
-                        logger.trace(
-                            f"Cached command location: {command} -> {location}"
-                        )
+                        logger.trace(f"Cached command location: {command} -> {location}")
                         return location
 
             except Exception:
@@ -376,8 +358,7 @@ class LinuxHelper(base.OSHelperBase):
         return ""
 
     def __parse_busybox_commands(self, output: str) -> set[str]:
-        """
-        Parses the output of `busybox --help` to extract available command names.
+        """Parses the output of `busybox --help` to extract available command names.
 
         Args:
             output (str): The stdout string from BusyBox.
@@ -404,14 +385,17 @@ class LinuxHelper(base.OSHelperBase):
 
     @property
     def named_pipe_instance(self) -> NamedPipe:
+        """Return the active named pipe instance."""
         return self.__named_pipe_instance
 
     @property
     def busybox_commands(self) -> set:
+        """Return the set of available BusyBox applet names."""
         return self.__busybox_commands
 
     @property
     def is_busybox_present(self) -> bool:
+        """Return whether BusyBox is available on the target."""
         if self.__is_busybox_present is None:
             self.__is_busybox_present = self.check_busybox()
 
@@ -422,9 +406,8 @@ class LinuxHelper(base.OSHelperBase):
         """Returns the command location cache dictionary."""
         return self.__command_location_cache
 
-    def clear_command_cache(self, command: str = None) -> None:
-        """
-        Clears the command location cache.
+    def clear_command_cache(self, command: str | None = None) -> None:
+        """Clears the command location cache.
 
         Args:
             command: If provided, clears only this command from cache.

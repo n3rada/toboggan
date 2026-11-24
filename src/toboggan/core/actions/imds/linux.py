@@ -21,8 +21,7 @@ from toboggan.core.actions.imds.common import (
 
 EXIT_MARKER = "TBG_IMDS_EXIT:"
 _UNREACHABLE = (
-    f"IMDS unreachable (no HTTP response within {CONNECT_TIMEOUT}s; "
-    "not an EC2 instance, or IMDS is blocked)."
+    f"IMDS unreachable (no HTTP response within {CONNECT_TIMEOUT}s; not an EC2 instance, or IMDS is blocked)."
 )
 
 
@@ -42,9 +41,14 @@ class ImdsAction(ImdsBase):
         url = shlex.quote(imds_url(path))
         if self._client_name == "curl":
             parts = [
-                self._client_path, "-s", "--noproxy", "'*'",
-                "--connect-timeout", str(CONNECT_TIMEOUT),
-                "--max-time", str(REQUEST_TIMEOUT),
+                self._client_path,
+                "-s",
+                "--noproxy",
+                "'*'",
+                "--connect-timeout",
+                str(CONNECT_TIMEOUT),
+                "--max-time",
+                str(REQUEST_TIMEOUT),
             ]
             if method != "GET":
                 parts += ["-X", method]
@@ -66,8 +70,10 @@ class ImdsAction(ImdsBase):
         try:
             raw = self._executor.remote_execute(
                 self._command(method, path, headers),
-                timeout=EXECUTION_TIMEOUT, retry=False,
-                raise_on_failure=True, debug=False,
+                timeout=EXECUTION_TIMEOUT,
+                retry=False,
+                raise_on_failure=True,
+                debug=False,
             )
         except Exception as exc:  # user-defined execution backends
             return ImdsResponse(None, error=f"Remote execution failed ({type(exc).__name__}).")
@@ -98,8 +104,7 @@ class ImdsAction(ImdsBase):
             return ImdsResponse(int(status.group(1)), error=body.strip())
         lowered = body.lower()
         if code == "4" or any(
-            hint in lowered
-            for hint in ("timed out", "can't connect", "unreachable", "no route", "refused")
+            hint in lowered for hint in ("timed out", "can't connect", "unreachable", "no route", "refused")
         ):
             return ImdsResponse(None, error=_UNREACHABLE)
         if code == "8":  # GNU wget: server error response, status not reported
@@ -107,7 +112,6 @@ class ImdsAction(ImdsBase):
         if method != "GET":
             return ImdsResponse(
                 None,
-                error=f"wget failed (exit {code}); BusyBox wget does not support "
-                f"--method={method}.",
+                error=f"wget failed (exit {code}); BusyBox wget does not support --method={method}.",
             )
         return ImdsResponse(None, error=f"wget failed (exit {code}).")

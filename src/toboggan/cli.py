@@ -7,23 +7,23 @@ import sys
 import time
 from importlib.resources import files
 
+import httpx
+
 # External library imports
 from loguru import logger
 from modwrap import ModuleWrapper
-import httpx
 
 # Local library imports
 from . import __version__, banner
-from .core import executor
-from .core import terminal
-from .core.utils import logbook, common
+from .core import executor, terminal
+from .core.utils import common, logbook
 
 # Directory where built-in handlers are stored
 BUILTIN_DIR = files("toboggan.core.handlers")
 
 
 def build_parser() -> argparse.ArgumentParser:
-
+    """Build and return the argument parser for the toboggan CLI."""
     parser = argparse.ArgumentParser(
         prog="toboggan",
         add_help=True,
@@ -64,9 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--shell",
         type=str,
         default=None,
-        help=(
-            "Specify the shell binary to be used for named pipe execution (e.g., /bin/sh, /bin/bash)"
-        ),
+        help=("Specify the shell binary to be used for named pipe execution (e.g., /bin/sh, /bin/bash)"),
     )
 
     execution_group.add_argument(
@@ -109,9 +107,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # Named Pipe Settings
-    named_pipe_group = parser.add_argument_group(
-        "Named Pipe Settings", "Options to manage named pipe."
-    )
+    named_pipe_group = parser.add_argument_group("Named Pipe Settings", "Options to manage named pipe.")
 
     named_pipe_group.add_argument(
         "--fifo",
@@ -144,9 +140,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output path (file or directory) for FIFO where command output appears. If directory, filename will be auto-generated.",
     )
 
-    system_group = parser.add_argument_group(
-        "System Configuration", "Specify the target operating system."
-    )
+    system_group = parser.add_argument_group("System Configuration", "Specify the target operating system.")
 
     system_group.add_argument(
         "--os",
@@ -179,9 +173,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Custom PATH string with colon-separated directories (e.g., /opt/bin:/usr/local/bin:/custom/path). These are checked before standard detection methods.",
     )
 
-    advanced_group = parser.add_argument_group(
-        "Advanced Options", "Additional advanced or debugging options."
-    )
+    advanced_group = parser.add_argument_group("Advanced Options", "Additional advanced or debugging options.")
 
     advanced_group.add_argument(
         "--prefix",
@@ -214,7 +206,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-
+    """Parse arguments, initialize the executor, and run the terminal session."""
     print(banner.display_banner())
 
     parser = build_parser()
@@ -276,9 +268,7 @@ def main() -> int:
     source_count = sum([bool(args.module), bool(args.exec_wrapper), bool(args.request)])
 
     if source_count == 0:
-        logger.error(
-            "No execution source provided. Specify a module, --exec-wrapper, or --request."
-        )
+        logger.error("No execution source provided. Specify a module, --exec-wrapper, or --request.")
         return 1
 
     if source_count > 1:
@@ -300,15 +290,11 @@ def main() -> int:
 
             # BurpRequest.__init__ handles all validation
             logger.info(f"Loading Burp Suite request from: {args.request}")
-            execution_module.BURP_REQUEST_OBJECT = execution_module.BurpRequest(
-                args.request
-            )
+            execution_module.BURP_REQUEST_OBJECT = execution_module.BurpRequest(args.request)
             logger.success("Burp Suite request loaded and validated successfully")
         except (FileNotFoundError, ValueError) as e:
             logger.error(str(e))
-            logger.info(
-                "Tip: Save a request from Burp Suite (right-click → Save item) with ||cmd|| placeholder"
-            )
+            logger.info("Tip: Save a request from Burp Suite (right-click → Save item) with ||cmd|| placeholder")
             return 1
         except Exception as e:
             logger.error(f"Failed to load Burp Suite request: {e}")
@@ -320,17 +306,13 @@ def main() -> int:
         wrapper = ModuleWrapper(args.module)
 
         if not wrapper.has_args("execute", ["command", "timeout"]):
-            logger.error(
-                "Provided module does not implement required 'execute(command, timeout)' function."
-            )
+            logger.error("Provided module does not implement required 'execute(command, timeout)' function.")
             return 1
 
         # Verify that the module can be imported correctly
         deps = wrapper.get_dependencies()
         if deps["missing"]:
-            logger.error(
-                f"Cannot import module due to missing dependencies: {', '.join(deps['missing'])}"
-            )
+            logger.error(f"Cannot import module due to missing dependencies: {', '.join(deps['missing'])}")
             logger.warning("Inject the dependencies or install toboggan globally")
             return 1
 
@@ -386,14 +368,11 @@ def main() -> int:
     except RuntimeError as e:
         logger.error(f"Failed to initialize executor: {e}")
         return 1
-    except Exception as e:
+    except Exception:
         logger.exception("Unexpected error during executor initialization")
         return 1
 
-    logger.info(
-        f"It takes about {command_executor.avg_response_time:.2f}s for a command "
-        f"to slide down the toboggan"
-    )
+    logger.info(f"It takes about {command_executor.avg_response_time:.2f}s for a command to slide down the toboggan")
 
     # Validate and set stdin/stdout paths if provided
     if args.stdin:
@@ -465,10 +444,7 @@ def main() -> int:
         logger.exception("Unhandled exception occurred")
         # Attempt cleanup even on error
         try:
-            if (
-                "command_executor" in locals()
-                and command_executor.has_working_directory
-            ):
+            if "command_executor" in locals() and command_executor.has_working_directory:
                 command_executor.delete_working_directory()
         except Exception:
             pass

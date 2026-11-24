@@ -67,11 +67,14 @@ class ImdsResponse:
 
     @property
     def ok(self) -> bool:
+        """Return whether the IMDS response indicates success."""
         return self.status == 200
 
 
 @dataclass(frozen=True)
 class Entry:
+    """One child entry in an IMDS directory listing."""
+
     label: str
     path: str
     is_dir: bool
@@ -79,6 +82,8 @@ class Entry:
 
 @dataclass(frozen=True)
 class ImdsOptions:
+    """Parsed options for an ``!imds`` invocation."""
+
     version: str | None = None
     path: str | None = None
     recursive: bool = False
@@ -137,9 +142,8 @@ def parse_options(
 
 
 def is_safe_path(path: str) -> bool:
-    return bool(_SAFE_PATH.fullmatch(path)) and not any(
-        segment in (".", "..") for segment in path.split("/")
-    )
+    """Return whether ``path`` contains only safe IMDS characters and no traversal."""
+    return bool(_SAFE_PATH.fullmatch(path)) and not any(segment in (".", "..") for segment in path.split("/"))
 
 
 def resolve_path(path: str | None) -> str:
@@ -151,11 +155,9 @@ def resolve_path(path: str | None) -> str:
     if not path:
         return META_DATA_ROOT
     if path.startswith("/latest/") or path == "/latest":
-        resolved = path[len("/latest/"):]
+        resolved = path[len("/latest/") :]
     elif path.startswith("/"):
-        raise ValueError(
-            "Absolute paths must start with /latest/ (e.g. /latest/user-data)."
-        )
+        raise ValueError("Absolute paths must start with /latest/ (e.g. /latest/user-data).")
     else:
         resolved = META_DATA_ROOT + path
     if not is_safe_path(resolved):
@@ -164,11 +166,12 @@ def resolve_path(path: str | None) -> str:
 
 
 def imds_url(path: str) -> str:
+    """Build the full IMDS URL for a path relative to ``/latest/``."""
     return f"{IMDS_ENDPOINT}/latest/{path}"
 
 
 def split_marker(raw: str, marker: str) -> tuple[str, str] | None:
-    """Split ``<body>\\n<marker><digits>`` (the request command output)."""
+    r"""Split ``<body>\\n<marker><digits>`` (the request command output)."""
     match = re.fullmatch(rf"(.*?)\n?{re.escape(marker)}(\d+)\s*", raw, re.DOTALL)
     return (match.group(1), match.group(2)) if match else None
 
@@ -199,6 +202,7 @@ def child_entries(parent: str, body: str) -> tuple[list[Entry], int]:
 
 
 def describe_failure(response: ImdsResponse, path: str) -> str:
+    """Return a human-readable explanation of a failed IMDS response."""
     if response.status is None:
         return response.error or "IMDS unreachable from the target."
     if response.status == 401:
@@ -214,6 +218,7 @@ def describe_failure(response: ImdsResponse, path: str) -> str:
 
 
 def format_value(path: str, value: str) -> str:
+    """Format a leaf IMDS value as ``path: value``, indenting multiline values."""
     value = value.rstrip("\n")
     if "\n" not in value:
         return f"{path}: {value}"
@@ -293,6 +298,7 @@ class ImdsClient:
         self.version: str | None = None
 
     def connect(self) -> bool:
+        """Negotiate the IMDS version and acquire a session token if needed."""
         if self._requested == "v1":
             self.version = "v1"
             logger.info("Using IMDSv1 (no session token).")
@@ -311,9 +317,7 @@ class ImdsClient:
         return True
 
     def _fetch_token(self) -> ImdsResponse:
-        response = self._request(
-            "PUT", TOKEN_PATH, {TOKEN_TTL_HEADER: str(TOKEN_TTL_SECONDS)}
-        )
+        response = self._request("PUT", TOKEN_PATH, {TOKEN_TTL_HEADER: str(TOKEN_TTL_SECONDS)})
         if not response.ok:
             return response
         token = response.body.strip()
@@ -326,6 +330,7 @@ class ImdsClient:
         return {TOKEN_HEADER: self._token} if self.version == "v2" else {}
 
     def get(self, path: str) -> ImdsResponse:
+        """Fetch an IMDS path, refreshing the token on 401 if using IMDSv2."""
         response = self._request("GET", path, self._headers())
         if response.status == 401 and self.version == "v2" and self._fetch_token().ok:
             response = self._request("GET", path, self._headers())
@@ -343,17 +348,17 @@ class ImdsLoader:
         self._client = client
 
     def list(self, path: str) -> list[tuple[str, str, bool]]:
+        """List the children of an IMDS directory node."""
         response = self._client.get(path)
         if not response.ok:
             raise LoaderError(describe_failure(response, path))
         entries, _ = child_entries(path, response.body)
         # child_entries keeps a listing's own trailing '/' in the label; drop it
         # so the navigator adds exactly one '/' to directory labels.
-        return [
-            (entry.label.rstrip("/"), entry.path, entry.is_dir) for entry in entries
-        ]
+        return [(entry.label.rstrip("/"), entry.path, entry.is_dir) for entry in entries]
 
     def read(self, path: str) -> str:
+        """Read the value of an IMDS leaf node."""
         response = self._client.get(path)
         if not response.ok:
             raise LoaderError(describe_failure(response, path))
@@ -363,9 +368,7 @@ class ImdsLoader:
 class ImdsBase(BaseAction):
     """Shared ``!imds`` behaviour; subclasses send the HTTP requests."""
 
-    DESCRIPTION = (
-        "Browse the AWS EC2 instance metadata service (IMDSv1/v2) from the target."
-    )
+    DESCRIPTION = "Browse the AWS EC2 instance metadata service (IMDSv1/v2) from the target."
 
     def run(
         self,
@@ -457,25 +460,18 @@ class ImdsBase(BaseAction):
         if not root_entries:
             logger.warning(f"/latest/{path} has no entries to browse.")
             return
-        logger.info(
-            "Opening IMDS browser; each step fetches only the node you open "
-            "(q or Esc to quit)."
-        )
+        logger.info("Opening IMDS browser; each step fetches only the node you open (q or Esc to quit).")
         # The browser runs a full-screen app and fetches through the target
         # while open; silence host logging so remote-exec output cannot corrupt
         # the screen. Fetch failures are shown inside the browser instead.
         logger.disable("toboggan")
         try:
-            browse_tree(
-                path, loader, root_entries, title=f"IMDS{client.version} /latest/"
-            )
+            browse_tree(path, loader, root_entries, title=f"IMDS{client.version} /latest/")
         finally:
             logger.enable("toboggan")
         logger.info("Closed IMDS browser.")
 
-    def _show_credentials(
-        self, client: ImdsClient, profile: bool = False, profile_name: str | None = None
-    ) -> None:
+    def _show_credentials(self, client: ImdsClient, profile: bool = False, profile_name: str | None = None) -> None:
         listing = client.get(CREDENTIALS_PATH)
         if listing.status == 404 or (listing.ok and not listing.body.strip()):
             logger.warning("No IAM role attached to this instance.")
@@ -515,8 +511,7 @@ class ImdsBase(BaseAction):
                 logger.warning(f"Role {role}: IMDS reported Code {credentials['Code']}.")
             elif "AccessKeyId" in credentials:
                 logger.success(
-                    f"Credentials found for role {role} "
-                    f"(expires {credentials.get('Expiration', 'unknown')})."
+                    f"Credentials found for role {role} (expires {credentials.get('Expiration', 'unknown')})."
                 )
                 usable.append((role, credentials))
             if not profile:
@@ -526,9 +521,7 @@ class ImdsBase(BaseAction):
             self._print_profiles(usable, profile_name)
 
     @staticmethod
-    def _print_profiles(
-        usable: list[tuple[str, dict]], profile_name: str | None
-    ) -> None:
+    def _print_profiles(usable: list[tuple[str, dict]], profile_name: str | None) -> None:
         """Print each role's credentials as an ~/.aws/credentials profile block."""
         if not usable:
             logger.warning("No usable credentials to render as a profile.")

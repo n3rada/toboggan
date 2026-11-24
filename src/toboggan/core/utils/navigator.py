@@ -53,14 +53,23 @@ class LoaderError(Exception):
 
 
 class Entry(NamedTuple):
+    """A single node in the navigation tree."""
+
     label: str
     path: str
     is_dir: bool
 
 
 class Loader(Protocol):
-    def list(self, path: str) -> "list[tuple[str, str, bool]]": ...
-    def read(self, path: str) -> str: ...
+    """Protocol for fetching directory listings and leaf values."""
+
+    def list(self, path: str) -> "list[tuple[str, str, bool]]":
+        """Return the children of the directory at path."""
+        ...
+
+    def read(self, path: str) -> str:
+        """Return the leaf value at path."""
+        ...
 
 
 def value_text(value: Any) -> str:
@@ -111,18 +120,22 @@ class TreeNavigator:
 
     @staticmethod
     def label(entry: Entry) -> str:
+        """Return the display label, appending a slash for directories."""
         return f"{entry.label}/" if entry.is_dir else entry.label
 
     @property
     def current_dir(self) -> str:
+        """Return the path of the directory currently being listed."""
         return self._stack[-1]
 
     @property
     def children(self) -> list[Entry]:
+        """Return the cached child entries of the current directory."""
         return self._listings.get(self.current_dir, [])
 
     @property
     def selected(self) -> Entry | None:
+        """Return the currently highlighted entry, or None if the listing is empty."""
         children = self.children
         return children[self.index] if children else None
 
@@ -148,6 +161,7 @@ class TreeNavigator:
             self._errors[path] = str(exc)
 
     def move(self, delta: int) -> None:
+        """Move the selection cursor by delta rows within the current listing."""
         if self.viewing is None and self.children:
             self.index = max(0, min(len(self.children) - 1, self.index + delta))
 
@@ -215,7 +229,7 @@ def browse_tree(
         lines = []
         for line in text.splitlines() or [""]:
             line = line.expandtabs()
-            lines.extend(line[i:i + width] for i in range(0, len(line), width) or [0])
+            lines.extend(line[i : i + width] for i in range(0, len(line), width) or [0])
         return lines or [""]
 
     def open_value(text: str) -> None:
@@ -237,7 +251,7 @@ def browse_tree(
             style = "class:error" if navigator.viewing[2] else ""
             lines = view["lines"]
             view["scroll"] = max(0, min(view["scroll"], len(lines) - height))
-            return [(style, "\n".join(lines[view["scroll"]:view["scroll"] + height]))]
+            return [(style, "\n".join(lines[view["scroll"] : view["scroll"] + height]))]
         children = navigator.children
         if not children:
             return [("class:empty", "  (empty)")]

@@ -1,9 +1,9 @@
 # toboggan/core/actions/drop_bin/linux.py
 
 # Standard library imports
-from pathlib import Path
 import posixpath
 import shlex
+from pathlib import Path
 
 # External library imports
 from loguru import logger
@@ -14,9 +14,12 @@ from toboggan.core.actions.upload.linux import UploadAction
 
 
 class DropBinary(BaseAction):
+    """Upload a binary to the target and make it executable."""
+
     DESCRIPTION = "Upload a binary to the target and make it executable."
 
-    def run(self, local_path: str = None, remote_path: str = None) -> bool:
+    def run(self, local_path: str | None = None, remote_path: str | None = None) -> bool:
+        """Upload a local binary and set the executable permission on the target."""
         if not local_path:
             logger.error("You must provide a local path to the binary.")
             return False
@@ -42,9 +45,7 @@ class DropBinary(BaseAction):
             remote_path = posixpath.join(self._executor.target.pwd, remote_path)
 
         # Upload
-        if not UploadAction(self._executor).run(
-            local_path=str(local_path), remote_path=remote_path
-        ):
+        if not UploadAction(self._executor).run(local_path=str(local_path), remote_path=remote_path):
             return False
 
         chmod = self._os_helper.get_command_location("chmod")
@@ -54,7 +55,9 @@ class DropBinary(BaseAction):
         try:
             self._executor.remote_execute(
                 f"{chmod} +x {shlex.quote(remote_path)}",
-                retry=False, raise_on_failure=True, debug=False,
+                retry=False,
+                raise_on_failure=True,
+                debug=False,
             )
         except Exception as exc:
             logger.error(f"Cannot make dropped binary executable: {exc}")

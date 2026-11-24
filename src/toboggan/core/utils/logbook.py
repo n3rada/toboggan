@@ -22,7 +22,7 @@ import json
 import os
 import sys
 import traceback
-from datetime import timezone
+from datetime import UTC
 from pathlib import Path
 
 # Third party library imports
@@ -77,17 +77,10 @@ def _serialize_record(record) -> str:
     exception = record["exception"]
     exception_text = None
     if exception is not None:
-        exception_text = "".join(
-            traceback.format_exception(
-                exception.type, exception.value, exception.traceback
-            )
-        )
+        exception_text = "".join(traceback.format_exception(exception.type, exception.value, exception.traceback))
 
     payload = {
-        "ts": record["time"]
-        .astimezone(timezone.utc)
-        .isoformat(timespec="milliseconds")
-        .replace("+00:00", "Z"),
+        "ts": record["time"].astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
         "level": record["level"].name,
         "msg": record["message"],
         "module": record["name"],
@@ -96,17 +89,11 @@ def _serialize_record(record) -> str:
         "exception": exception_text,
     }
 
-    extra = {
-        key: value
-        for key, value in record["extra"].items()
-        if not key.startswith("_")
-    }
+    extra = {key: value for key, value in record["extra"].items() if not key.startswith("_")}
     if extra:
         payload["extra"] = extra
 
-    return json.dumps(
-        payload, ensure_ascii=False, default=str, separators=(",", ":")
-    )
+    return json.dumps(payload, ensure_ascii=False, default=str, separators=(",", ":"))
 
 
 def _format_json(record) -> str:
@@ -139,8 +126,7 @@ def _xdg_state_dir(app_name: str = "toboggan") -> Path:
 
 
 def setup_logging(level: str = "INFO"):
-    """
-    Setup logging with compact, visually intuitive output.
+    """Setup logging with compact, visually intuitive output.
 
     Args:
         level: Log level (TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL)
@@ -188,6 +174,4 @@ def setup_logging(level: str = "INFO"):
     )
 
     logger.trace(f"Logger initialized at level {level}")
-    logger.trace(
-        f"Log file: {log_file} (rotation {max_bytes}, retention {retention_days} days)"
-    )
+    logger.trace(f"Log file: {log_file} (rotation {max_bytes}, retention {retention_days} days)")

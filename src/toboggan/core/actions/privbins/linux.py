@@ -6,20 +6,18 @@ from toboggan.core.action import BaseAction
 
 
 class PrivBinsAction(BaseAction):
-    DESCRIPTION = (
-        "Lists SUID and SGID binaries that could be exploited for privilege escalation."
-    )
+    """List SUID and SGID binaries for privilege escalation opportunities."""
+
+    DESCRIPTION = "Lists SUID and SGID binaries that could be exploited for privilege escalation."
 
     def run(self) -> None:
-        """
-        Fetches and displays all privileged binaries (SUID & SGID) on the system.
+        """Fetch and display all privileged binaries (SUID and SGID) on the system.
+
         Prints each section separately.
         """
         logger.info("Scanning for SUID binaries (Execute as Root)")
 
-        suid_output = self._executor.remote_execute(
-            "find / -perm -u=s -type f 2>/dev/null"
-        )
+        suid_output = self._executor.remote_execute("find / -perm -u=s -type f 2>/dev/null")
 
         if suid_output.strip():
             print("\n".join(suid_output.strip().split("\n")))
@@ -28,9 +26,7 @@ class PrivBinsAction(BaseAction):
 
         logger.info("Scanning for SGID binaries (Execute as Group Owner)")
 
-        sgid_output = self._executor.remote_execute(
-            "find / -perm -g=s -type f 2>/dev/null"
-        )
+        sgid_output = self._executor.remote_execute("find / -perm -g=s -type f 2>/dev/null")
 
         if sgid_output.strip():
             print("\n".join(sgid_output.strip().split("\n")))

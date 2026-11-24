@@ -1,33 +1,38 @@
 # toboggan/core/executor.py
 
+from __future__ import annotations
+
 # Built-in imports
+import base64
 import random
 import time
-import base64
+from typing import TYPE_CHECKING
 
 # External library imports
 from loguru import logger
 
 # Local application/library specific imports
-from . import action
-from . import target
-from .utils.common import SingletonMeta
+from . import action, target
 from .helpers.linux import LinuxHelper
 from .helpers.windows import WindowsHelper
-from .helpers.base import OSHelperBase
+from .utils.common import SingletonMeta
+
+if TYPE_CHECKING:
+    from .helpers.base import OSHelperBase
 
 
 class Executor(metaclass=SingletonMeta):
+    """Manage remote command execution with optional obfuscation and base64 wrapping."""
 
     def __init__(
         self,
-        execute_method: callable = None,
-        shell: str = None,
-        working_directory: str = None,
-        target_os: str = None,
+        execute_method: callable | None = None,
+        shell: str | None = None,
+        working_directory: str | None = None,
+        target_os: str | None = None,
         base64_wrapping: bool = False,
         obfuscation: bool = False,
-        custom_paths: list = None,
+        custom_paths: list | None = None,
     ):
         if execute_method is None:
             raise ValueError("Executor should have an execute callable method.")
@@ -36,9 +41,7 @@ class Executor(metaclass=SingletonMeta):
         self.__base64_wrapping = base64_wrapping
         self.__obfuscation = False
 
-        self._initial_execution_successful = (
-            False  # Will become True only if remote is reachable
-        )
+        self._initial_execution_successful = False  # Will become True only if remote is reachable
 
         self._avg_response_time = None  # Exponential moving average
         self._response_alpha = 0.4  # Weight of most recent observation (adjustable)
@@ -77,13 +80,9 @@ class Executor(metaclass=SingletonMeta):
             if self.__os == "windows" and hasattr(self._os_helper, "force_powershell"):
                 self._os_helper.force_powershell()
 
-            self.__obfuscation_action = self.__action_manager.get_action("obfuscate")(
-                executor=self
-            )
+            self.__obfuscation_action = self.__action_manager.get_action("obfuscate")(executor=self)
 
-            self.__unobfuscation_action = self.__action_manager.get_action("deobfuscate")(
-                executor=self
-            )
+            self.__unobfuscation_action = self.__action_manager.get_action("deobfuscate")(executor=self)
 
             self.__obfuscation = True
             logger.success("Obfuscation enabled")
@@ -102,49 +101,45 @@ class Executor(metaclass=SingletonMeta):
     # Properties
     @property
     def target(self) -> target.Target:
+        """Return the remote target information."""
         return self.__target
 
     @property
     def action_manager(self) -> action.ActionsManager:
+        """Return the actions manager instance."""
         return self.__action_manager
 
     @property
     def has_working_directory(self) -> bool:
-        return (
-            hasattr(self, "_working_directory") and self._working_directory is not None
-        )
+        """Return whether a working directory has been initialized."""
+        return hasattr(self, "_working_directory") and self._working_directory is not None
 
     @property
     def working_directory(self) -> str:
-        """
-        Lazily initializes and returns the working directory.
+        """Lazily initialize and return the working directory.
+
         Creates the remote directory only when accessed the first time.
         """
         if not self.has_working_directory:
             self._working_directory = (
                 self._provided_working_directory
-                if (
-                    hasattr(self, "_provided_working_directory")
-                    and self._provided_working_directory is not None
-                )
+                if (hasattr(self, "_provided_working_directory") and self._provided_working_directory is not None)
                 else self._os_helper.format_working_directory()
             )
 
             self.remote_execute(command=f'mkdir "{self._working_directory}"')
-            logger.info(
-                f"Remote working directory initialized: {self._working_directory}"
-            )
+            logger.info(f"Remote working directory initialized: {self._working_directory}")
 
         return self._working_directory
 
     @property
     def os_helper(self) -> OSHelperBase:
+        """Return the OS-specific helper instance."""
         return self._os_helper
 
     @property
     def shell(self) -> str:
-        """
-        Returns the current shell to be used for remote command execution.
+        """Returns the current shell to be used for remote command execution.
 
         This property determines and validates the appropriate shell for the remote target,
         depending on the operating system. For Linux targets, it tries a list of common shells
@@ -159,7 +154,6 @@ class Executor(metaclass=SingletonMeta):
         Returns:
             str: The name of the validated shell to use for remote execution.
         """
-
         linux_shells = ["$0", "zsh", "bash", "sh"]
 
         if not self._shell:
@@ -188,8 +182,7 @@ class Executor(metaclass=SingletonMeta):
 
     @shell.setter
     def shell(self, shell: str) -> None:
-        """
-        Sets the shell to be used for remote command execution.
+        """Sets the shell to be used for remote command execution.
 
         This setter updates the shell used by the Executor for running remote commands.
         It also resets the shell validation flag, so the next access to the shell property
@@ -203,6 +196,7 @@ class Executor(metaclass=SingletonMeta):
 
     @property
     def is_ready(self) -> bool:
+        """Return whether the initial remote execution succeeded."""
         return self._initial_execution_successful
 
     @property
@@ -223,9 +217,7 @@ class Executor(metaclass=SingletonMeta):
 
         # Only align to 1024 for larger sizes
         if size >= 1024 and size % 1024 != 0:
-            logger.warning(
-                f"Chunk size {size} is not a multiple of 1024. Rounding down to nearest 1024."
-            )
+            logger.warning(f"Chunk size {size} is not a multiple of 1024. Rounding down to nearest 1024.")
             size = (size // 1024) * 1024
         elif size >= 1024:
             # Already aligned
@@ -248,9 +240,7 @@ class Executor(metaclass=SingletonMeta):
                 debug=False,
             )
         except Exception:
-            logger.error(
-                f"Chunk size of {size} bytes does not work on the remote system."
-            )
+            logger.error(f"Chunk size of {size} bytes does not work on the remote system.")
             return
 
         self._command_max_size = size
@@ -263,9 +253,7 @@ class Executor(metaclass=SingletonMeta):
             logger.info("Probing command size before file transfer.")
             size = self.calculate_max_command_size()
             if size <= 0:
-                raise ValueError(
-                    "Could not determine command size; set !size or a transfer override."
-                )
+                raise ValueError("Could not determine command size; set !size or a transfer override.")
             self._command_max_size = size
             self._command_max_size_configured = True
         return self._command_max_size
@@ -273,15 +261,18 @@ class Executor(metaclass=SingletonMeta):
     # Properties
     @property
     def obfuscation(self) -> bool:
+        """Return whether command obfuscation is enabled."""
         return self.__obfuscation
 
     @property
     def base64_wrapping(self) -> bool:
+        """Return whether base64 wrapping is enabled."""
         return self.__base64_wrapping
 
     # Public methods
 
     def toggle_obfuscation(self) -> bool:
+        """Toggle command obfuscation and return the new state."""
         if self.__obfuscation:
             self.__obfuscation = False
             logger.success("Obfuscation disabled")
@@ -292,12 +283,8 @@ class Executor(metaclass=SingletonMeta):
         if self.__os == "windows" and hasattr(self._os_helper, "force_powershell"):
             self._os_helper.force_powershell()
 
-        self.__obfuscation_action = self.__action_manager.get_action("obfuscate")(
-            executor=self
-        )
-        self.__unobfuscation_action = self.__action_manager.get_action("deobfuscate")(
-            executor=self
-        )
+        self.__obfuscation_action = self.__action_manager.get_action("obfuscate")(executor=self)
+        self.__unobfuscation_action = self.__action_manager.get_action("deobfuscate")(executor=self)
 
         self.__obfuscation = True
         logger.success("Obfuscation enabled")
@@ -310,6 +297,7 @@ class Executor(metaclass=SingletonMeta):
         return True
 
     def toggle_base64(self) -> bool:
+        """Toggle base64 wrapping and return the new state."""
         if self.__base64_wrapping:
             self.__base64_wrapping = False
             logger.success("Base64 wrapping disabled")
@@ -325,11 +313,12 @@ class Executor(metaclass=SingletonMeta):
             )
         return True
 
-    def one_shot_execute(self, command: str = None, debug: bool = False) -> None:
-        """Execute a command without returning nothing and with a fast timeout.
+    def one_shot_execute(self, command: str | None = None, debug: bool = False) -> None:
+        """Execute a command without returning output and with a fast timeout.
 
         Args:
             command (str): Command to be executed.
+            debug (bool): Enable or disable debug logging for this execution.
         """
         try:
             self.remote_execute(command=command, timeout=3, retry=False, debug=debug)
@@ -339,26 +328,25 @@ class Executor(metaclass=SingletonMeta):
     def remote_execute(
         self,
         command: str,
-        timeout: float = None,
+        timeout: float | None = None,
         retry: bool = True,
         raise_on_failure: bool = False,
         debug: bool = True,
         bypass_obfuscation: bool = False,
     ) -> str:
-        """
-        Executes the specified command within the module.
+        """Executes the specified command within the module.
 
         Args:
             command (str): Command to be executed remotely.
             timeout (float, optional): Timeout for command execution.
             retry (bool, optional): Whether to retry on failure.
+            raise_on_failure (bool, optional): Raise the exception instead of returning empty on failure.
             debug (bool, optional): Enable or disable debug logging for this execution.
             bypass_obfuscation (bool, optional): Bypass obfuscation check.
 
         Returns:
             str: The output of the executed command, if successful.
         """
-
         if not command:
             logger.trace("Attempted to execute an empty command. Skipping.")
             return ""
@@ -395,8 +383,7 @@ class Executor(metaclass=SingletonMeta):
                     self._avg_response_time = elapsed
                 else:
                     self._avg_response_time = (
-                        self._response_alpha * elapsed
-                        + (1 - self._response_alpha) * self._avg_response_time
+                        self._response_alpha * elapsed + (1 - self._response_alpha) * self._avg_response_time
                     )
 
                 if self._initial_execution_successful is False:
@@ -406,17 +393,12 @@ class Executor(metaclass=SingletonMeta):
                 break  # Exit retry loop on success
 
             except Exception as exc:
-
                 if self._initial_execution_successful is False:
                     logger.error(f"Failed initial execution check: {exc}")
-                    raise RuntimeError(
-                        "Unable to communicate with remote target. Aborting."
-                    )
+                    raise RuntimeError("Unable to communicate with remote target. Aborting.")
 
                 if debug:
-                    logger.warning(
-                        f"Execution failed (Attempt {attempt+1}/3): {exc}"
-                    )
+                    logger.warning(f"Execution failed (Attempt {attempt + 1}/3): {exc}")
 
                 if not retry:
                     if debug:
@@ -454,8 +436,8 @@ class Executor(metaclass=SingletonMeta):
         return str(result)
 
     def delete_working_directory(self) -> None:
-        """
-        Deletes the remote working directory if it has been created.
+        """Delete the remote working directory if it has been created.
+
         Uses rm -rf to force removal of all contents.
         """
         if not self.has_working_directory:
@@ -463,9 +445,7 @@ class Executor(metaclass=SingletonMeta):
             return
 
         try:
-            logger.debug(
-                f"Deleting remote working directory: {self._working_directory}"
-            )
+            logger.debug(f"Deleting remote working directory: {self._working_directory}")
             # Use -rf to force deletion, bypass obfuscation for cleanup reliability
             self.remote_execute(
                 f'rm -rf "{self._working_directory}"',
@@ -479,8 +459,8 @@ class Executor(metaclass=SingletonMeta):
             self._working_directory = None
 
     def calculate_max_command_size(self, min_size=10, max_size=262144) -> int:
-        """
-        Determines the maximum command chunk size accepted by the remote shell.
+        """Determine the maximum command chunk size accepted by the remote shell.
+
         First tries the maximum size directly, then falls back to binary search if needed.
         Sizes >= 1024 are aligned to 1024, smaller sizes use natural alignment.
         Validates output integrity by checking the last characters aren't truncated.
@@ -500,8 +480,7 @@ class Executor(metaclass=SingletonMeta):
         max_size = align_size(max_size)
 
         def test_command_size(size: int) -> tuple[bool, int]:
-            """
-            Test if a command of given size works without truncation.
+            """Test if a command of given size works without truncation.
 
             Returns:
                 tuple[bool, int]: (success, actual_size)
@@ -591,8 +570,7 @@ class Executor(metaclass=SingletonMeta):
                 # Narrow the search space - likely limit is around estimated size
                 high = min(estimated_upper_aligned, max_size)
                 logger.info(
-                    f"Output suggests limit around {actual_size} bytes - "
-                    f"narrowing search to {min_size}-{high} bytes"
+                    f"Output suggests limit around {actual_size} bytes - narrowing search to {min_size}-{high} bytes"
                 )
             else:
                 logger.info("Maximum size failed, using full binary search range")
@@ -631,14 +609,10 @@ class Executor(metaclass=SingletonMeta):
                         # Deduced size verified - this is our answer
                         return best
                     else:
-                        logger.debug(
-                            f"Deduced size {actual_size_aligned} verification failed"
-                        )
+                        logger.debug(f"Deduced size {actual_size_aligned} verification failed")
 
                 # Verification failed or skipped - search below the truncation point
-                high = actual_size_aligned - (
-                    1024 if actual_size_aligned >= 1024 else 64
-                )
+                high = actual_size_aligned - (1024 if actual_size_aligned >= 1024 else 64)
             else:
                 logger.info(f"Failed at {mid} bytes")
                 high = mid - (1024 if mid >= 1024 else 64)
@@ -648,7 +622,7 @@ class Executor(metaclass=SingletonMeta):
         if best > 0:
             logger.success(f"Final maximum command size: {best} bytes")
         else:
-            logger.error(f"Could not determine a working command size")
+            logger.error("Could not determine a working command size")
 
         return best
 
@@ -677,8 +651,7 @@ class Executor(metaclass=SingletonMeta):
         return "linux"
 
     def __validate_shell(self) -> bool:
-        """
-        Validates the current shell for remote command execution.
+        """Validates the current shell for remote command execution.
 
         Attempts multiple validation methods for maximum compatibility:
         1. command -v (POSIX)
@@ -712,17 +685,9 @@ class Executor(metaclass=SingletonMeta):
                     .lower()
                 )
 
-                if (
-                    output
-                    and "not found" not in output
-                    and "no such file" not in output
-                ):
-                    logger.debug(
-                        f"Shell validation succeeded with: {validation_command}"
-                    )
-                    logger.info(
-                        f"Remote shell: '{self._shell}' — verified and ready."
-                    )
+                if output and "not found" not in output and "no such file" not in output:
+                    logger.debug(f"Shell validation succeeded with: {validation_command}")
+                    logger.info(f"Remote shell: '{self._shell}' — verified and ready.")
                     self._shell_validated = True
                     return True
 

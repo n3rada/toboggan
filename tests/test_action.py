@@ -1,6 +1,7 @@
 # tests/test_action.py
 
 import pytest
+
 from toboggan.core.action import ActionsManager
 
 

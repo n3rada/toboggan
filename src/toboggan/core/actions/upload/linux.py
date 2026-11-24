@@ -20,7 +20,9 @@ class UploadAction(BaseAction):
     DESCRIPTION = "Encode and upload a local file to a remote system."
 
     def run(
-        self, local_path: str, remote_path: str | None = None,
+        self,
+        local_path: str,
+        remote_path: str | None = None,
         command_size: int | str | None = None,
     ) -> bool:
         """Upload using the session size or a per-transfer command-size override."""
@@ -30,8 +32,7 @@ class UploadAction(BaseAction):
             return False
         try:
             limit = validate_chunk_size(
-                self._executor.ensure_command_max_size()
-                if command_size is None else command_size
+                self._executor.ensure_command_max_size() if command_size is None else command_size
             )
             raw_bytes = local_file.read_bytes()
         except Exception as exc:
@@ -47,18 +48,13 @@ class UploadAction(BaseAction):
             if remote_path.endswith("/"):
                 remote_path += local_file.name
 
-        commands = {
-            name: self._os_helper.get_command_location(name)
-            for name in ("printf", "dd", "wc", "base64", "rm")
-        }
+        commands = {name: self._os_helper.get_command_location(name) for name in ("printf", "dd", "wc", "base64", "rm")}
         missing = [name for name, command in commands.items() if not command]
         if missing:
             logger.error(f"Required upload commands unavailable: {', '.join(missing)}")
             return False
 
-        remote_encoded_path = (
-            f"{self._executor.working_directory}/{generate_fixed_length_token(24)}"
-        )
+        remote_encoded_path = f"{self._executor.working_directory}/{generate_fixed_length_token(24)}"
         staged = shlex.quote(remote_encoded_path)
         destination = shlex.quote(remote_path)
         encoded_file = base64.b64encode(raw_bytes).decode("ascii")
@@ -75,31 +71,26 @@ class UploadAction(BaseAction):
         md5sum = self._os_helper.get_command_location("md5sum")
         checksum_cmd = f"{md5sum} {destination}" if md5sum else None
         cleanup_cmd = f"{commands['rm']} -f {staged}"
-        if any(
-            len(command.encode("utf-8")) > limit
-            for command in (make_command(0, ""), decode_cmd, cleanup_cmd)
-        ):
+        if any(len(command.encode("utf-8")) > limit for command in (make_command(0, ""), decode_cmd, cleanup_cmd)):
             logger.error("Command size is too small for the upload command overhead.")
             return False
 
         def execute(command: str) -> str:
-            return self._executor.remote_execute(
-                command, timeout=30, retry=False, raise_on_failure=True, debug=False
-            )
+            return self._executor.remote_execute(command, timeout=30, retry=False, raise_on_failure=True, debug=False)
 
         logger.info(
-            f"Uploading {local_path} to {remote_path} "
-            f"({len(encoded_file)} encoded bytes, command limit {limit})."
+            f"Uploading {local_path} to {remote_path} ({len(encoded_file)} encoded bytes, command limit {limit})."
         )
         try:
             with tqdm(
-                total=len(encoded_file), unit="B", unit_scale=True, desc="Uploading",
+                total=len(encoded_file),
+                unit="B",
+                unit_scale=True,
+                desc="Uploading",
                 disable=logger._core.min_level <= logger.level("TRACE").no,
             ) as progress:
                 send_chunks(execute, make_command, encoded_file, limit, progress.update)
-            self._executor.remote_execute(
-                decode_cmd, timeout=60, retry=False, raise_on_failure=True
-            )
+            self._executor.remote_execute(decode_cmd, timeout=60, retry=False, raise_on_failure=True)
             try:
                 checksum = execute(checksum_cmd).strip() if checksum_cmd else ""
             except Exception:
@@ -118,10 +109,6 @@ class UploadAction(BaseAction):
             try:
                 output = execute(cleanup_cmd).strip()
                 if output:
-                    logger.warning(
-                        f"Cleanup of {remote_encoded_path} returned: {output}"
-                    )
+                    logger.warning(f"Cleanup of {remote_encoded_path} returned: {output}")
             except Exception as exc:
-                logger.warning(
-                    f"Could not remove staged upload {remote_encoded_path}: {exc}"
-                )
+                logger.warning(f"Could not remove staged upload {remote_encoded_path}: {exc}")

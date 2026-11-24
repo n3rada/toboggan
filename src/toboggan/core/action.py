@@ -1,8 +1,8 @@
 # toboggan/core/action.py
 
 # Standard library imports
-from abc import ABC, abstractmethod
 import os
+from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 
@@ -67,8 +67,8 @@ class NamedPipe(BaseAction):
         self,
         executor,
         read_interval: float = 0.3,
-        stdin_path: str = None,
-        stdout_path: str = None,
+        stdin_path: str | None = None,
+        stdout_path: str | None = None,
     ):
         """Initialize a NamedPipe action for inter-process communication.
 
@@ -114,20 +114,16 @@ class NamedPipe(BaseAction):
         avg_rtt = self._executor.avg_response_time
         if avg_rtt:
             estimated_poll_freq = self._read_interval + avg_rtt
-            logger.info(
-                f"Estimated total poll cycle: ~{estimated_poll_freq:.2f}s (interval + avg RTT)"
-            )
+            logger.info(f"Estimated total poll cycle: ~{estimated_poll_freq:.2f}s (interval + avg RTT)")
 
         req_per_sec = 1 / (self._read_interval + (avg_rtt or 0))
         req_per_min = req_per_sec * 60
 
-        logger.info(
-            f"Approx. requests: {req_per_sec:.2f}/sec | {req_per_min:.0f}/min"
-        )
+        logger.info(f"Approx. requests: {req_per_sec:.2f}/sec | {req_per_min:.0f}/min")
 
     # Abstract methods
     @abstractmethod
-    def setup(self, read_interval: float = 0.4, session_identifier: str = None):
+    def setup(self, read_interval: float = 0.4, session_identifier: str | None = None):
         """Set up the named pipes on the remote system.
 
         Creates the necessary pipes and initializes the communication channel.
@@ -207,11 +203,8 @@ class ActionsManager:
         Raises:
             ValueError: If target_os is not 'linux' or 'windows'.
         """
-
         if target_os not in ["linux", "windows"]:
-            raise ValueError(
-                f"Invalid target OS '{target_os}'. Must be 'linux' or 'windows'."
-            )
+            raise ValueError(f"Invalid target OS '{target_os}'. Must be 'linux' or 'windows'.")
 
         self.__os = target_os
 
@@ -265,7 +258,7 @@ class ActionsManager:
                 try:
                     wrapper = ModuleWrapper(file_path)
 
-                    logger.trace(f"Wrapped action: {repr(wrapper)}")
+                    logger.trace(f"Wrapped action: {wrapper!r}")
 
                     cls = wrapper.get_class(must_inherit=BaseAction)
 
@@ -291,7 +284,7 @@ class ActionsManager:
         return actions
 
     def get_action(self, name: str) -> BaseAction:
-        """Retrieve and load an action class by name.
+        r"""Retrieve and load an action class by name.
 
         Searches for the action in both user and system directories, prioritizing
         user-defined actions when both exist. Logs the source and last modified
@@ -309,7 +302,6 @@ class ActionsManager:
             %LOCALAPPDATA%\toboggan\actions (Windows) take precedence over
             built-in system actions.
         """
-
         name_with_os = f"{name}/{self.__os}"
         system_module_path = self.__system_actions_path / f"{name_with_os}.py"
         user_module_path = self.__user_actions_path / f"{name_with_os}.py"
@@ -318,14 +310,10 @@ class ActionsManager:
         if user_module_path.exists():
             try:
                 last_modified = user_module_path.stat().st_mtime
-                formatted_time = datetime.fromtimestamp(last_modified).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                formatted_time = datetime.fromtimestamp(last_modified).strftime("%Y-%m-%d %H:%M:%S")
 
                 if action := self.load_action_from_path(user_module_path):
-                    logger.info(
-                        f"Loaded user action '{name}' (last modified: {formatted_time})"
-                    )
+                    logger.info(f"Loaded user action '{name}' (last modified: {formatted_time})")
                     return action
             except Exception as e:
                 logger.warning(f"Failed to load user action '{name}': {e}")
@@ -393,11 +381,7 @@ class ActionsManager:
             signature = wrapper.get_signature(f"{class_name}.{method_name}")
 
             return [
-                (
-                    f"{param} ({value['default']})"
-                    if value["default"] is not None
-                    else param
-                )
+                (f"{param} ({value['default']})" if value["default"] is not None else param)
                 for param, value in signature.items()
             ]
 
@@ -406,7 +390,7 @@ class ActionsManager:
             return []
 
     def __get_user_module_dir(self) -> Path:
-        """Get the platform-specific user action directory.
+        r"""Get the platform-specific user action directory.
 
         Returns the appropriate directory for user-defined actions based on OS
         conventions: XDG Base Directory specification for Linux/macOS, and
@@ -418,12 +402,8 @@ class ActionsManager:
                 - Windows: %LOCALAPPDATA%\toboggan\actions or ~/AppData/Local/toboggan/actions
         """
         if os.name == "nt":
-            local_appdata = os.getenv(
-                "LOCALAPPDATA", str(Path.home() / "AppData" / "Local")
-            )
+            local_appdata = os.getenv("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
             return Path(local_appdata) / "toboggan" / "actions"
 
-        xdg_data_home = os.getenv(
-            "XDG_DATA_HOME", str(Path.home() / ".local" / "share")
-        )
+        xdg_data_home = os.getenv("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
         return Path(xdg_data_home) / "toboggan" / "actions"

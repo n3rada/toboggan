@@ -157,9 +157,7 @@ def test_unspecified_allow_privilege_escalation_is_reported(monkeypatch):
     warnings = []
     monkeypatch.setattr(kube_check.logger, "warning", warnings.append)
 
-    target._summarize_container(
-        "Container", {"name": "worker", "image": "image"}, {}, {}, {}
-    )
+    target._summarize_container("Container", {"name": "worker", "image": "image"}, {}, {}, {})
 
     assert any("privilege escalation not disabled" in message for message in warnings)
 

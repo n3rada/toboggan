@@ -1,12 +1,15 @@
 # toboggan/core/utils/binaries.py
 
 # Built-in imports
+from __future__ import annotations
+
 import hashlib
 import io
 import os
 import re
 import tarfile
 from pathlib import Path
+from typing import ClassVar
 
 # External library imports
 import httpx
@@ -16,12 +19,8 @@ from loguru import logger
 class BinaryFetcher:
     """Fetch and cache pinned standalone binaries for explicit target deployment."""
 
-    BASE_DIR = (
-        Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-        / "toboggan"
-        / "binaries"
-    )
-    ARCHITECTURES = {
+    BASE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "toboggan" / "binaries"
+    ARCHITECTURES: ClassVar[dict[str, str]] = {
         "386": "x86",
         "aarch64": "aarch64",
         "amd64": "x86_64",
@@ -33,14 +32,18 @@ class BinaryFetcher:
         "x86-64": "x86_64",
         "x86_64": "x86_64",
     }
-    CURL_VARIANTS = {
-        "aarch64": "aarch64", "x86": "i686", "x86_64": "x86_64",
+    CURL_VARIANTS: ClassVar[dict[str, str]] = {
+        "aarch64": "aarch64",
+        "x86": "i686",
+        "x86_64": "x86_64",
     }
-    KUBECTL_VARIANTS = {
-        "aarch64": "arm64", "x86": "386", "x86_64": "amd64",
+    KUBECTL_VARIANTS: ClassVar[dict[str, str]] = {
+        "aarch64": "arm64",
+        "x86": "386",
+        "x86_64": "amd64",
     }
     BUSYBOX_VERSION = "1.35.0"
-    BUSYBOX_VARIANTS = {
+    BUSYBOX_VARIANTS: ClassVar[dict[str, tuple[str, str]]] = {
         "x86": ("1.35.0-i686-linux-musl", "27e409705b29937b9a6105038d9c2e3eb8dc3e2c8d606d22872dbde7f47c000f"),
         "x86_64": ("1.35.0-x86_64-linux-musl", "6e123e7f3202a8c1e9b1f94d8941580a25135382b99e8d3e34fb858bba311348"),
     }
@@ -95,9 +98,7 @@ class BinaryFetcher:
         logger.warning(f"Ignoring invalid cached binary: {destination}")
         return None
 
-    def _save(
-        self, name: str, version: str, data: bytes, expected_sha256: str
-    ) -> Path | None:
+    def _save(self, name: str, version: str, data: bytes, expected_sha256: str) -> Path | None:
         """Verify and store fetched binary bytes in the versioned cache."""
         logger.info(f"Verifying SHA-256 for {name} {version}.")
         if not self._verified(data, expected_sha256):
@@ -107,9 +108,7 @@ class BinaryFetcher:
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(data)
         destination.chmod(0o755)
-        destination.with_name(f"{name}.sha256").write_text(
-            f"{expected_sha256}\n", encoding="ascii"
-        )
+        destination.with_name(f"{name}.sha256").write_text(f"{expected_sha256}\n", encoding="ascii")
         logger.success(f"{name} {version} saved to: {destination}")
         return destination
 
@@ -136,9 +135,7 @@ class BinaryFetcher:
     def _download(url: str) -> bytes:
         """Download one explicit release asset using operator-controlled TLS trust."""
         logger.info(f"Downloading static binary data from: {url}")
-        response = httpx.get(
-            url, timeout=30.0, verify=False, follow_redirects=True
-        )
+        response = httpx.get(url, timeout=30.0, verify=False, follow_redirects=True)
         response.raise_for_status()
         logger.debug(f"Downloaded {len(response.content)} bytes from: {url}")
         return response.content
@@ -164,36 +161,26 @@ class BinaryFetcher:
         """Resolve and verify the latest static-curl glibc build."""
         variant = self.CURL_VARIANTS[self._arch]
         try:
-            metadata_url = (
-                "https://api.github.com/repos/stunnel/static-curl/releases/latest"
-            )
+            metadata_url = "https://api.github.com/repos/stunnel/static-curl/releases/latest"
             logger.info(f"Resolving the latest static-curl release from: {metadata_url}")
             metadata = httpx.get(
                 metadata_url,
-                timeout=10.0, verify=False, follow_redirects=True,
+                timeout=10.0,
+                verify=False,
+                follow_redirects=True,
             )
             metadata.raise_for_status()
             release = metadata.json()
             version = release["tag_name"]
-            if not isinstance(version, str) or not re.fullmatch(
-                r"[0-9]+\.[0-9]+\.[0-9]+-[0-9]+", version
-            ):
+            if not isinstance(version, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+-[0-9]+", version):
                 raise ValueError("static-curl release has an invalid version tag.")
             filename = f"curl-linux-{variant}-glibc-{version}.tar.xz"
-            asset = next(
-                item for item in release["assets"] if item["name"] == filename
-            )
-            expected_url = (
-                "https://github.com/stunnel/static-curl/releases/download/"
-                f"{version}/"
-            )
+            asset = next(item for item in release["assets"] if item["name"] == filename)
+            expected_url = f"https://github.com/stunnel/static-curl/releases/download/{version}/"
             if not asset["browser_download_url"].startswith(expected_url):
                 raise ValueError("static-curl release has an invalid asset URL.")
             expected = self._curl_checksum(release.get("body", ""), variant)
-            logger.debug(
-                f"Resolved curl {version} for {self._os}/{self._arch}; "
-                f"SHA-256 {expected}."
-            )
+            logger.debug(f"Resolved curl {version} for {self._os}/{self._arch}; SHA-256 {expected}.")
             destination = self._destination("curl", version)
             cached = self._cached(destination, expected)
             if cached:
@@ -201,8 +188,7 @@ class BinaryFetcher:
             archive = self._download(asset["browser_download_url"])
             with tarfile.open(fileobj=io.BytesIO(archive), mode="r:xz") as tar:
                 members = [
-                    member for member in tar.getmembers()
-                    if member.isfile() and Path(member.name).name == "curl"
+                    member for member in tar.getmembers() if member.isfile() and Path(member.name).name == "curl"
                 ]
                 if len(members) != 1:
                     raise ValueError("curl archive must contain exactly one curl binary.")
@@ -226,17 +212,12 @@ class BinaryFetcher:
             expected = self._download_text(f"{base_url}/kubectl.sha256")
             if not re.fullmatch(r"[0-9a-fA-F]{64}", expected):
                 raise ValueError("kubectl release has an invalid SHA-256.")
-            logger.debug(
-                f"Resolved kubectl {version} for {self._os}/{self._arch}; "
-                f"SHA-256 {expected.lower()}."
-            )
+            logger.debug(f"Resolved kubectl {version} for {self._os}/{self._arch}; SHA-256 {expected.lower()}.")
             destination = self._destination("kubectl", version)
             cached = self._cached(destination, expected)
             if cached:
                 return cached
-            return self._save(
-                "kubectl", version, self._download(f"{base_url}/kubectl"), expected.lower()
-            )
+            return self._save("kubectl", version, self._download(f"{base_url}/kubectl"), expected.lower())
         except Exception as exc:
             logger.warning(f"Stable kubectl lookup or retrieval failed: {exc}")
             return self._latest_cached("kubectl")
@@ -246,23 +227,16 @@ class BinaryFetcher:
         try:
             variant, expected = self.BUSYBOX_VARIANTS[self._arch]
         except KeyError as exc:
-            raise ValueError(
-                f"BusyBox {self.BUSYBOX_VERSION} is unavailable for {self._arch}."
-            ) from exc
+            raise ValueError(f"BusyBox {self.BUSYBOX_VERSION} is unavailable for {self._arch}.") from exc
         destination = self._destination("busybox", self.BUSYBOX_VERSION)
-        logger.info(
-            f"Using official BusyBox fallback {self.BUSYBOX_VERSION} "
-            f"for {self._os}/{self._arch}."
-        )
+        logger.info(f"Using official BusyBox fallback {self.BUSYBOX_VERSION} for {self._os}/{self._arch}.")
         logger.debug(f"Expected BusyBox SHA-256: {expected}.")
         cached = self._cached(destination, expected)
         if cached:
             return cached
         url = f"https://busybox.net/downloads/binaries/{variant}/busybox"
         try:
-            return self._save(
-                "busybox", self.BUSYBOX_VERSION, self._download(url), expected
-            )
+            return self._save("busybox", self.BUSYBOX_VERSION, self._download(url), expected)
         except Exception as exc:
             logger.error(f"Failed to fetch BusyBox {self.BUSYBOX_VERSION}: {exc}")
             return None

@@ -1,16 +1,16 @@
 # toboggan/utils/jwt.py
 
 # Built-in imports
-import json
 import base64
-from datetime import datetime, timezone
+import json
+from datetime import UTC, datetime
 
 # External library imports
 from loguru import logger
 
 
 def parse_jwt(token: str) -> tuple[dict, dict, bytes]:
-    """Decode JWT and return (header, body, signature)"""
+    """Decode JWT and return (header, body, signature)."""
     parts = token.split(".")
     if len(parts) != 3:
         raise ValueError("Invalid JWT format")
@@ -26,6 +26,8 @@ def parse_jwt(token: str) -> tuple[dict, dict, bytes]:
 
 
 class TokenReader:
+    """Decode and expose the claims of a JWT access token."""
+
     def __init__(self, access_token: str):
         self._access_token = access_token
 
@@ -45,38 +47,47 @@ class TokenReader:
 
     @property
     def audience(self) -> str:
+        """Return the token audience claim."""
         return self._payload.get("aud", "")
 
     @property
     def scope(self) -> str:
+        """Return the token scope claim."""
         return self._payload.get("scp", "")
 
     @property
     def sub(self) -> str:
+        """Return the token subject claim."""
         return self._payload.get("sub", "")
 
     @property
     def access_token(self) -> str:
+        """Return the raw access token string."""
         return self._access_token
 
     @property
     def iss(self) -> str:
+        """Return the token issuer claim."""
         return self._iss
 
     @property
     def payload(self) -> dict:
+        """Return the full decoded JWT payload."""
         return self._payload
 
     @property
     def expiration_datetime(self) -> datetime:
-        return datetime.fromtimestamp(self._expires_on, tz=timezone.utc)
+        """Return the token expiration as a timezone-aware datetime."""
+        return datetime.fromtimestamp(self._expires_on, tz=UTC)
 
     @property
     def is_expired(self) -> bool:
-        return datetime.now(timezone.utc).timestamp() > self._expires_on
+        """Return True if the token has expired."""
+        return datetime.now(UTC).timestamp() > self._expires_on
 
     def expires_in(self) -> int:
-        return max(0, int(self._expires_on - datetime.now(timezone.utc).timestamp()))
+        """Return the number of seconds until the token expires."""
+        return max(0, int(self._expires_on - datetime.now(UTC).timestamp()))
 
     def __str__(self) -> str:
         return self._access_token

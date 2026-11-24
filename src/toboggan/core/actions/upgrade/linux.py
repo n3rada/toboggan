@@ -7,16 +7,16 @@ from toboggan.core.utils import common
 
 
 class UpgradeAction(BaseAction):
+    """Attempt to upgrade a limited shell to a fully interactive TTY."""
+
     DESCRIPTION = "Attempts to upgrade a limited shell to a TTY."
 
-    def run(self, shell: str = None) -> None:
-        """
-        Upgrade a limited shell to a fully interactive TTY.
+    def run(self, shell: str | None = None) -> None:
+        """Upgrade a limited shell to a fully interactive TTY.
 
         Args:
             shell (Optional[str]): The shell to upgrade to (e.g., /bin/bash). Defaults to the OS helper's shell.
         """
-
         if not self._executor.os_helper.is_fifo_active():
             logger.error("Upgrade requires a FIFO session. Start one first!")
             return
@@ -28,16 +28,12 @@ class UpgradeAction(BaseAction):
 
         if script_path := self._executor.os_helper.get_command_location("script"):
             logger.info(f"Found script at: {script_path}")
-            self._executor.os_helper.fifo_execute(
-                command=f"SHELL={used_shell} script -q /dev/null"
-            )
+            self._executor.os_helper.fifo_execute(command=f"SHELL={used_shell} script -q /dev/null")
             return
 
         if expect_path := self._executor.os_helper.get_command_location("expect"):
             logger.info(f"Found expect at: {expect_path}")
-            self._executor.os_helper.fifo_execute(
-                command=f"expect -c 'spawn {used_shell}; interact'"
-            )
+            self._executor.os_helper.fifo_execute(command=f"expect -c 'spawn {used_shell}; interact'")
             return
 
         if python3_path := self._executor.os_helper.get_command_location("python3"):

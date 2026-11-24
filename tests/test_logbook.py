@@ -18,9 +18,7 @@ class TestJsonlFileSink:
 
     @pytest.fixture
     def log_file(self, tmp_path):
-        with mock.patch.dict(
-            os.environ, {"TOBOGGAN_LOG_DIR": str(tmp_path)}, clear=False
-        ):
+        with mock.patch.dict(os.environ, {"TOBOGGAN_LOG_DIR": str(tmp_path)}, clear=False):
             setup_logging("TRACE")
         yield tmp_path / "toboggan.jsonl"
         # Flushes the enqueued file sink and releases the file handle.
@@ -44,9 +42,7 @@ class TestJsonlFileSink:
     def test_entry_schema(self, log_file):
         logger.success("schema check")
 
-        entry = next(
-            e for e in self._read_entries(log_file) if e["msg"] == "schema check"
-        )
+        entry = next(e for e in self._read_entries(log_file) if e["msg"] == "schema check")
 
         assert entry["level"] == "SUCCESS"
         assert entry["module"] == __name__
@@ -59,9 +55,7 @@ class TestJsonlFileSink:
     def test_multiline_message_stays_on_one_line(self, log_file):
         logger.info("uid=0(root)\ngid=0(root)\n{braces} stay literal")
 
-        entry = next(
-            e for e in self._read_entries(log_file) if e["msg"].startswith("uid=0")
-        )
+        entry = next(e for e in self._read_entries(log_file) if e["msg"].startswith("uid=0"))
 
         assert entry["msg"] == "uid=0(root)\ngid=0(root)\n{braces} stay literal"
 
@@ -80,9 +74,7 @@ class TestJsonlFileSink:
     def test_bound_extra_is_included(self, log_file):
         logger.bind(action="upload", size=42).info("with extra")
 
-        entry = next(
-            e for e in self._read_entries(log_file) if e["msg"] == "with extra"
-        )
+        entry = next(e for e in self._read_entries(log_file) if e["msg"] == "with extra")
 
         assert entry["extra"] == {"action": "upload", "size": 42}
 
@@ -95,9 +87,7 @@ class TestXdgStateDir:
     """
 
     def test_override_env(self):
-        with mock.patch.dict(
-            os.environ, {"TOBOGGAN_LOG_DIR": "/custom/logs"}, clear=False
-        ):
+        with mock.patch.dict(os.environ, {"TOBOGGAN_LOG_DIR": "/custom/logs"}, clear=False):
             result = _xdg_state_dir()
             # The override is resolved to an absolute path (on Windows this
             # prepends the current drive, e.g. C:\custom\logs).
@@ -138,9 +128,7 @@ class TestXdgStateDir:
             os.environ.pop("TOBOGGAN_LOG_DIR", None)
             os.environ.pop("LOCALAPPDATA", None)
             result = _xdg_state_dir()
-            expected = (
-                Path.home() / "AppData" / "Local" / "toboggan" / "logs"
-            ).resolve()
+            expected = (Path.home() / "AppData" / "Local" / "toboggan" / "logs").resolve()
             assert result == expected
 
     @pytest.mark.skipif(not _IS_WINDOWS, reason="Windows paths only")
@@ -149,7 +137,5 @@ class TestXdgStateDir:
         with mock.patch.dict(os.environ, env, clear=False):
             os.environ.pop("TOBOGGAN_LOG_DIR", None)
             result = _xdg_state_dir()
-            expected = (
-                Path("C:\\Users\\test\\AppData\\Local") / "toboggan" / "logs"
-            ).resolve()
+            expected = (Path("C:\\Users\\test\\AppData\\Local") / "toboggan" / "logs").resolve()
             assert result == expected

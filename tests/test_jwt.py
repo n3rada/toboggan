@@ -5,7 +5,8 @@ import json
 import time
 
 import pytest
-from toboggan.core.utils.jwt import parse_jwt, TokenReader
+
+from toboggan.core.utils.jwt import TokenReader, parse_jwt
 
 
 def _build_jwt(header: dict, payload: dict, signature: bytes = b"sig") -> str:
@@ -26,7 +27,7 @@ def _build_jwt(header: dict, payload: dict, signature: bytes = b"sig") -> str:
 class TestParseJwt:
     def test_valid_token(self):
         token = _build_jwt({"alg": "RS256"}, {"sub": "user1", "exp": 9999999999})
-        header, body, sig = parse_jwt(token)
+        header, body, _sig = parse_jwt(token)
         assert header["alg"] == "RS256"
         assert body["sub"] == "user1"
 

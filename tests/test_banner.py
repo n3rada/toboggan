@@ -1,7 +1,7 @@
 # tests/test_banner.py
 
-from toboggan.banner import display_banner
 from toboggan import __version__
+from toboggan.banner import display_banner
 
 
 class TestBanner:

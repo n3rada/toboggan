@@ -8,11 +8,15 @@ from toboggan.core.action import BaseAction
 
 
 class IpInfoAction(BaseAction):
-    DESCRIPTION = "Display network interfaces and IP addresses by reading /proc and /sys files (works without 'ip' command)."
+    """Display network interfaces and IP addresses from system files."""
+
+    DESCRIPTION = (
+        "Display network interfaces and IP addresses by reading /proc and /sys files (works without 'ip' command)."
+    )
 
     def run(self) -> str:
-        """
-        Retrieve network interface information by reading Linux system files directly.
+        """Retrieve network interface information by reading Linux system files directly.
+
         This mimics 'ip addr' output without requiring the ip command to be present.
 
         Returns:
@@ -26,20 +30,14 @@ class IpInfoAction(BaseAction):
         logger.info("Reading network interfaces from /sys/class/net")
 
         ls_command = self._os_helper.get_command_location("ls")
-        ls_result = self._executor.remote_execute(
-            f"{ls_command} -1 /sys/class/net", retry=False
-        )
+        ls_result = self._executor.remote_execute(f"{ls_command} -1 /sys/class/net", retry=False)
 
         if not ls_result:
             logger.error("Could not list network interfaces")
             return "Error: Unable to read /sys/class/net"
 
-        interfaces = [
-            iface.strip() for iface in ls_result.strip().split("\n") if iface.strip()
-        ]
-        logger.success(
-            f"Found {len(interfaces)} interface(s): {', '.join(interfaces)}"
-        )
+        interfaces = [iface.strip() for iface in ls_result.strip().split("\n") if iface.strip()]
+        logger.success(f"Found {len(interfaces)} interface(s): {', '.join(interfaces)}")
 
         cat_command = self._os_helper.get_command_location("cat")
 
@@ -90,9 +88,7 @@ class IpInfoAction(BaseAction):
             # Note: fib_trie doesn't directly map IPs to interfaces, so we'll show all non-loopback IPs
 
             # Alternative: Read /proc/net/route to find IPs associated with this interface
-            route_data = self._executor.remote_execute(
-                f"{cat_command} /proc/net/route", retry=False
-            )
+            route_data = self._executor.remote_execute(f"{cat_command} /proc/net/route", retry=False)
             if route_data:
                 for route_line in route_data.strip().split("\n")[1:]:  # Skip header
                     parts = route_line.split()
@@ -106,9 +102,7 @@ class IpInfoAction(BaseAction):
             # For now, skip IPv4 if we can't read from files reliably
 
             # Get IPv6 addresses from /proc/net/if_inet6
-            ipv6_result = self._executor.remote_execute(
-                f"grep '{iface_name}' /proc/net/if_inet6", retry=False
-            )
+            ipv6_result = self._executor.remote_execute(f"grep '{iface_name}' /proc/net/if_inet6", retry=False)
             if ipv6_result:
                 ipv6_count = 0
                 for line in ipv6_result.strip().split("\n"):
@@ -120,20 +114,13 @@ class IpInfoAction(BaseAction):
                             scope_hex = parts[3]
 
                             # Format IPv6 address with colons
-                            addr_formatted = ":".join(
-                                [
-                                    addr_hex[i : i + 4]
-                                    for i in range(0, len(addr_hex), 4)
-                                ]
-                            )
+                            addr_formatted = ":".join([addr_hex[i : i + 4] for i in range(0, len(addr_hex), 4)])
 
                             # Decode scope
                             scope_map = {"00": "global", "20": "link", "10": "host"}
                             scope_text = scope_map.get(scope_hex, "unknown")
 
-                            output_lines.append(
-                                f"    inet6 {addr_formatted}/{prefix_len} scope {scope_text}"
-                            )
+                            output_lines.append(f"    inet6 {addr_formatted}/{prefix_len} scope {scope_text}")
                             ipv6_count += 1
 
             output_lines.append("")
@@ -146,9 +133,7 @@ class IpInfoAction(BaseAction):
         logger.info(" Reading routing table from /proc/net/route")
 
         # Read and parse /proc/net/route directly
-        proc_route = self._executor.remote_execute(
-            f"{cat_command} /proc/net/route", retry=False
-        )
+        proc_route = self._executor.remote_execute(f"{cat_command} /proc/net/route", retry=False)
         if proc_route and proc_route.strip():
             # Parse routing table in Python
             routes = []
@@ -168,10 +153,7 @@ class IpInfoAction(BaseAction):
                     def hex_to_ip(hex_str):
                         if len(hex_str) == 8:
                             # Reverse byte order (little-endian)
-                            octets = [
-                                str(int(hex_str[i : i + 2], 16))
-                                for i in range(6, -1, -2)
-                            ]
+                            octets = [str(int(hex_str[i : i + 2], 16)) for i in range(6, -1, -2)]
                             return ".".join(octets)
                         return "0.0.0.0"
 

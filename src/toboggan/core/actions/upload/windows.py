@@ -27,7 +27,9 @@ class UploadAction(BaseAction):
         return f"powershell -nop -EncodedCommand {encoded}"
 
     def run(
-        self, local_path: str, remote_path: str | None = None,
+        self,
+        local_path: str,
+        remote_path: str | None = None,
         command_size: int | str | None = None,
     ) -> bool:
         """Upload using the session size or a per-transfer command-size override."""
@@ -37,8 +39,7 @@ class UploadAction(BaseAction):
             return False
         try:
             limit = validate_chunk_size(
-                self._executor.ensure_command_max_size()
-                if command_size is None else command_size
+                self._executor.ensure_command_max_size() if command_size is None else command_size
             )
             raw_bytes = local_file.read_bytes()
         except Exception as exc:
@@ -55,9 +56,7 @@ class UploadAction(BaseAction):
             if remote_path.endswith("\\"):
                 remote_path += local_file.name
 
-        remote_encoded_path = ntpath.join(
-            self._executor.working_directory, generate_fixed_length_token(24) + ".b64"
-        )
+        remote_encoded_path = ntpath.join(self._executor.working_directory, generate_fixed_length_token(24) + ".b64")
         staged = "'" + remote_encoded_path.replace("'", "''") + "'"
         destination = "'" + remote_path.replace("'", "''") + "'"
         encoded_file = base64.b64encode(raw_bytes).decode("ascii")
@@ -78,39 +77,30 @@ class UploadAction(BaseAction):
             f"$b=[Convert]::FromBase64String([IO.File]::ReadAllText({staged}));"
             f"[IO.File]::WriteAllBytes({destination},$b)"
         )
-        checksum_cmd = self._command(
-            f"(Get-FileHash -LiteralPath {destination} -Algorithm MD5 "
-            "-ErrorAction Stop).Hash"
-        )
+        checksum_cmd = self._command(f"(Get-FileHash -LiteralPath {destination} -Algorithm MD5 -ErrorAction Stop).Hash")
         cleanup_cmd = self._command(
-            f"if(Test-Path -LiteralPath {staged}){{"
-            f"Remove-Item -LiteralPath {staged} -Force -ErrorAction Stop}}"
+            f"if(Test-Path -LiteralPath {staged}){{Remove-Item -LiteralPath {staged} -Force -ErrorAction Stop}}"
         )
-        if any(
-            len(command.encode("utf-8")) > limit
-            for command in (make_command(0, ""), decode_cmd, cleanup_cmd)
-        ):
+        if any(len(command.encode("utf-8")) > limit for command in (make_command(0, ""), decode_cmd, cleanup_cmd)):
             logger.error("Command size is too small for the upload command overhead.")
             return False
 
         def execute(command: str) -> str:
-            return self._executor.remote_execute(
-                command, timeout=30, retry=False, raise_on_failure=True, debug=False
-            )
+            return self._executor.remote_execute(command, timeout=30, retry=False, raise_on_failure=True, debug=False)
 
         logger.info(
-            f"Uploading {local_path} to {remote_path} "
-            f"({len(encoded_file)} encoded bytes, command limit {limit})."
+            f"Uploading {local_path} to {remote_path} ({len(encoded_file)} encoded bytes, command limit {limit})."
         )
         try:
             with tqdm(
-                total=len(encoded_file), unit="B", unit_scale=True, desc="Uploading",
+                total=len(encoded_file),
+                unit="B",
+                unit_scale=True,
+                desc="Uploading",
                 disable=logger._core.min_level <= logger.level("TRACE").no,
             ) as progress:
                 send_chunks(execute, make_command, encoded_file, limit, progress.update)
-            self._executor.remote_execute(
-                decode_cmd, timeout=60, retry=False, raise_on_failure=True
-            )
+            self._executor.remote_execute(decode_cmd, timeout=60, retry=False, raise_on_failure=True)
             try:
                 remote_md5 = execute(checksum_cmd).strip()
             except Exception:
@@ -128,10 +118,6 @@ class UploadAction(BaseAction):
             try:
                 output = execute(cleanup_cmd).strip()
                 if output:
-                    logger.warning(
-                        f"Cleanup of {remote_encoded_path} returned: {output}"
-                    )
+                    logger.warning(f"Cleanup of {remote_encoded_path} returned: {output}")
             except Exception as exc:
-                logger.warning(
-                    f"Could not remove staged upload {remote_encoded_path}: {exc}"
-                )
+                logger.warning(f"Could not remove staged upload {remote_encoded_path}: {exc}")

@@ -6,8 +6,8 @@ from toboggan.core.action import BaseAction
 
 
 class ReadableOtherHomes(BaseAction):
-    """
-    Scans for readable files in other users' home directories.
+    """Scan for readable files in other users' home directories.
+
     Useful for identifying permission misconfigurations or information leaks.
 
     This action uses the `find` command to look through `/home`, skipping the current
@@ -20,9 +20,8 @@ class ReadableOtherHomes(BaseAction):
     DESCRIPTION = "Scan other users' home directories for readable files."
 
     def run(self):
-        command = (
-            'find /home -path "$HOME" -prune -o -readable -type f -print 2>/dev/null'
-        )
+        """List readable files in other users' home directories."""
+        command = 'find /home -path "$HOME" -prune -o -readable -type f -print 2>/dev/null'
 
         result = self._executor.remote_execute(command=command).strip()
 

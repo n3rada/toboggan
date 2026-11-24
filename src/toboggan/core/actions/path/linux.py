@@ -8,8 +8,7 @@ from toboggan.core.action import BaseAction
 
 
 class PathAction(BaseAction):
-    """
-    Inspect the remote PATH environment variable.
+    """Inspect the remote PATH environment variable.
 
     This action prints the current contents of the PATH variable from the target system,
     providing insight into the order in which binaries and scripts are located during execution.
@@ -29,6 +28,7 @@ class PathAction(BaseAction):
     DESCRIPTION = "List the remote system's PATH entries and their lookup order."
 
     def run(self):
+        """Print the remote PATH entries in lookup order."""
         try:
             raw_path = self._executor.remote_execute(command="/bin/echo $PATH").strip()
 

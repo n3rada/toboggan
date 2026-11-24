@@ -1,6 +1,6 @@
-from importlib.metadata import version, PackageNotFoundError
-from pathlib import Path
 import tomllib
+from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 
 try:
     __version__ = version("toboggan")

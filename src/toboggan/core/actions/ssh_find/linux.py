@@ -4,10 +4,14 @@
 # Local library imports
 from toboggan.core.action import BaseAction
 
+
 class FindSshKeysAction(BaseAction):
+    """Search for SSH private keys on the system."""
+
     DESCRIPTION = "Search for SSH private keys on the system (user and host keys)."
 
     def run(self) -> str:
+        """Search for files containing SSH private keys on the target."""
         find_cmd = "find /home/*/.ssh /root/.ssh /etc/ssh -type f -exec grep -l 'PRIVATE KEY-' {} + 2>/dev/null"
 
         result = self._executor.remote_execute(find_cmd, timeout=60)

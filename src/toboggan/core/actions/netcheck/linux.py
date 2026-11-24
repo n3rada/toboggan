@@ -5,12 +5,14 @@ from loguru import logger
 from toboggan.core.action import BaseAction
 from toboggan.core.utils import common
 
+
 class InternetCheckAction(BaseAction):
-    DESCRIPTION = (
-        "Check if the target has outbound internet access (ICMP, DNS, HTTP/HTTPS)."
-    )
+    """Check if the target has outbound internet access."""
+
+    DESCRIPTION = "Check if the target has outbound internet access (ICMP, DNS, HTTP/HTTPS)."
 
     def run(self, ip: str = "9.9.9.9", hostname: str = "www.office.com") -> str:
+        """Test outbound connectivity via ICMP, DNS, and HTTP/HTTPS."""
         logger.info("Outbound Connectivity Check")
 
         # Step 1: ICMP Ping
@@ -20,9 +22,7 @@ class InternetCheckAction(BaseAction):
         ping_cmd = f"{ping_path.strip()} -c 1 -W 2 {ip}"
 
         if ping_cmd:
-            ping_result = self._executor.remote_execute(
-                ping_cmd, timeout=5, retry=False
-            )
+            ping_result = self._executor.remote_execute(ping_cmd, timeout=5, retry=False)
             if ping_result and "1 packets transmitted" in ping_result:
                 logger.success(f"ICMP ping to {ip} succeeded.")
             else:
@@ -49,15 +49,12 @@ class InternetCheckAction(BaseAction):
 
         if tool:
             logger.info(f"Using {tool}")
-            dns_result = self._executor.remote_execute(
-                f"{tool} {use_flags} {hostname}", timeout=10, retry=False
-            )
+            dns_result = self._executor.remote_execute(f"{tool} {use_flags} {hostname}", timeout=10, retry=False)
 
             logger.debug(f"DNS result: {dns_result.strip()}")
 
             if dns_result and any(
-                keyword in dns_result.lower()
-                for keyword in [hostname.lower(), "canonical name", "has address"]
+                keyword in dns_result.lower() for keyword in [hostname.lower(), "canonical name", "has address"]
             ):
                 logger.success("DNS resolution succeeded.")
             else:
@@ -82,16 +79,10 @@ class InternetCheckAction(BaseAction):
             logger.info(f"Using {tool}")
             cmd = f"{tool} {use_flags} {hostname}"
             result = self._executor.remote_execute(cmd, timeout=10, retry=False)
-            if (
-                not result
-                or "timed out" in result
-                or "not resolve" in result.lower()
-                or "not found" in result.lower()
-            ):
+            if not result or "timed out" in result or "not resolve" in result.lower() or "not found" in result.lower():
                 logger.error(f"Could not reach {hostname}")
             else:
                 if common.analyze_response(result):
                     logger.success(f"Reached {hostname}")
                 else:
                     logger.error("Blocked, proxied or captive portal detected")
-                

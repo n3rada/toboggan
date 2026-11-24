@@ -13,12 +13,12 @@ from toboggan.core.utils.binaries import BinaryFetcher
 
 
 class DropStaticBinary(BaseAction):
-    DESCRIPTION = (
-        "Fetch, verify, drop, and register one supported static binary: "
-        f"{BinaryFetcher.list_available()}."
-    )
+    """Fetch, verify, drop, and register a supported static binary."""
 
-    def run(self, name: str = None, remote_path: str = None) -> bool:
+    DESCRIPTION = f"Fetch, verify, drop, and register one supported static binary: {BinaryFetcher.list_available()}."
+
+    def run(self, name: str | None = None, remote_path: str | None = None) -> bool:
+        """Download a static binary, upload it, and register it on the target."""
         if not name:
             logger.warning("No binary name provided.")
             logger.info("Available static binaries:")
@@ -53,9 +53,7 @@ class DropStaticBinary(BaseAction):
             remote_path = posixpath.join(self._executor.target.pwd, remote_path)
 
         logger.info(f"Uploading {name} from {local_path} to: {remote_path}")
-        if not DropBinary(self._executor).run(
-            local_path=str(local_path), remote_path=remote_path
-        ):
+        if not DropBinary(self._executor).run(local_path=str(local_path), remote_path=remote_path):
             return False
 
         if name == "busybox":

@@ -20,6 +20,7 @@ def verify_md5(data: bytes, expected: str) -> None:
 
 
 def validate_chunk_size(size: int | str) -> int:
+    """Validate and coerce a chunk size to a positive integer."""
     # The interactive terminal passes action arguments as strings.
     if isinstance(size, str) and re.fullmatch(r"[0-9]+", size):
         size = int(size)
@@ -63,18 +64,12 @@ def receive_chunks(
         elif valid and len(chunk) < expected:
             chunk_size = len(chunk)
             failures = 0
-            logger.warning(
-                f"Short download response at offset {offset}; "
-                f"retrying with {chunk_size}-byte chunks."
-            )
+            logger.warning(f"Short download response at offset {offset}; retrying with {chunk_size}-byte chunks.")
         else:
             failures += 1
             if failures >= 3:
                 raise OSError(f"Download failed at offset {offset}: {reason}.")
-            logger.warning(
-                f"Download response at offset {offset}: {reason}; "
-                f"retrying ({failures}/3)."
-            )
+            logger.warning(f"Download response at offset {offset}: {reason}; retrying ({failures}/3).")
 
 
 def send_chunks(
@@ -99,12 +94,12 @@ def send_chunks(
         low, high = 0, min(chunk_limit, len(data) - offset)
         while low < high:
             middle = (low + high + 1) // 2
-            command = make_command(offset, data[offset:offset + middle])
+            command = make_command(offset, data[offset : offset + middle])
             if len(command.encode("utf-8")) <= command_size:
                 low = middle
             else:
                 high = middle - 1
-        chunk = data[offset:offset + low]
+        chunk = data[offset : offset + low]
         command = make_command(offset, chunk)
         if (data and not chunk) or len(command.encode("utf-8")) > command_size:
             raise ValueError("Command size is too small for the upload command overhead.")
@@ -127,15 +122,9 @@ def send_chunks(
         elif length is not None and offset < length < expected:
             chunk_limit = length - offset
             failures = 0
-            logger.warning(
-                f"Short upload at offset {offset}; "
-                f"retrying with {chunk_limit}-byte chunks."
-            )
+            logger.warning(f"Short upload at offset {offset}; retrying with {chunk_limit}-byte chunks.")
         else:
             failures += 1
             if failures >= 3:
                 raise OSError(f"Upload failed at offset {offset}: {reason}.")
-            logger.warning(
-                f"Upload response at offset {offset}: {reason}; "
-                f"retrying ({failures}/3)."
-            )
+            logger.warning(f"Upload response at offset {offset}: {reason}; retrying ({failures}/3).")

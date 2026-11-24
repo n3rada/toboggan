@@ -1,9 +1,9 @@
 # toboggan/core/helpers/windows.py
 
 # Built-in imports
-import secrets
 import random
 import re
+import secrets
 
 # External library imports
 from loguru import logger
@@ -13,9 +13,7 @@ from . import base
 
 
 class WindowsHelper(base.OSHelperBase):
-    """
-    Windows-specific operations like handling binaries and shell paths.
-    """
+    """Windows-specific operations like handling binaries and shell paths."""
 
     def __init__(self, executor):
         super().__init__(executor)
@@ -23,14 +21,16 @@ class WindowsHelper(base.OSHelperBase):
         logger.trace(f"Initialized WindowsHelper (shell: {self.__shell_type})")
 
     def get_hostname(self) -> str:
+        """Return the hostname of the remote system."""
         return self._executor.remote_execute(command="hostname").strip()
 
     def get_current_user(self) -> str:
+        """Return the current user via whoami."""
         return self._executor.remote_execute(command="whoami").strip()
 
     def get_current_path(self) -> str:
-        """
-        Get current working directory using shell-specific commands.
+        """Get current working directory using shell-specific commands.
+
         Returns normalized Windows path.
         """
         if self.__shell_type == "powershell":
@@ -59,9 +59,7 @@ class WindowsHelper(base.OSHelperBase):
         return ""
 
     def format_working_directory(self) -> str:
-        """
-        Generate a stealthy temp directory path for Windows.
-        """
+        """Generate a stealthy temp directory path for Windows."""
         # Define base directories and their corresponding naming patterns
         base_dirs = {
             "C:\\Windows\\Temp": [
@@ -104,13 +102,10 @@ class WindowsHelper(base.OSHelperBase):
 
     def start_named_pipe(self, action_class, **kwargs) -> None:
         """Stub for Windows named pipe support. Not implemented yet."""
-        raise NotImplementedError(
-            "start_named_pipe is not implemented for WindowsHelper."
-        )
+        raise NotImplementedError("start_named_pipe is not implemented for WindowsHelper.")
 
     def is_shell_prompt_in(self, stdout_pathput: str) -> bool:
-        """
-        Detects if the command output appears to be a Windows shell prompt.
+        """Detects if the command output appears to be a Windows shell prompt.
 
         Args:
             stdout_pathput (str): The latest command output to analyze.
@@ -126,17 +121,14 @@ class WindowsHelper(base.OSHelperBase):
         return any(re.search(pattern, stdout_pathput) for pattern in prompt_patterns)
 
     def __detect_shell_type(self) -> str:
-        """
-        Detects whether we're running in PowerShell or CMD.
+        """Detects whether we're running in PowerShell or CMD.
 
         Returns:
             str: 'powershell' or 'cmd' depending on the shell type
         """
         # Try PowerShell-specific command first
         try:
-            result = self._executor.remote_execute(
-                command="$PSVersionTable.PSVersion.Major"
-            ).strip()
+            result = self._executor.remote_execute(command="$PSVersionTable.PSVersion.Major").strip()
             if result and result.isdigit():
                 logger.info(f"Detected PowerShell (version {result})")
                 return "powershell"
@@ -169,11 +161,12 @@ class WindowsHelper(base.OSHelperBase):
     # Public methods
     def force_powershell(self) -> None:
         """Force shell type to PowerShell (used when obfuscation is enabled)."""
-        if self.__shell_type != 'powershell':
+        if self.__shell_type != "powershell":
             logger.info("Switching from CMD to PowerShell for obfuscation support")
-            self.__shell_type = 'powershell'
-    
+            self.__shell_type = "powershell"
+
     # Properties
     @property
     def shell_type(self) -> str:
+        """Return the detected shell type (powershell or cmd)."""
         return self.__shell_type

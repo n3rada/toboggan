@@ -11,8 +11,7 @@ from toboggan.core.action import BaseAction
 
 
 class DeobfuscateAction(BaseAction):
-    """
-    Reverse the ObfuscateAction transformation.
+    """Reverse the ObfuscateAction transformation.
 
     **IMPORTANT**: This action performs local Python-based decoding and does NOT
     execute any commands on the remote system. It only uses pure Python operations
@@ -22,11 +21,10 @@ class DeobfuscateAction(BaseAction):
         - None (all operations are performed locally in Python)
     """
 
-    DESCRIPTION = (
-        "Reverse the ObfuscateAction transformation (rev + base64 decode)."
-    )
+    DESCRIPTION = "Reverse the ObfuscateAction transformation (rev + base64 decode)."
 
     def run(self, command: str) -> str:
+        """Reverse base64 encoding and string reversal on command output."""
         try:
             logger.debug(f"De-obfuscating output: {len(command)} bytes")
 

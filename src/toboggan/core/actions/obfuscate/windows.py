@@ -2,21 +2,22 @@
 
 # Built-in imports
 import base64
-import re
 import os
+import re
+
+from Cryptodome.Cipher import AES
+from Cryptodome.Util.Padding import pad
 
 # Third party library imports
 from loguru import logger
-from Cryptodome.Cipher import AES
-from Cryptodome.Util.Padding import pad
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 
 
 def generate_key_iv():
-    """
-    Generates a random 32-byte key and a 16-byte IV for AES-256-CBC.
+    """Generate a random 32-byte key and a 16-byte IV for AES-256-CBC.
+
     Returns (key, iv) as hex-encoded strings.
     """
     key = os.urandom(32)
@@ -25,9 +26,7 @@ def generate_key_iv():
 
 
 def encrypt_command(command: str, key_hex: str, iv_hex: str) -> str:
-    """
-    Encrypts a command using AES-256-CBC (compatible with .NET crypto).
-    """
+    """Encrypts a command using AES-256-CBC (compatible with .NET crypto)."""
     key = bytes.fromhex(key_hex)
     iv = bytes.fromhex(iv_hex)
     cipher = AES.new(key, AES.MODE_CBC, iv)
@@ -37,8 +36,7 @@ def encrypt_command(command: str, key_hex: str, iv_hex: str) -> str:
 
 
 class ObfuscateAction(BaseAction):
-    """
-    Obfuscate and execute commands using AES-256-CBC encryption or base64 encoding.
+    """Obfuscate and execute commands using AES-256-CBC encryption or base64 encoding.
 
     **IMPORTANT**: This action is initialized during executor setup, before obfuscation
     is enabled. Uses PowerShell's native .NET crypto classes for AES encryption.
@@ -56,21 +54,20 @@ class ObfuscateAction(BaseAction):
         # Use AES with .NET crypto classes
         self._use_aes = True
         self._AES_KEY, self._AES_IV = generate_key_iv()
-        
+
         logger.info("PowerShell .NET crypto enabled, AES encryption active.")
         logger.debug(f"AES Key: {self._AES_KEY}")
         logger.debug(f"AES IV: {self._AES_IV}")
 
     def run(self, command: str) -> str:
-        """
-        Obfuscate and return the command for remote execution.
-        
+        """Obfuscate and return the command for remote execution.
+
         Applies multiple layers of obfuscation:
         1. AES-256-CBC encryption (or base64 fallback)
         2. Base64 encode output
         3. Reverse string
         4. Base64 encode again
-        """        
+        """
         # Add error redirection unless user explicitly added it
         if re.search(r"(2>&1|2>|>|>>)", command) is None:
             command += " 2>&1"
@@ -80,12 +77,12 @@ class ObfuscateAction(BaseAction):
             # Encrypt the command
             encrypted = encrypt_command(command, self._AES_KEY, self._AES_IV)
             logger.trace(f"Encrypted: {encrypted}")
-            
+
             # Build PowerShell decryption pipeline
             # Convert hex key/iv to byte arrays
-            key_bytes = ",".join([f"0x{self._AES_KEY[i:i+2]}" for i in range(0, len(self._AES_KEY), 2)])
-            iv_bytes = ",".join([f"0x{self._AES_IV[i:i+2]}" for i in range(0, len(self._AES_IV), 2)])
-            
+            key_bytes = ",".join([f"0x{self._AES_KEY[i : i + 2]}" for i in range(0, len(self._AES_KEY), 2)])
+            iv_bytes = ",".join([f"0x{self._AES_IV[i : i + 2]}" for i in range(0, len(self._AES_IV), 2)])
+
             # Decryption script (minimized for size)
             decrypt_script = (
                 f"$e='{encrypted}';"
@@ -103,9 +100,7 @@ class ObfuscateAction(BaseAction):
             # Fallback: simple base64 encoding
             encoded = base64.b64encode(command.encode()).decode()
             decrypt_script = (
-                f"$e='{encoded}';"
-                f"$c=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($e));"
-                f"iex $c 2>&1"
+                f"$e='{encoded}';$c=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($e));iex $c 2>&1"
             )
 
         # Build the pipeline that outputs base64 then reverses
@@ -118,11 +113,11 @@ class ObfuscateAction(BaseAction):
         )
 
         # Encode the full script in base64 (UTF-16LE for PowerShell -EncodedCommand)
-        encoded_script = base64.b64encode(full_script.encode('utf-16le')).decode()
+        encoded_script = base64.b64encode(full_script.encode("utf-16le")).decode()
         logger.debug(f"Encoded script: {len(encoded_script)} bytes")
 
         # Return complete PowerShell command
-        final_cmd = f'powershell -NoP -NonI -W Hidden -Enc {encoded_script}'
-        
+        final_cmd = f"powershell -NoP -NonI -W Hidden -Enc {encoded_script}"
+
         logger.debug(f"Final obfuscated command: {len(final_cmd)} bytes")
         return final_cmd

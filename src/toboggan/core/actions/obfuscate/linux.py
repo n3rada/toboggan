@@ -2,21 +2,22 @@
 
 # Built-in imports
 import base64
-import re
 import os
+import re
+
+from Cryptodome.Cipher import AES
+from Cryptodome.Util.Padding import pad
 
 # Third party library imports
 from loguru import logger
-from Cryptodome.Cipher import AES
-from Cryptodome.Util.Padding import pad
 
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 
 
 def generate_key_iv():
-    """
-    Generates a random 32-byte key and a 16-byte IV for AES-256-CBC.
+    """Generate a random 32-byte key and a 16-byte IV for AES-256-CBC.
+
     Returns (key, iv) as hex-encoded strings.
     """
     key = os.urandom(32)
@@ -25,9 +26,7 @@ def generate_key_iv():
 
 
 def encrypt_command(command: str, key_hex: str, iv_hex: str) -> str:
-    """
-    Encrypts a command using AES-256-CBC (OpenSSL-compatible).
-    """
+    """Encrypts a command using AES-256-CBC (OpenSSL-compatible)."""
     key = bytes.fromhex(key_hex)
     iv = bytes.fromhex(iv_hex)
     cipher = AES.new(key, AES.MODE_CBC, iv)
@@ -37,8 +36,7 @@ def encrypt_command(command: str, key_hex: str, iv_hex: str) -> str:
 
 
 class ObfuscateAction(BaseAction):
-    """
-    Obfuscate and execute commands using AES-256-CBC encryption or base64 encoding.
+    """Obfuscate and execute commands using AES-256-CBC encryption or base64 encoding.
 
     **IMPORTANT**: This action is initialized during executor setup, before obfuscation
     is enabled. Only openssl path is looked up during __init__ to avoid circular dependency.
@@ -49,9 +47,7 @@ class ObfuscateAction(BaseAction):
         - Optional: openssl (for AES encryption, falls back to base64 if missing)
     """
 
-    DESCRIPTION = (
-        "Obfuscate and execute a command using OpenSSL or base64-based wrapping."
-    )
+    DESCRIPTION = "Obfuscate and execute a command using OpenSSL or base64-based wrapping."
 
     def __init__(self, executor):
         super().__init__(executor)
@@ -67,11 +63,10 @@ class ObfuscateAction(BaseAction):
             logger.debug(f"AES Key: {self._AES_KEY}")
             logger.debug(f"AES IV: {self._AES_IV}")
         else:
-            logger.warning(
-                "OpenSSL not found on target, falling back to base64 obfuscation."
-            )
+            logger.warning("OpenSSL not found on target, falling back to base64 obfuscation.")
 
     def run(self, command: str) -> str:
+        """Wrap a command in an obfuscated pipeline for remote execution."""
         # Add redirection unless user explicitly added it
         if re.search(r"(1?>>?|2>>&?|>>?|[0-9]+>&[0-9]+)", command) is None:
             command += " 2>&1"
@@ -80,8 +75,7 @@ class ObfuscateAction(BaseAction):
             encrypted = encrypt_command(command, self._AES_KEY, self._AES_IV)
             # Use 'sh' in the inner decrypt pipeline to avoid $0 context issues
             decrypt_pipeline = (
-                f"echo {encrypted}|"
-                f"{self.__openssl_path} enc -aes-256-cbc -d -a -K {self._AES_KEY} -iv {self._AES_IV}"
+                f"echo {encrypted}|{self.__openssl_path} enc -aes-256-cbc -d -a -K {self._AES_KEY} -iv {self._AES_IV}"
             )
             logger.trace(f"Encrypted command (AES-256-CBC): {encrypted}")
         else:

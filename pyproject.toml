@@ -61,7 +61,58 @@ toboggan = "toboggan.cli:main"
 [dependency-groups]
 dev = [
     "pytest>=8.4.2",
+    "ruff>=0.11.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# Ruff: linter and formatter
+# Enforces the rules in AGENTS.md and DEVELOPMENT.md mechanically.
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+    "F",      # pyflakes: unused imports, undefined names
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "I",      # isort: import ordering
+    "N",      # pep8-naming: snake_case, PascalCase, SCREAMING_SNAKE
+    "UP",     # pyupgrade: modern Python 3.11+ syntax
+    "D",      # pydocstyle: docstring presence and style
+    "FA",     # flake8-future-annotations: enforce from __future__ import annotations
+    "TCH",    # flake8-type-checking: move type-only imports behind TYPE_CHECKING
+    "RUF",    # ruff-specific rules
+]
+ignore = [
+    "D100",   # module docstring: not every module needs one
+    "D104",   # package __init__.py docstring
+    "D105",   # magic method docstring
+    "D107",   # __init__ docstring: class docstring covers it when simple
+    "E501",   # line length: handled by the formatter, not the linter
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["toboggan"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+lines-between-types = 0
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "D",      # docstrings not enforced in tests
+    "FA100",  # future annotations not enforced in tests
+]
+"src/toboggan/core/terminal.py" = [
+    "N806",   # ANSI color constants (BOLD, GREEN, etc.) are intentionally uppercase inside functions
+]

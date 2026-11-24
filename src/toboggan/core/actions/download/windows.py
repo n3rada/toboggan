@@ -2,9 +2,9 @@
 
 # Built-in imports
 import base64
+import tempfile
 import zipfile
 from pathlib import Path
-import tempfile
 
 # External library imports
 from loguru import logger
@@ -22,11 +22,12 @@ class DownloadAction(BaseAction):
     DESCRIPTION = "Retrieve a file remotely, compress it, and save it locally."
 
     def run(
-        self, remote_path: str, local_path: str | None = None,
+        self,
+        remote_path: str,
+        local_path: str | None = None,
         command_size: int | str | None = None,
     ) -> bool:
-        """
-        Attempts to compress, encode, and retrieve a remote file in chunks, saving it locally.
+        """Attempts to compress, encode, and retrieve a remote file in chunks, saving it locally.
 
         Args:
             remote_path (str): Path to the remote file.
@@ -38,7 +39,6 @@ class DownloadAction(BaseAction):
         Returns:
             bool: True if the file was successfully downloaded and extracted, False otherwise.
         """
-
         try:
             if command_size is not None:
                 command_size = validate_chunk_size(command_size)
@@ -57,7 +57,10 @@ class DownloadAction(BaseAction):
             check_cmd = f'if exist "{remote_path}" (echo True) else (echo False)'
         try:
             can_read = self._executor.remote_execute(
-                command=check_cmd, retry=False, raise_on_failure=True, debug=False,
+                command=check_cmd,
+                retry=False,
+                raise_on_failure=True,
+                debug=False,
             ).strip()
         except Exception as exc:
             logger.error(f"Cannot check remote file accessibility: {exc}")
@@ -103,7 +106,7 @@ class DownloadAction(BaseAction):
             cleanup_cmd = f"powershell -nop -EncodedCommand {encoded_cleanup}"
 
         try:
-            logger.info(f"Compressing and encoding file...")
+            logger.info("Compressing and encoding file...")
 
             if self._os_helper.shell_type == "powershell":
                 # Use PowerShell's Compress-Archive and Base64 encoding
@@ -123,29 +126,22 @@ class DownloadAction(BaseAction):
                 # CMD: invoke PowerShell - escape quotes properly
                 compress_encode_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $src = '{remote_path}'; $zip = '{remote_archive}'; $b64 = '{remote_base64_path}'; Compress-Archive -LiteralPath $src -DestinationPath $zip -Force; $bytes = [IO.File]::ReadAllBytes($zip); $enc = [Convert]::ToBase64String($bytes); [IO.File]::WriteAllText($b64, $enc); Remove-Item -LiteralPath $zip -Force" """.strip()
 
-            self._executor.remote_execute(
-                command=compress_encode_cmd, timeout=60, retry=False, raise_on_failure=True
-            )
+            self._executor.remote_execute(command=compress_encode_cmd, timeout=60, retry=False, raise_on_failure=True)
 
             # Step 3: Get the encoded file size
             if self._os_helper.shell_type == "powershell":
                 size_cmd = f'(Get-Item -LiteralPath "{remote_base64_path}").Length'
             else:
-                size_cmd = (
-                    f'powershell -nop -c "(Get-Item -LiteralPath \'{remote_base64_path}\').Length"'
-                )
+                size_cmd = f"powershell -nop -c \"(Get-Item -LiteralPath '{remote_base64_path}').Length\""
 
-            size_output = self._executor.remote_execute(
-                command=size_cmd, retry=False, raise_on_failure=True
-            ).strip()
+            size_output = self._executor.remote_execute(command=size_cmd, retry=False, raise_on_failure=True).strip()
 
             if not size_output or not size_output.isdigit():
                 raise ValueError(f"Failed to retrieve encoded file size for: {remote_path}")
 
             total_encoded_size = int(size_output)
             logger.info(
-                f"Downloading {remote_path} ({total_encoded_size} encoded bytes, "
-                f"initial chunk size {command_size})"
+                f"Downloading {remote_path} ({total_encoded_size} encoded bytes, initial chunk size {command_size})"
             )
 
             def read_chunk(offset: int, size: int) -> str:
@@ -162,8 +158,11 @@ class DownloadAction(BaseAction):
                 else:
                     chunk_cmd = f"""powershell -nop -c "$ProgressPreference='SilentlyContinue'; $fs = [IO.File]::OpenRead('{remote_base64_path}'); $fs.Seek({offset}, [IO.SeekOrigin]::Begin) | Out-Null; $buf = New-Object byte[] {size}; $read = $fs.Read($buf, 0, {size}); $fs.Close(); [Text.Encoding]::ASCII.GetString($buf, 0, $read)" """.strip()
                 return self._executor.remote_execute(
-                    command=chunk_cmd, timeout=30, retry=False,
-                    raise_on_failure=True, debug=False,
+                    command=chunk_cmd,
+                    timeout=30,
+                    retry=False,
+                    raise_on_failure=True,
+                    debug=False,
                 )
 
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -172,17 +171,20 @@ class DownloadAction(BaseAction):
                 with (
                     encoded_path.open("wb") as temp_file,
                     tqdm(
-                        total=total_encoded_size, unit="B", unit_scale=True,
+                        total=total_encoded_size,
+                        unit="B",
+                        unit_scale=True,
                         desc="Downloading",
                     ) as progress_bar,
                 ):
                     receive_chunks(
-                        read_chunk, temp_file, total_encoded_size, command_size,
+                        read_chunk,
+                        temp_file,
+                        total_encoded_size,
+                        command_size,
                         progress_bar.update,
                     )
-                archive_path.write_bytes(
-                    base64.b64decode(encoded_path.read_bytes(), validate=True)
-                )
+                archive_path.write_bytes(base64.b64decode(encoded_path.read_bytes(), validate=True))
                 with zipfile.ZipFile(archive_path, "r") as zip_ref:
                     zip_ref.extractall(path=local_destination)
             logger.success(f"File downloaded and extracted to: {local_destination}")
@@ -192,11 +194,6 @@ class DownloadAction(BaseAction):
             return False
         finally:
             try:
-                self._executor.remote_execute(
-                    command=cleanup_cmd, retry=False, raise_on_failure=True, debug=False
-                )
+                self._executor.remote_execute(command=cleanup_cmd, retry=False, raise_on_failure=True, debug=False)
             except Exception as exc:
-                logger.warning(
-                    f"Could not remove remote download data "
-                    f"{remote_archive}, {remote_base64_path}: {exc}"
-                )
+                logger.warning(f"Could not remove remote download data {remote_archive}, {remote_base64_path}: {exc}")

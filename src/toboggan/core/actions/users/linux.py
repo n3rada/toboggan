@@ -5,11 +5,12 @@ from toboggan.core.action import BaseAction
 
 
 class GetUsersAction(BaseAction):
-    DESCRIPTION = (
-        "Retrieve users and their groups from /etc/passwd in a structured format."
-    )
+    """Retrieve users and their groups from /etc/passwd."""
+
+    DESCRIPTION = "Retrieve users and their groups from /etc/passwd in a structured format."
 
     def run(self) -> str:
+        """Parse /etc/passwd and /etc/group and display users in a table."""
         terminal_width = shutil.get_terminal_size((80, 20)).columns
 
         passwd_data = self._executor.remote_execute("cat /etc/passwd")
@@ -47,9 +48,7 @@ class GetUsersAction(BaseAction):
 
             primary_group = gid_to_group.get(str(gid), f"GID:{gid}")
             additional_groups = user_to_groups.get(username, [])
-            other_groups = (
-                ", ".join(sorted(additional_groups)) if additional_groups else "-"
-            )
+            other_groups = ", ".join(sorted(additional_groups)) if additional_groups else "-"
 
             user_info = (
                 f"{username} ({uid})",
@@ -79,9 +78,7 @@ class GetUsersAction(BaseAction):
                 actual_other_len + 2,
             )
 
-            total_width = (
-                max_user_len + max_group_len + max_other_len + max_shell_len + 10
-            )
+            total_width = max_user_len + max_group_len + max_other_len + max_shell_len + 10
 
             section = f"\n{title}:\n"
             section += "-" * min(terminal_width, total_width) + "\n"
@@ -95,10 +92,7 @@ class GetUsersAction(BaseAction):
 
             for user, primary_group, other_groups, shell in data:
                 if len(other_groups) > max_other_len:
-                    wrapped = [
-                        other_groups[i : i + max_other_len]
-                        for i in range(0, len(other_groups), max_other_len)
-                    ]
+                    wrapped = [other_groups[i : i + max_other_len] for i in range(0, len(other_groups), max_other_len)]
                     section += (
                         f"{user:<{max_user_len}}| "
                         f"{primary_group:<{max_group_len}}| "

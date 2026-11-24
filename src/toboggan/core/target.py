@@ -12,10 +12,10 @@ class Target:
     def __init__(
         self,
         os: str,
-        user: str = None,
-        hostname: str = None,
-        pwd: str = None,
-        system_info: str = None,
+        user: str | None = None,
+        hostname: str | None = None,
+        pwd: str | None = None,
+        system_info: str | None = None,
     ):
         """Initialize a Target instance with system information.
 
@@ -30,16 +30,12 @@ class Target:
         """
         self.os = os
 
-        if user and any(
-            err in user.lower() for err in ["whoami:", "not found", "introuvable"]
-        ):
+        if user and any(err in user.lower() for err in ["whoami:", "not found", "introuvable"]):
             self.user = None
         else:
             self.user = user
 
-        if hostname and any(
-            err in hostname.lower() for err in ["hostname:", "not found", "introuvable"]
-        ):
+        if hostname and any(err in hostname.lower() for err in ["hostname:", "not found", "introuvable"]):
             self.hostname = None
         else:
             self.hostname = hostname
@@ -54,6 +50,7 @@ class Target:
     # Properties
     @property
     def system_info(self) -> str | None:
+        """Return the raw system information string."""
         return self._system_info
 
     @system_info.setter
@@ -64,6 +61,7 @@ class Target:
 
     @property
     def architecture(self) -> str | None:
+        """Return the deduced CPU architecture."""
         return self._architecture
 
     # Public methods
@@ -85,5 +83,3 @@ class Target:
             self._architecture = "x86"
         else:
             self._architecture = None  # Unknown
-
-

@@ -11,21 +11,20 @@ from toboggan.core.action import BaseAction
 
 
 class DeobfuscateAction(BaseAction):
-    """
-    Reverse the ObfuscateAction transformation for Windows.
-    """
+    """Reverse the ObfuscateAction transformation for Windows."""
 
     DESCRIPTION = "Reverse the ObfuscateAction transformation (reverse + base64 decode)."
 
     def run(self, command: str) -> str:
+        """Reverse base64 encoding and string reversal on Windows command output."""
         try:
             logger.debug(f"De-obfuscating output: {len(command)} bytes")
             logger.trace(f"Raw: {command}")
-            
+
             # Step 0: Clean whitespace (remove \r\n, spaces, etc.)
-            cleaned = ''.join(command.split())
+            cleaned = "".join(command.split())
             logger.trace(f"After cleaning: {len(cleaned)} bytes")
-            
+
             # Step 1: Reverse the string (undo PowerShell string reversal)
             reversed_data = cleaned[::-1]
             logger.trace(f"After reverse: {reversed_data}")

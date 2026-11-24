@@ -1,9 +1,9 @@
 # toboggan/core/actions/fifo/linux.py
 
 # Built-in library imports
+import random
 import threading
 import time
-import random
 
 # External library imports
 from loguru import logger
@@ -13,6 +13,7 @@ from toboggan.core.action import NamedPipe
 
 
 class FifoAction(NamedPipe):
+    """Provide semi-interactive remote command execution using named pipes."""
 
     DESCRIPTION = "Provides semi-interactivity using named pipes (FiFo) for remote command execution."
 
@@ -67,9 +68,7 @@ class FifoAction(NamedPipe):
         try:
             self.__fifo_pid = result.strip()
             if self.__fifo_pid and self.__fifo_pid.isdigit():
-                logger.info(
-                    f"FIFO background process started with PID: {self.__fifo_pid}"
-                )
+                logger.info(f"FIFO background process started with PID: {self.__fifo_pid}")
             else:
                 logger.warning(f"Could not capture FIFO PID, got: {result!r}")
                 self.__fifo_pid = None
@@ -113,27 +112,17 @@ class FifoAction(NamedPipe):
             if kill_path:
                 try:
                     # Try graceful termination first (SIGTERM)
-                    self._executor.remote_execute(
-                        f"{kill_path} {self.__fifo_pid}", debug=False
-                    )
+                    self._executor.remote_execute(f"{kill_path} {self.__fifo_pid}", debug=False)
                     logger.success(f"Killed FIFO process (PID: {self.__fifo_pid})")
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to kill PID {self.__fifo_pid} with SIGTERM: {e}"
-                    )
+                    logger.warning(f"Failed to kill PID {self.__fifo_pid} with SIGTERM: {e}")
 
                     # Try forceful kill (SIGKILL)
                     try:
-                        self._executor.remote_execute(
-                            f"{kill_path} -9 {self.__fifo_pid}", debug=False
-                        )
-                        logger.success(
-                            f"Force killed FIFO process (PID: {self.__fifo_pid})"
-                        )
+                        self._executor.remote_execute(f"{kill_path} -9 {self.__fifo_pid}", debug=False)
+                        logger.success(f"Force killed FIFO process (PID: {self.__fifo_pid})")
                     except Exception as e2:
-                        logger.error(
-                            f"Failed to force kill PID {self.__fifo_pid}: {e2}"
-                        )
+                        logger.error(f"Failed to force kill PID {self.__fifo_pid}: {e2}")
             else:
                 logger.warning("Could not find 'kill' command")
         else:
@@ -146,18 +135,14 @@ class FifoAction(NamedPipe):
         if rm_path:
             # Remove stdin FIFO
             try:
-                self._executor.remote_execute(
-                    f"{rm_path} -f {self._stdin}", debug=False
-                )
+                self._executor.remote_execute(f"{rm_path} -f {self._stdin}", debug=False)
                 logger.debug(f"Removed stdin FIFO: {self._stdin}")
             except Exception as e:
                 logger.warning(f"Failed to remove stdin FIFO {self._stdin}: {e}")
 
             # Remove stdout FIFO
             try:
-                self._executor.remote_execute(
-                    f"{rm_path} -f {self._stdout}", debug=False
-                )
+                self._executor.remote_execute(f"{rm_path} -f {self._stdout}", debug=False)
                 logger.debug(f"Removed stdout FIFO: {self._stdout}")
             except Exception as e:
                 logger.warning(f"Failed to remove stdout FIFO {self._stdout}: {e}")
@@ -174,7 +159,6 @@ class FifoAction(NamedPipe):
         Args:
             command: The command string to execute on the remote system.
         """
-
         echo_path = self._executor.os_helper.get_command_location("echo")
         forward_command = f"{echo_path} '{command}' > {self._stdin}"
 
@@ -202,7 +186,6 @@ class FifoAction(NamedPipe):
         ]
 
         while not self.__stop_thread:
-
             # Apply jitter to avoid burst collisions
             time.sleep(random.uniform(self._read_interval, self._read_interval * 1.3))
 

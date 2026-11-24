@@ -1,5 +1,6 @@
-import httpx
 from pathlib import Path
+
+import httpx
 
 # External library imports
 from loguru import logger
@@ -7,17 +8,18 @@ from loguru import logger
 # Local application/library specific imports
 from toboggan.core.action import BaseAction
 from toboggan.core.actions.upload.linux import UploadAction
-from toboggan.core.utils.common import generate_fixed_length_token, generate_uuid
+from toboggan.core.utils.common import generate_uuid
 
 
 class LinPEASAction(BaseAction):
+    """Upload and execute linpeas.sh on the target in the background."""
+
     DESCRIPTION = "Upload and execute linpeas.sh on the target in the background."
 
-    DEFAULT_URL = (
-        "https://github.com/peass-ng/PEASS-ng/releases/latest/download/linpeas.sh"
-    )
+    DEFAULT_URL = "https://github.com/peass-ng/PEASS-ng/releases/latest/download/linpeas.sh"
 
-    def run(self, local_path: str = None) -> str:
+    def run(self, local_path: str | None = None) -> str:
+        """Upload linpeas.sh to the target and start it in the background."""
         # If no local file is provided or it doesn't exist, fetch from GitHub
         if not local_path:
             logger.info("No linpeas.sh path provided — downloading from GitHub...")
@@ -25,9 +27,7 @@ class LinPEASAction(BaseAction):
         else:
             local_path = Path(local_path)
             if not local_path.exists():
-                logger.warning(
-                    f"File {local_path} not found. Downloading linpeas.sh..."
-                )
+                logger.warning(f"File {local_path} not found. Downloading linpeas.sh...")
                 local_path = self._download_linpeas()
 
         if not local_path or not Path(local_path).exists():
@@ -36,9 +36,7 @@ class LinPEASAction(BaseAction):
         filename = f".{generate_uuid()}"
         remote_path = f"{self._executor.working_directory}/{filename}"
 
-        UploadAction(self._executor).run(
-            local_path=str(local_path), remote_path=remote_path
-        )
+        UploadAction(self._executor).run(local_path=str(local_path), remote_path=remote_path)
 
         # Make it executable
         self._executor.remote_execute(f"chmod +x {remote_path}")

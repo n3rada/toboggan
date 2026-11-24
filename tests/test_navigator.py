@@ -154,8 +154,12 @@ def test_browse_tree_drives_keys_until_quit():
         with create_app_session(input=pipe, output=DummyOutput()):
             pipe.send_text("j\r\rq")  # select iam/, open it, open info, quit
             navigator = browse_tree(
-                ROOT, loader, LISTINGS[ROOT], title="test ",
-                input=pipe, output=DummyOutput(),
+                ROOT,
+                loader,
+                LISTINGS[ROOT],
+                title="test ",
+                input=pipe,
+                output=DummyOutput(),
             )
 
     assert navigator.path == "meta-data/iam/info"

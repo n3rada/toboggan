@@ -5,6 +5,7 @@ from . import __version__ as version
 
 
 def display_banner() -> str:
+    """Return the formatted ASCII art banner with the current version."""
     return rf"""
  _____      _
 /__   \___ | |__   ___   __ _  __ _  __ _ _ __

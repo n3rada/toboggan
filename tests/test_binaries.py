@@ -1,6 +1,5 @@
 import hashlib
 import io
-from pathlib import Path
 import tarfile
 
 import pytest
@@ -12,8 +11,7 @@ from toboggan.core.utils.binaries import BinaryFetcher
 
 @pytest.mark.parametrize(
     ("source", "expected"),
-    [("amd64", "x86_64"), ("x86-64", "x86_64"), ("arm64", "aarch64"),
-     ("i686", "x86")],
+    [("amd64", "x86_64"), ("x86-64", "x86_64"), ("arm64", "aarch64"), ("i686", "x86")],
 )
 def test_binary_fetcher_normalizes_architecture(source, expected):
     assert BinaryFetcher(arch=source)._arch == expected
@@ -29,9 +27,7 @@ def test_binary_cache_path_includes_version_and_architecture(tmp_path, monkeypat
 
     fetcher = BinaryFetcher(arch="x86_64")
 
-    assert fetcher._destination("curl", "1.2.3") == (
-        tmp_path / "curl" / "1.2.3" / "linux-x86_64" / "curl"
-    )
+    assert fetcher._destination("curl", "1.2.3") == (tmp_path / "curl" / "1.2.3" / "linux-x86_64" / "curl")
 
 
 def test_fetch_curl_verifies_and_extracts_binary(tmp_path, monkeypatch):
@@ -52,26 +48,23 @@ def test_fetch_curl_verifies_and_extracts_binary(tmp_path, monkeypatch):
         def json(self):
             return {
                 "tag_name": "1.2.3-1",
-                "body": (
-                    "| curl | linux | x86_64 | glibc | "
-                    f"{hashlib.sha256(binary).hexdigest()} |"
-                ),
-                "assets": [{
-                    "name": "curl-linux-x86_64-glibc-1.2.3-1.tar.xz",
-                    "browser_download_url": (
-                        "https://github.com/stunnel/static-curl/releases/download/"
-                        "1.2.3-1/curl-linux-x86_64-glibc-1.2.3-1.tar.xz"
-                    ),
-                }],
+                "body": (f"| curl | linux | x86_64 | glibc | {hashlib.sha256(binary).hexdigest()} |"),
+                "assets": [
+                    {
+                        "name": "curl-linux-x86_64-glibc-1.2.3-1.tar.xz",
+                        "browser_download_url": (
+                            "https://github.com/stunnel/static-curl/releases/download/"
+                            "1.2.3-1/curl-linux-x86_64-glibc-1.2.3-1.tar.xz"
+                        ),
+                    }
+                ],
             }
 
     monkeypatch.setattr(
         "toboggan.core.utils.binaries.httpx.get",
         lambda *_args, **_kwargs: MetadataResponse(),
     )
-    monkeypatch.setattr(BinaryFetcher, "_download", staticmethod(
-        lambda _url: archive_buffer.getvalue()
-    ))
+    monkeypatch.setattr(BinaryFetcher, "_download", staticmethod(lambda _url: archive_buffer.getvalue()))
 
     result = BinaryFetcher().get("curl")
 

@@ -1,6 +1,7 @@
 # tests/test_target.py
 
 import pytest
+
 from toboggan.core.target import Target
 
 
